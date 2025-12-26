@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { MonitorteamlogComponent } from './monitorteamlog.component';
+import { TaskManagementComponent } from './task-management.component';
 
-describe('MonitorteamlogComponent', () => {
-  let component: MonitorteamlogComponent;
-  let fixture: ComponentFixture<MonitorteamlogComponent>;
+describe('TaskManagementComponent', () => {
+  let component: TaskManagementComponent;
+  let fixture: ComponentFixture<TaskManagementComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [MonitorteamlogComponent]
+      imports: [TaskManagementComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(MonitorteamlogComponent);
+    fixture = TestBed.createComponent(TaskManagementComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
