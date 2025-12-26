@@ -4,7 +4,7 @@
     <form [formGroup]="signupForm" (ngSubmit)="onSubmit()">
       
       <div class="form-group">
-        <label>Full Name</label>
+        <label>Full Name :</label>
         <input type="text" formControlName="fullName" placeholder="John Doe">
         <small class="error" *ngIf="f['fullName'].touched && f['fullName'].invalid">Name is required (min 3 chars).</small>
       </div>
