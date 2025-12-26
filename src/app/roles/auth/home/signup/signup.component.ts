@@ -45,7 +45,7 @@ export class SignupComponent {
     if (this.signupForm.valid) {
       console.log('User Data:', this.signupForm.value);
       alert(`Account created for ${this.signupForm.value.fullName} as ${this.signupForm.value.role}`);
-      this.router.navigate(['/singin']); // Redirect to login after success
+      this.router.navigate(['signin']); // Redirect to login after success
     }
   }
 }
