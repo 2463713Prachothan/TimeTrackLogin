@@ -1,1 +1,54 @@
-<p>signup works!</p>
+<div class="signup-container">
+  <div class="signup-card">
+    <h2>Create Account</h2>
+    <form [formGroup]="signupForm" (ngSubmit)="onSubmit()">
+     
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" formControlName="fullName" placeholder="John Doe">
+        <small class="error" *ngIf="f['fullName'].touched && f['fullName'].invalid">Name is required (min 3 chars).</small>
+      </div>
+ 
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" formControlName="email" placeholder="example@mail.com">
+        <small class="error" *ngIf="f['email'].touched && f['email'].invalid">Enter a valid email.</small>
+      </div>
+ 
+      <div class="form-group">
+        <label>Role</label>
+        <select formControlName="role">
+          <option value="" disabled selected>Select your role</option>
+          <option *ngFor="let role of roles" [value]="role">{{ role }}</option>
+        </select>
+        <small class="error" *ngIf="f['role'].touched && f['role'].invalid">Please select a role.</small>
+      </div>
+ 
+      <div class="form-group">
+        <label>Password</label>
+        <div class="input-wrapper">
+          <input
+            [type]="showPassword ? 'text' : 'password'"
+            formControlName="password"
+            placeholder="Min 8 characters">
+          <button type="button" class="eye-btn" (click)="togglePassword()">
+            {{ showPassword ? '🙈' : '👁️' }}
+          </button>
+        </div>
+       
+        <div *ngIf="f['password'].dirty || f['password'].touched">
+          <small class="error" *ngIf="f['password'].errors?.['required']">Password is required.</small>
+          <small class="error" *ngIf="f['password'].errors?.['pattern']">
+            Must have 8+ chars, Uppercase, Lowercase, Number & Symbol.
+          </small>
+        </div>
+      </div>
+ 
+      <button type="submit" class="submit-btn" [disabled]="signupForm.invalid">
+        Register Now
+      </button>
+ 
+      <p class="login-link">Already have an account? <a routerLink="/singin">Sign In</a></p>
+    </form>
+  </div>
+</div>
