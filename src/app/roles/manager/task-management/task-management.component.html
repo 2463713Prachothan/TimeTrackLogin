@@ -1,1 +1,106 @@
-<p>task-management works!</p>
+<div class="container-fluid p-0">
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
+        <div>
+          <small class="text-muted d-block">Pending Tasks</small>
+          <h5 class="fw-bold mb-0">{{ getCount('Pending') }}</h5>
+        </div>
+        <div class="icon-box border rounded p-2 text-muted">
+          <i class="bi bi-circle"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
+        <div>
+          <small class="text-muted d-block">In Progress</small>
+          <h5 class="fw-bold mb-0">{{ getCount('In Progress') }}</h5>
+        </div>
+        <div class="icon-box icon-blue rounded p-2">
+          <i class="bi bi-clock"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
+        <div>
+          <small class="text-muted d-block">Completed</small>
+          <h5 class="fw-bold mb-0">{{ getCount('Completed') }}</h5>
+        </div>
+        <div class="icon-box icon-green rounded p-2">
+          <i class="bi bi-check-circle"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h5 class="fw-bold mb-0">Task Management</h5>
+      <button class="btn btn-primary px-4 py-2 fw-bold" (click)="showModal = true">
+        <i class="bi bi-plus-lg me-1"></i> Create Task
+      </button>
+    </div>
+
+    <div class="list-group list-group-flush">
+      <div class="card border mb-3 p-3 shadow-sm task-item" *ngFor="let task of tasks; let i = index">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="d-flex">
+            <div class="me-3 mt-1">
+              <i class="bi" [ngClass]="task.status === 'Completed' ? 'bi-check-circle-fill text-success' : 'bi-clock text-primary'"></i>
+            </div>
+            <div>
+              <h6 class="fw-bold mb-1">{{ task.title }}</h6>
+              <p class="small text-muted mb-1">{{ task.description }}</p>
+              <small class="text-muted">Assigned to: {{ task.assignedTo }} • Est. {{ task.hours }} hours</small>
+            </div>
+          </div>
+          <button class="btn btn-outline-danger btn-sm border-0" (click)="deleteTask(i)">
+            <i class="bi bi-trash3"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop fade show" *ngIf="showModal"></div>
+  <div class="modal fade show d-block" *ngIf="showModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4 p-2">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="fw-bold">New Task</h5>
+          <button type="button" class="btn-close" (click)="showModal = false"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small text-muted">Task Title</label>
+            <input type="text" class="form-control rounded-3" [(ngModel)]="newTask.title" placeholder="Enter task title">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-muted">Description</label>
+            <textarea class="form-control rounded-3" [(ngModel)]="newTask.description" rows="3"></textarea>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label small text-muted">Assign To</label>
+              <select class="form-select rounded-3" [(ngModel)]="newTask.assignedTo">
+                <option value="John Smith">John Smith</option>
+                <option value="Emily Davis">Emily Davis</option>
+                <option value="David Wilson">David Wilson</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label small text-muted">Estimated Hours</label>
+              <input type="number" class="form-control rounded-3" [(ngModel)]="newTask.hours">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button class="btn btn-light px-4" (click)="showModal = false">Cancel</button>
+          <button class="btn btn-primary px-4 fw-bold" (click)="addTask()">Create Task</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
