@@ -6,16 +6,16 @@ import { SigninComponent } from './roles/auth/home/signin/signin.component';
 import { DashboardComponent } from './roles/admin/dashboard/dashboard.component';
 import { DashboardemployeeComponent } from './roles/employee/dashboardemployee/dashboardemployee.component';
 import { ManagerComponent } from './roles/manager/manager.component';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
     { path: '',component:HomeComponent},
     { path:'signup', component:SignupComponent},
     { path:'signin', component:SigninComponent},
-    { path: 'admin/dashboard', component: DashboardComponent }, 
-    { path: 'manager', component:ManagerComponent},
-  { path: 'employee/dashboardemployee', component: DashboardemployeeComponent },
-  { path: 'manager', component: ManagerComponent },
-  { path: '', redirectTo: '/', pathMatch: 'full' } // Default to Hero
+    { path: 'admin/dashboard', component: DashboardComponent, canActivate: [authGuard] }, 
+    { path: 'manager', component:ManagerComponent, canActivate: [authGuard]},
+  { path: 'employee/dashboardemployee', component: DashboardemployeeComponent, canActivate: [authGuard] },
+  { path: '', redirectTo: 'signin', pathMatch: 'full' }
 ];
 
 // @NgModule({

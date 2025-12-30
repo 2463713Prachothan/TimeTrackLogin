@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { AuthService } from '../../../../core/services/auth.service';
  
 @Component({
   selector: 'app-signin',
@@ -14,6 +15,7 @@ export class SigninComponent {
   private fb = inject(FormBuilder);
   private router = inject(Router);
 roles: string[] = ['Employee', 'Manager', 'Admin'];
+private authService = inject(AuthService);
   signinForm: FormGroup;
  
   constructor() {
@@ -32,31 +34,28 @@ onLogin() {
   if (this.signinForm.valid) {
     const email = this.signinForm.value.email.toLowerCase();
     const selectedRole = this.signinForm.value.role;
+    const enteredpassword=this.signinForm.value.password;
+    const loginSuccess = this.authService.login(email, enteredpassword);
  
     // Retrieve the role saved during registration
-    const registeredRole = localStorage.getItem(email);
- 
-    if (!registeredRole) {
-      alert('Email not found. Please register first.');
+   // const registeredRole = localStorage.getItem(email);
+    //const storedUserJson = localStorage.getItem(email);
+    if (loginSuccess) {
+        // 2. GET THE LOGGED IN USER FROM THE SIGNAL
+        const user = this.authService.currentUser();
+    if (selectedRole !== user.role) {
+      alert(`Access Denied: You are registered as ${user.role}, not ${selectedRole}.`);
+      this.authService.logout(); // Clear the session if they picked the wrong role
       return;
     }
- 
-    // Check if the role selected matches the role registered
-    if (selectedRole !== registeredRole) {
-      alert(`Access Denied: not ${selectedRole}.`);
-      return;
-    }
- 
-    alert('Login Successful!');
- 
-    // Role-based navigation using your folder structure
-    if (selectedRole === 'Admin') {
-      this.router.navigate(['/admin/dashboard']);
-    } else if (selectedRole === 'Employee') {
-      this.router.navigate(['/employee/dashboardemployee']);
-    } else {
-      this.router.navigate(['/manager']);
+   alert('Login Successful!');
+   this.authService.navigateToDashboard(user.role);
+  }
+  else{
+    alert('invalid email or password .');
+  }
+
+       
     }
   }
-}
 }

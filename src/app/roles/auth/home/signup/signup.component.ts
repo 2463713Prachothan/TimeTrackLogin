@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
   selector: 'app-signup',
@@ -13,13 +14,13 @@ import { Router, RouterModule } from '@angular/router';
 export class SignupComponent {
   private fb = inject(FormBuilder);
   private router = inject(Router);
-
+  private authService = inject(AuthService);
   signupForm: FormGroup;
   // This must be false for the password to be hidden (dotted) by default
   showPassword = false;
 
   // Roles for the dropdown
-  roles: string[] = ['Employee', 'Manager', 'Admin'];
+  roles: string[] = ['Employee', 'Manager'];
 
   // Departments for the dropdown
   departments: string[] = [
@@ -28,7 +29,6 @@ export class SignupComponent {
     'Java React', 
     'Multi cloud'
   ];
-
   constructor() {
     this.signupForm = this.fb.group({
       fullName: ['', [Validators.required, Validators.minLength(3)]],
@@ -64,15 +64,21 @@ export class SignupComponent {
 onSubmit() {
   if (this.signupForm.valid) {
     const userData = {
+      fullName: this.signupForm.value.fullName,
       email: this.signupForm.value.email.toLowerCase(),
-      role: this.signupForm.value.role
+      role: this.signupForm.value.role,
+      department: this.signupForm.value.department,
+      password: this.signupForm.value.password
     };
     
     // Save to localStorage so Sign-In can find it later
-    localStorage.setItem(userData.email, userData.role);
-    
+   
+    this.authService.register(userData);
     alert(`Account created for ${this.signupForm.value.fullName} as ${userData.role}`);
     this.router.navigate(['/signin']);
   }
-}
+    else{
+      this.signupForm.markAllAsTouched();
+    }
+  }
 }
