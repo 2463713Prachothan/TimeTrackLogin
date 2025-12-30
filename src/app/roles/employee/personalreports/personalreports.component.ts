@@ -1,23 +1,11 @@
-import { Component, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
-import { Chart, registerables } from 'chart.js';
-Chart.register(...registerables);
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'app-productivity',
+  selector: 'app-personal-reports', // This MUST match the tag in your HTML
   standalone: true,
+  imports: [CommonModule],
   templateUrl: './personalreports.component.html',
   styleUrls: ['./personalreports.component.css']
 })
-export class personalreportsComponent implements AfterViewInit {
-  @ViewChild('hoursChart') hoursChartCanvas!: ElementRef;
-
-  ngAfterViewInit() {
-    new Chart(this.hoursChartCanvas.nativeElement, {
-      type: 'bar',
-      data: {
-        labels: ['Dec 13', 'Dec 14', 'Dec 15'],
-        datasets: [{ label: 'Hours', data: [7.75, 8.0, 7.5], backgroundColor: '#0ea5e9' }]
-      }
-    });
-  }
-}
+export class PersonalreportsComponent { } // Note the capitalized 'P'

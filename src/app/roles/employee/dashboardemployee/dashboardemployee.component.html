@@ -15,21 +15,55 @@
                 Tasks</button>
             <button class="nav-item" [class.active]="activeTab() === 'productivity'" (click)="setTab('productivity')">📈
                 Insights</button>
+            <button class="nav-item btn-notif" [class.active]="activeTab() === 'notifications'"
+                (click)="setTab('notifications')">
+                🔔 Notifications
+                <span class="badge" *ngIf="unreadCount() > 0">{{ unreadCount() }}</span>
+            </button>
         </nav>
 
         <div class="nav-right">
-            <div class="user-pill">
-                <div class="user-avatar">{{ authService.currentUser()?.name?.charAt(0) }}</div>
-                <span class="u-name">{{ authService.currentUser()?.name }}</span>
+            <div class="user-pill" *ngIf="authService.currentUser() as user">
+                <div class="user-avatar">{{ user.name?.charAt(0) }}</div>
+                <div class="user-details">
+                    <span class="u-name">{{ user.name }}</span>
+                    <span class="u-dept">Engineering</span>
+                </div>
             </div>
             <button class="btn-logout" (click)="logout()">↪</button>
         </div>
     </header>
 
     <div [ngSwitch]="activeTab()" class="tab-content">
-        <app-time-logging *ngSwitchCase="'logging'" [logs]="timeLogs()" [weeklyHours]="weeklyHours()"
-            (onAddLog)="showModal.set(true)"></app-time-logging>
-        <app-tasks *ngSwitchCase="'tasks'" [tasks]="detailedTasks()"></app-tasks>
-        <app-productivity *ngSwitchCase="'productivity'"></app-productivity>
+        <app-log-hours *ngSwitchCase="'logging'" [logs]="timeLogs()" [weeklyHours]="weeklyHours()"
+            (onAddLog)="showModal.set(true)">
+        </app-log-hours>
+
+        <app-tasks-assigned *ngSwitchCase="'tasks'" [tasks]="detailedTasks()">
+        </app-tasks-assigned>
+
+        <app-personal-reports *ngSwitchCase="'productivity'">
+        </app-personal-reports>
+
+        <div *ngSwitchCase="'notifications'" class="notifications-panel">
+            <div class="panel-header">
+                <div>
+                    <h3>Notifications</h3>
+                    <p class="unread-sub">{{ unreadCount() }} unread notifications</p>
+                </div>
+                <button class="text-link" (click)="markAllRead()">Mark all as read</button>
+            </div>
+
+            <div class="notif-list">
+                <div *ngFor="let n of notifications()" class="notif-card" [ngClass]="[n.type, n.status]">
+                    <span class="notif-icon">{{ n.icon }}</span>
+                    <div class="notif-body">
+                        <p class="notif-msg">{{ n.message }}</p>
+                        <span class="notif-time">{{ n.time }}</span>
+                    </div>
+                    <button class="notif-check" *ngIf="n.status === 'unread'">✔️</button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
