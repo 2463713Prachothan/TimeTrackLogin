@@ -1,25 +1,76 @@
-/* Summary Icon Colors */
-.icon-box { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
-.icon-blue { background-color: #eff6ff; color: #3b82f6; }
-.icon-green { background-color: #f0fdf4; color: #22c55e; }
-.icon-purple { background-color: #faf5ff; color: #a855f7; }
-
-/* Employee Avatar Circle */
-.avatar-badge {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  width: 32px;
-  height: 32px;
-  background-color: #eef2ff;
-  color: #6366f1;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 0.75rem;
+/* Container Cards */
+.main-dashboard-card, .stat-highlight-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
 
-.card { border-radius: 10px; }
-.table thead th { font-weight: 600; text-transform: none; padding: 12px; }
+/* Icons and Avatars */
+.icon-circle {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+}
+.profile-icon {
+  width: 32px; height: 32px; border-radius: 50%; background: #eef2ff;
+  color: #6366f1; display: flex; align-items: center; justify-content: center; font-weight: bold;
+}
+
+/* Subtle Highlights */
+.bg-blue-subtle { background: #eef2ff; color: #6366f1; }
+.bg-green-subtle { background: #f0fdf4; color: #22c55e; }
+.bg-purple-subtle { background: #faf5ff; color: #a855f7; }
+
+.table-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+.custom-logs-table {
+  width: 100%;
+  /* This is the key: it forces even distribution */
+  table-layout: fixed; 
+  margin-bottom: 0;
+  border-collapse: collapse;
+}
+
+.custom-logs-table thead th {
+  background-color: #f8f9fa;
+  color: #4b5563;
+  font-weight: 600;
+  font-size: 0.82rem; /* Slightly smaller for better fit */
+  padding: 12px;
+  text-align: center;
+  border-bottom: 1px solid #edf2f7;
+  /* Ensures each of the 6 columns takes exactly 16.66% */
+  width: 16.66%; 
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-logs-table tbody td {
+  padding: 14px 15px;
+  font-size: 0.85rem;
+  color: #1f2937;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+  text-align: center;
+  /* Prevents long names from breaking the even spacing */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-total-hours {
+  font-weight: 700;
+  color: #111827;
+}
+
+.custom-logs-table tbody tr:hover {
+  background-color: #f9fafb;
+}

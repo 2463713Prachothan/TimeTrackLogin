@@ -1,87 +1,80 @@
 <div class="container-fluid p-0">
   <div class="row g-3 mb-4">
     <div class="col-md-4">
-      <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
-        <div>
-          <small class="text-muted d-block mb-1">Total Hours</small>
-          <h5 class="fw-bold mb-0">{{ totalHours }}</h5>
-        </div>
-        <div class="icon-box icon-blue rounded-circle p-2">
-          <i class="bi bi-clock"></i>
-        </div>
+      <div class="stat-highlight-card p-3 d-flex justify-content-between align-items-center">
+        <div><small class="text-muted">Total Hours</small><h5 class="fw-bold mb-0">{{summaryStats.total}} hrs</h5></div>
+        <div class="icon-circle bg-blue-subtle"><i class="bi bi-clock"></i></div>
       </div>
     </div>
-
     <div class="col-md-4">
-      <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
-        <div>
-          <small class="text-muted d-block mb-1">Average per Day</small>
-          <h5 class="fw-bold mb-0">{{ averagePerDay }}</h5>
-        </div>
-        <div class="icon-box icon-green rounded-circle p-2">
-          <i class="bi bi-graph-up-arrow"></i>
-        </div>
+      <div class="stat-highlight-card p-3 d-flex justify-content-between align-items-center">
+        <div><small class="text-muted">Average per Day</small><h5 class="fw-bold mb-0">{{summaryStats.avg}} hrs</h5></div>
+        <div class="icon-circle bg-green-subtle"><i class="bi bi-graph-up"></i></div>
       </div>
     </div>
-
     <div class="col-md-4">
-      <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
-        <div>
-          <small class="text-muted d-block mb-1">Total Entries</small>
-          <h5 class="fw-bold mb-0">{{ totalEntries }}</h5>
-        </div>
-        <div class="icon-box icon-purple rounded-circle p-2">
-          <i class="bi bi-calendar3"></i>
-        </div>
+      <div class="stat-highlight-card p-3 d-flex justify-content-between align-items-center">
+        <div><small class="text-muted">Total Entries</small><h5 class="fw-bold mb-0">{{summaryStats.entries}}</h5></div>
+        <div class="icon-circle bg-purple-subtle"><i class="bi bi-calendar3"></i></div>
       </div>
     </div>
   </div>
 
-  <div class="card border-0 shadow-sm p-4">
+  <div class="main-dashboard-card p-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h5 class="fw-bold mb-0">Team Time Logs</h5>
       <div class="d-flex gap-2">
-        <select class="form-select form-select-sm w-auto"><option>All Team Members</option></select>
-        <select class="form-select form-select-sm w-auto"><option>This Week</option></select>
+        <select class="form-select form-select-sm w-auto fw-medium border-subtle shadow-none" [(ngModel)]="selectedMember" (change)="updateDashboard()">
+          <option>All Team Members</option>
+          <option *ngFor="let m of uniqueMembers" [value]="m">{{m}}</option>
+        </select>
+        <select class="form-select form-select-sm w-auto  fw-medium border-subtle shadow-none" 
+        [(ngModel)]="selectedTimeFrame" 
+        (change)="updateDashboard()">
+  <option value="Today">Today</option>
+  <option value="This Week">This Week</option>
+  <option value="All Time">All Time</option>
+</select>
       </div>
     </div>
 
     <div class="row g-3 mb-4">
-      <div class="col-md-4" *ngFor="let member of teamMembers">
-        <div class="card border p-3 position-relative">
-          <h6 class="fw-bold mb-1">{{ member.name }}</h6>
-          <small class="text-muted d-block mb-3">{{ member.email }}</small>
+      <div class="col-md-4" *ngFor="let name of (selectedMember === 'All Team Members' ? uniqueMembers : [selectedMember])">
+        <div class="member-info-card p-3 shadow-sm border border-light-subtle rounded-3">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <h6 class="fw-bold mb-0">{{name}}</h6>
+              <small class="text-muted">{{name.toLowerCase().replace(' ', '.')}}&#64;company.com</small>
+            </div>
+            <div class="profile-icon">{{name.charAt(0)}}</div>
+          </div>
           <div class="d-flex justify-content-between small mb-1">
-            <span class="text-muted">Total Hours:</span>
-            <span class="fw-bold">{{ member.hours }}</span>
+            <span class="text-muted">Total Hours:</span><span class="fw-bold">{{getMemberStats(name).hours}} hrs</span>
           </div>
           <div class="d-flex justify-content-between small">
-            <span class="text-muted">Days Logged:</span>
-            <span class="fw-bold">{{ member.days }}</span>
+            <span class="text-muted">Days Logged:</span><span class="fw-bold">{{getMemberStats(name).days}}</span>
           </div>
-          <div class="avatar-badge">{{ member.initial }}</div>
         </div>
       </div>
     </div>
 
-    <div class="table-responsive">
-      <table class="table align-middle text-center small fw-bold">
-        <thead class="table-light text-muted border-bottom">
-          <tr>
-            <th>Employee</th>
-            <th>Date</th>
-            <th>Start Time</th>
-            <th>End Time</th>
-            <th>Break (min)</th>
-            <th>Total Hours</th>
-          </tr>
+    <div class="table-card">
+      <div class="table-responsive">
+      <table class="table align-middle custom-logs-table">
+        <thead>
+          <tr><th>Employee</th><th>Date</th><th>Start Time</th><th>End Time</th><th>Break (min)</th><th>Total Hours</th></tr>
         </thead>
         <tbody>
-          <tr>
-            <td colspan="6" class="py-5 text-muted fw-normal">No time logs found for the selected filters</td>
+          <tr *ngFor="let log of filteredLogs">
+            <td class="fw-medium text-dark">{{log.employee}}</td><td>{{log.date}}</td><td>{{log.startTime}}</td>
+            <td>{{log.endTime}}</td><td>{{log.break}}</td><td class="fw-bold">{{log.totalHours.toFixed(2)}} hrs</td>
+          </tr>
+          <tr *ngIf="filteredLogs.length === 0">
+            <td colspan="6" class="py-5 text-center text-muted border-0">No time logs found for the selected filters</td>
           </tr>
         </tbody>
       </table>
     </div>
+  </div>
   </div>
 </div>
