@@ -1,0 +1,26 @@
+.btn-start-free {
+    background-color: var(--desklog-green);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(140, 198, 63, 0.3);
+    transition: transform 0.2s;
+}
+
+.btn-start-free:hover {
+    transform: translateY(-2px);
+    background-color: #7ab335;
+}
+
+.hero-title {
+    color: #333333;
+    font-size: 3.5rem;
+    font-weight: 800;
+}
+
+.hero-title span {
+    color: var(--desklog-green);
+    /* For the 'Productivity' text */
+}

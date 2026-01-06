@@ -1,10 +1,19 @@
-<nav class="navbar">
-    <div class="logo">
-        TimeTrack
-    </div>
+<nav class="navbar" [class.scrolled]="isScrolled">
+  <div class="logo">
+   <img src="/assets/logo.png" alt="Logo">
+    <span class="logo-text">TimeTrack</span>
+  </div>
 
-    <div class="user-section">
-        <button class="login-btn" routerLink="/signup" >Signup</button>
-        <button class="login-btn" routerLink="/signin">Signin</button>
-    </div>
+  <ul class="nav-links">
+    <li class="nav-item" (click)="scrollTo('features')">Features</li>
+    <li class="nav-item" (click)="scrollTo('about')">About</li>
+    <li class="nav-item" (click)="scrollTo('contact')">Contact</li>
+  
+</ul>
+  
+
+  <div class="nav-actions">
+    <button class="btn-login" routerLink="/signin">SignIn</button>
+    <button class="btn-start" routerLink="/signup">SignUp <span class="arrow">›</span></button>
+  </div>
 </nav>

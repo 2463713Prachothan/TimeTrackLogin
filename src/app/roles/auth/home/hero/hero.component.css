@@ -1,83 +1,99 @@
-.hero {
-  height: calc(100vh - 60px); /* minus navbar height */
-  background: linear-gradient(
-    135deg,
-    #0f172a,
-    #1e293b,
-    #020617
-  );
-  color: white;
+/* src/app/roles/auth/home/features/features.component.css */
 
-  display: flex;
-  align-items: center;
-  padding: 0 80px;
+.hero-wrapper {
+    /* Exact gradient background from Desklog sample */
+    background: radial-gradient(circle at top left, #f3faeb 0%, #ffffff 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    /* Vertical Center */
+    justify-content: center;
+    /* Horizontal Center */
+    padding: 20px;
+    text-align: center;
 }
 
-/* CONTENT */
-.hero-content {
-  max-width: 650px;
+.content-center {
+    max-width: 850px;
 }
 
-.hero-content h1 {
-  font-size: 62px;
-  line-height: 1.2;
-  margin-bottom: 20px;
+.tagline {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #333;
+    margin-bottom: 15px;
 }
 
-.hero-quote {
-  font-size: 18px;
-  line-height: 1.6;
-  color: #cbd5e1;
-  margin-bottom: 30px;
+.main-title {
+    font-size: 4rem;
+    /* Bold, Large Font */
+    font-weight: 800;
+    color: #1a1a1a;
+    line-height: 1.1;
+    margin-bottom: 30px;
 }
 
-.hero-btn {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 40px;
+.green-text {
+    color: #8cc63f;
+    /* Desklog Signature Green */
 }
 
-.primary-btn {
-  background-color: #38bdf8;
-  border: none;
-  padding: 12px 28px;
-  font-size: 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: #020617;
-  font-weight: 600;
+.description {
+    font-size: 1.15rem;
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 40px;
 }
 
-.primary-btn:hover {
-  background-color: #0ea5e9;
+/* Button Container Centering */
+.btn-group {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 25px;
 }
 
-.secondary-btn {
-  background: transparent;
-  border: 1px solid #38bdf8;
-  padding: 12px 28px;
-  font-size: 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: #38bdf8;
+.btn-fill {
+    background-color: #8cc63f;
+    color: white;
+    border: none;
+    padding: 16px 40px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 15px rgba(140, 198, 63, 0.3);
+    cursor: pointer;
+    transition: 0.3s;
 }
 
-.secondary-btn:hover {
-  background-color: rgba(56, 189, 248, 0.1);
+.btn-outline {
+    background: white;
+    border: 1.5px solid #8cc63f;
+    color: #8cc63f;
+    padding: 16px 40px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
 }
 
-/* STATS */
-.hero-stats {
-  display: flex;
-  gap: 40px;
+.info-badges {
+    font-size: 0.85rem;
+    color: #888;
+    letter-spacing: 0.5px;
 }
 
-.hero-stats h3 {
-  font-size: 24px;
-  margin-bottom: 5px;
+.info-badges span {
+    margin: 0 10px;
 }
 
-.hero-stats span {
-  font-size: 14px;
-  color: #94a3b8;
+/* Responsive fix for small screens */
+@media (max-width: 768px) {
+    .main-title {
+        font-size: 2.5rem;
+    }
+
+    .btn-group {
+        flex-direction: column;
+    }
 }

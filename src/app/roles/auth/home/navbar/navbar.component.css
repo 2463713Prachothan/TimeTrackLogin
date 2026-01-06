@@ -1,64 +1,134 @@
-.navbar{
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 60px;
-
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #38bdf8;
-    color: white;
-    padding: 0 20px;
-    z-index: 1000;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-}
-
-.logo{
-    font-size: 25px;
-    font-weight: bold;
-}
-
-.nav-actions{
-    display: flex;
-    gap: 10px;
-}
-.nav-actions button{
-    background-color: #1aa3ff;
-    color: white;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.nav-actions button:hover{
-    background-color: #008ae6;
-}
-
-.user-section{
-    display: flex;
-    justify-content: flex-end; /* Keeps them on the right side */
-    margin-right: 30px; 
-    gap: 10px;
-}
-
-.login-btn{
-    background-color: transparent;
-  border: none;
+/* Base Navbar - Initial Transparent State */
+.navbar {
+  position: fixed; /* Keeps it 'static' at the top of the viewport */
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000; /* Ensures it stays above all other content */
   
-  /* Initial text style */
-  color: white; 
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 5%; 
+  
+  background-color: transparent; /* Start transparent */
+  border-bottom: 1px solid transparent;
+  transition: all 0.4s ease-in-out; /* Smooth transition for color and padding */
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Scrolled State - Triggered by Angular [class.scrolled] */
+.navbar.scrolled {
+  background-color: #ffffff; /* Change to white */
+  padding: 12px 5%; /* Slightly 'shrink' for a modern feel */
+  border-bottom: 1px solid #f0f0f0; /* Subtle line to separate from content */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Soft shadow for depth */
+}
+
+/* Typography and Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo img {
+  height: 40px; /* Adjust height to fit your navbar height */
+  width: auto;   /* Keeps the original aspect ratio */
+  display: block;
+}
+
+.logo-text {
+  font-size: 1.4rem;
   font-weight: bold;
-  font-size: 15px;
-  padding: 10px 20px;
+  color: #333; /* Or your preferred theme color */
+}
+
+/* Ensure the parent list doesn't have default styling */
+.nav-links {
+  display: flex;
+  list-style: none;
+  gap: 30px;
+  margin: 0;
+  padding: 0;
+  align-items: center;
+}
+
+/* Base style for your links */
+.nav-item {
+  /* This matches the logo color */
+  color: #1a1a1a; 
+  font-weight: 600; /* Matching the weight of 'TimeTrack' */
+  font-size: 16px;
   cursor: pointer;
   transition: color 0.3s ease;
-    margin-right: 0;
+  text-decoration: none;
 }
 
-.login-btn:hover, .login-btn:active {
-  color: #00162d; /* Change this to your preferred "highlight" color */
-  background-color: transparent;/* Invert colors for a clean look */
+/* Subtle hover effect so users know it's clickable */
+.nav-item:hover {
+  color: #8CC63F; /* Changes to your theme green on hover */
+}
+
+/* Ensure the TimeTrack logo text matches */
+.logo-text {
+  color: #1a1a1a;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* If you are using <a> tags inside <li>, use this: */
+.nav-links li a {
+  color: #1a1a1a;
+  text-decoration: none;
+}
+
+.nav-actions {
+  display: flex;       /* This is the key to make them parallel */
+  flex-direction: row; /* Horizontal alignment */
+  align-items: center; /* Vertically centers both buttons */
+  gap: 12px;           /* Adjust this for the space between the buttons */
+}
+/* Buttons Styling */
+.btn-login {
+  background: transparent;
+  border: 1px solid #8CC63F;
+  color: #8CC63F;
+  padding: 8px 24px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  height: 42px; 
+  display: flex;
+  align-items: center;
+  white-space: nowrap; /* Prevents text from wrapping */
+}
+
+.btn-login:hover {
+  background-color: rgba(140, 198, 63, 0.05);
+}
+
+.btn-start {
+  background-color: #8CC63F;
+  border: none;
+  color: white;
+  padding: 8px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px; 
+  transition: background 0.2s;
+  white-space: nowrap; /* Prevents text from wrapping */
+}
+
+.btn-start:hover {
+  background-color: #7db337;
 }
