@@ -13,8 +13,10 @@ export const employeeGuard: CanActivateFn = () => {
     }
 
     if (!user) {
+       
         router.navigate(['/signin']);
     } else {
+        
         router.navigate(['/admin/dashboard']);
     }
     return false;

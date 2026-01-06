@@ -14,7 +14,7 @@ export const authGuard: CanActivateFn = (route, state) => {
   }
  else {
     // If not logged in, show alert and go to signin
-    alert('Access Denied. Please Login first!');
+    alert('Access Denied - Login Required');
     router.navigate(['/signin']); 
     return false; // Block the direct URL access
   }
