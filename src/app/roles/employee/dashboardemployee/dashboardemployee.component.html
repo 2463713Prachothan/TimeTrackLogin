@@ -1,68 +1,60 @@
-<div class="dashboard-wrapper">
-    <header class="navbar-modern">
-        <div class="nav-left">
-            <div class="logo-circle">🕒</div>
-            <div class="brand-info">
-                <h1 class="brand-name">TimeTrack</h1>
-                <span class="brand-tag">Employee Dashboard</span>
-            </div>
+<nav class="navbar dashboard-header">
+    <div class="logo">
+        <span class="logo-text">TimeTrack</span>
+    </div>
+
+    <div class="nav-actions">
+        <div class="user-info">
+            <span class="employee-name">{{ employeeName }}</span>
+            <span class="role-badge">{{ userRole }}</span>
         </div>
 
-        <nav class="nav-center">
-            <button class="nav-item" [class.active]="activeTab() === 'logging'" (click)="setTab('logging')">🕒
-                Logs</button>
-            <button class="nav-item" [class.active]="activeTab() === 'tasks'" (click)="setTab('tasks')">📋
-                Tasks</button>
-            <button class="nav-item" [class.active]="activeTab() === 'productivity'" (click)="setTab('productivity')">📈
-                Insights</button>
-            <button class="nav-item btn-notif" [class.active]="activeTab() === 'notifications'"
-                (click)="setTab('notifications')">
-                🔔 Notifications
-                <span class="badge" *ngIf="unreadCount() > 0">{{ unreadCount() }}</span>
+        <div class="profile-container">
+            <button class="profile-circle" (click)="toggleDropdown()">
+                {{ employeeName.charAt(0) }}
             </button>
-        </nav>
 
-        <div class="nav-right">
-            <div class="user-pill" *ngIf="authService.currentUser() as user">
-                <div class="user-avatar">{{ user.name?.charAt(0) }}</div>
-                <div class="user-details">
-                    <span class="u-name">{{ user.name }}</span>
-                    <span class="u-dept">Engineering</span>
+            <div class="profile-dropdown" *ngIf="showDropdown">
+                <div class="dropdown-item">
+                    <span class="item-icon">👤</span> My Profile
+                </div>
+                <div class="dropdown-item logout" (click)="logout()">
+                    <span class="item-icon">→</span> Logout
                 </div>
             </div>
-            <button class="btn-logout" (click)="logout()">↪</button>
         </div>
-    </header>
+    </div>
+</nav>
 
-    <div [ngSwitch]="activeTab()" class="tab-content">
-        <app-log-hours *ngSwitchCase="'logging'" [logs]="timeLogs()" [weeklyHours]="weeklyHours()"
-            (onAddLog)="showModal.set(true)">
-        </app-log-hours>
+<!--  -->
+<div class="dashboard-wrapper">
+    <div class="container">
+        <div class="dashboard-tabs">
+            <button class="tab-btn" [class.active]="activeTab === 'time-logging'"
+                (click)="setActiveTab('time-logging')">
+                <span class="tab-icon">🕒</span> Time Logging
+            </button>
 
-        <app-tasks-assigned *ngSwitchCase="'tasks'" [tasks]="detailedTasks()">
-        </app-tasks-assigned>
+            <button class="tab-btn" [class.active]="activeTab === 'my-tasks'" (click)="setActiveTab('my-tasks')">
+                <span class="tab-icon">📋</span> My Tasks
+            </button>
 
-        <app-personal-reports *ngSwitchCase="'productivity'">
-        </app-personal-reports>
+            <button class="tab-btn" [class.active]="activeTab === 'productivity'"
+                (click)="setActiveTab('productivity')">
+                <span class="tab-icon">📈</span> Productivity
+            </button>
 
-        <div *ngSwitchCase="'notifications'" class="notifications-panel">
-            <div class="panel-header">
-                <div>
-                    <h3>Notifications</h3>
-                    <p class="unread-sub">{{ unreadCount() }} unread notifications</p>
-                </div>
-                <button class="text-link" (click)="markAllRead()">Mark all as read</button>
-            </div>
+            <button class="tab-btn" [class.active]="activeTab === 'notifications'"
+                (click)="setActiveTab('notifications')">
+                <span class="tab-icon">🔔</span> Notifications
+            </button>
+        </div>
 
-            <div class="notif-list">
-                <div *ngFor="let n of notifications()" class="notif-card" [ngClass]="[n.type, n.status]">
-                    <span class="notif-icon">{{ n.icon }}</span>
-                    <div class="notif-body">
-                        <p class="notif-msg">{{ n.message }}</p>
-                        <span class="notif-time">{{ n.time }}</span>
-                    </div>
-                    <button class="notif-check" *ngIf="n.status === 'unread'">✔️</button>
-                </div>
+        <div class="tab-content">
+            <app-log-hours *ngIf="activeTab === 'time-logging'"></app-log-hours>
+
+            <div *ngIf="activeTab !== 'time-logging'" class="placeholder-view">
+                <p>This module ({{activeTab}}) is coming soon based on LLD specifications.</p>
             </div>
         </div>
     </div>
