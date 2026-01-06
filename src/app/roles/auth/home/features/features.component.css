@@ -1,107 +1,148 @@
-.features-section {
-  padding: 100px 0;
-  background-color: #ffffff;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+/* Container for the new header */
+.section-header {
+  text-align: center;
+  margin-bottom: 50px; /* Space between header and cards */
 }
 
-.container {
+/* Small Green Label */
+.sub-title {
+  color: #8CC63F; /* Desklog Green */
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* Big Bold Main Title */
+.main-title {
+  color: #1a1a1a;
+  font-size: 36px;
+  font-weight: 800;
+  margin-top: 0;
+}
+
+/* Ensure the features-section has proper top padding */
+.features-section {
+  padding: 100px 5%;
+  background-color: #f9fbf9;
+}
+
+/* ... existing grid-container and card styles ... */
+
+.features-section {
+  padding: 80px 5%;
+  background-color: #f9fbf9; /* Subtle green-white tint */
+  font-family: 'Inter', sans-serif;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px;
-}
-
-.header-group {
-  text-align: center;
-  margin-bottom: 60px;
-}
-
-.section-title {
-  font-size: 2.5rem;
-  color: #0f172a; /* Deep Navy */
-  margin-bottom: 15px;
-  font-weight: 800;
-}
-
-.section-subtitle {
-  color: #64748b;
-  font-size: 1.1rem;
-}
-
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 30px;
 }
 
 .feature-card {
   background: #ffffff;
-  padding: 40px;
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  position: relative;
-  transition: all 0.3s ease;
-  display: flex;
-  flex-direction: column;
+  padding: 40px 30px;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Smooth "pop" timing */
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
 }
 
-.feature-card:hover {
-  border-color: #38bdf8; /* Your Navbar Blue */
-  transform: translateY(-5px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+/* The "Pop" Effect */
+.feature-card.pop-effect {
+  transform: translateY(-10px) scale(1.03); /* Pops up and grows slightly */
+  border-color: #8CC63F; /* Desklog Green */
+  box-shadow: 0 20px 40px rgba(140, 198, 63, 0.15);
 }
 
 .icon-wrapper {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 25px;
-  color: #38bdf8;
-  font-size: 2rem;
-}
-
-.module-number {
-  font-size: 0.9rem;
-  font-weight: 800;
-  color: #cbd5e1;
+  font-size: 32px;
+  margin-bottom: 20px;
+  color: #8CC63F;
 }
 
 .feature-card h3 {
-  font-size: 1.5rem;
-  color: #1e293b;
+  color: #333;
+  font-size: 20px;
   margin-bottom: 15px;
+  font-weight: 700;
 }
 
 .feature-card p {
-  color: #475569;
+  color: #707070;
   line-height: 1.6;
-  margin-bottom: 20px;
-  font-size: 0.95rem;
+  font-size: 15px;
 }
 
-.feature-list {
-  list-style: none;
-  padding: 0;
-  margin-top: auto;
+/* When popped, make the heading green */
+.feature-card.pop-effect h3 {
+  color: #8CC63F;
 }
 
-.feature-list li {
-  font-size: 0.85rem;
-  color: #64748b;
-  margin-bottom: 8px;
-  padding-left: 15px;
-  position: relative;
+/* Container for the text highlight */
+.feature-highlight {
+  padding: 100px 5%;
+  background-color: #f9fbf9; /* Matches the subtle green background */
+  text-align: center;
+  font-family: 'Inter', sans-serif;
 }
 
-.feature-list li::before {
-  content: "✓";
-  position: absolute;
-  left: 0;
-  color: #38bdf8;
-  font-weight: bold;
+.highlight-content {
+  max-width: 900px;
+  margin: 0 auto;
 }
 
-/* Highlight style for the primary module */
-.highlight {
-  background: #f0f9ff;
-  border-color: #bae6fd;
+/* Split-color Typography */
+.highlight-title {
+  font-size: 42px;
+  line-height: 1.2;
+  font-weight: 800;
+  margin-bottom: 25px;
+}
+
+.green-text {
+  color: #8CC63F; /* Desklog Green */
+  display: block; /* Puts it on its own line like the image */
+  margin-bottom: 5px;
+}
+
+.dark-text {
+  color: #1a1a1a;
+}
+
+/* Descriptive Text */
+.highlight-description {
+  color: #666;
+  font-size: 18px;
+  line-height: 1.6;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.link {
+  color: #0056b3; /* Traditional blue link color from image */
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.link:hover {
+  border-bottom: 1px solid #0056b3;
+}
+
+/* Responsive adjustment for mobile */
+@media (max-width: 768px) {
+  .highlight-title {
+    font-size: 32px;
+  }
+  
+  .highlight-description {
+    font-size: 16px;
+  }
 }
