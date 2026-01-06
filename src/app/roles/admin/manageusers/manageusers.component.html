@@ -1,1 +1,147 @@
-<p>manageusers works!</p>
+<div class="user-management-tab">
+    <div class="user-stats-grid">
+        <div class="stat-card">
+            <div class="stat-info">
+                <span class="label">Total Users</span>
+                <h2 class="value">{{ totalUsersCount }}</h2>
+            </div>
+            <div class="stat-icon icon-blue">👥</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <span class="label">Active Users</span>
+                <h2 class="value">{{ activeUsersCount }}</h2>
+            </div>
+            <div class="stat-icon icon-green">👤</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-info">
+                <span class="label">Inactive Users</span>
+                <h2 class="value">{{ inactiveUsersCount }}</h2>
+            </div>
+            <div class="stat-icon icon-gray">🚫</div>
+        </div>
+    </div>
+
+    <div class="user-management-section">
+        <div class="header-row">
+            <h2 class="title">User Management</h2>
+            <button class="add-user-btn" (click)="openAddModal()">+ Add User</button>
+        </div>
+
+        <div class="filter-row">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" [(ngModel)]="searchTerm" (input)="applySearch()" placeholder="Search users...">
+            </div>
+
+            <div class="filter-item">
+                <select>
+                    <option>All Roles</option>
+                </select>
+            </div>
+
+            <div class="filter-item">
+                <select>
+                    <option>All Departments</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="user-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Type</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let user of filteredUsers">
+                    <td>{{user.name}}</td>
+                    <td>{{user.email}}</td>
+                    <td>
+                        <span class="badge-role" [ngClass]="user.role.toLowerCase()">
+                            {{user.role}}
+                        </span>
+                    </td>
+                    <td>{{user.department}}</td>
+                    <td>
+                        <span class="badge-status"
+                            [ngClass]="user.status === 'Active' ? 'status-active' : 'status-inactive'"
+                            (click)="toggleStatus(user)" style="cursor: pointer;">
+                            {{user.status}}
+                        </span>
+                    </td>
+                    <td><span class="badge-type">Demo</span></td>
+                    <td class="actions">
+                        <i class="fa-solid fa-pen action-icon" (click)="openEditModal(user)" title="Edit User"></i>
+
+                        <i class="fa-solid action-icon"
+                            [ngClass]="user.status === 'Active' ? 'fa-user-check' : 'fa-user-slash'"
+                            (click)="toggleStatus(user)"
+                            [style.color]="user.status === 'Active' ? '#10b981' : '#ef4444'" title="Toggle Status"></i>
+
+                        <i class="fa-solid fa-user-minus action-icon delete" (click)="deleteUser(user.email)"
+                            title="Delete User"></i>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-overlay" *ngIf="isModalOpen" (click)="closeAddModal()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h3>{{ isEditMode ? 'Edit User' : 'Add New User' }}</h3>
+            <button class="close-icon" (click)="closeAddModal()">&times;</button>
+        </div>
+
+        <form (ngSubmit)="saveUser()">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" name="name" [(ngModel)]="newUser.name" placeholder="John Smith" required>
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" name="email" [(ngModel)]="newUser.email" placeholder="john@company.com" required
+                        [disabled]="isEditMode">
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select name="role" [(ngModel)]="newUser.role">
+                        <option value="Employee">Employee</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <select name="dept" [(ngModel)]="newUser.department">
+                        <option value=".NET">.NET</option>
+                        <option value="JAVA">JAVA</option>
+                        <option value="CLOUD">CLOUD</option>
+                        <option value="MARKETING">MARKETING</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" (click)="closeAddModal()">Cancel</button>
+                <button type="submit" class="btn-save">
+                    {{ isEditMode ? 'Update User' : 'Create User' }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
