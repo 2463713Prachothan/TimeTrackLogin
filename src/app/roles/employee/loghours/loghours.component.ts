@@ -1,76 +1,70 @@
-import { Component, Input } from '@angular/core'; // Import Input
 import { CommonModule } from '@angular/common';
+import { Component, Input } from '@angular/core'; // Import Input
 import { FormsModule } from '@angular/forms';
+
+interface TimeLog {
+  date: string;
+  startTime: string;
+  endTime: string;
+  breakMin: number;
+  totalHours: string;
+}
+
 
 @Component({
   selector: 'app-log-hours',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule, CommonModule],
   templateUrl: './loghours.component.html',
-  styleUrls: ['./loghours.component.css']
+  styleUrl: './loghours.component.css',
 })
 export class LogHoursComponent {
-  // Fixes NG8002: Now these properties are "known" to Angular
-  @Input() logs: any[] = [];
-  @Input() weeklyHours: string | number = 0;
+  showModal = false;
 
-  showModal: boolean = false;
-
-  // Form object for the pop-up
-  newLog = {
-    date: '',
-    start: '',
-    end: '',
-    break: 0
-  };
-
-  // Stats cards data
-  stats = [
-    { label: "Today's Hours", value: '0 hrs', icon: 'schedule', color: 'blue' },
-    { label: 'This Week', value: '23.3 hrs', icon: 'calendar_today', color: 'green' },
-    { label: 'Days Logged', value: '3 days', icon: 'event_available', color: 'purple' }
+  // Initial Data based on LLD
+  logs: TimeLog[] = [
+    { date: 'Sun, Dec 15', startTime: '09:00', endTime: '17:30', breakMin: 60, totalHours: '7.50' },
+    { date: 'Sat, Dec 14', startTime: '09:00', endTime: '18:00', breakMin: 60, totalHours: '8.00' },
+    { date: 'Fri, Dec 13', startTime: '09:15', endTime: '17:45', breakMin: 45, totalHours: '7.75' }
   ];
 
-  openModal(): void {
-    this.showModal = true;
+  // Form Model for Two-Way Binding
+  newLog = { date: '', startTime: '', endTime: '', breakMin: 0 };
+
+  toggleModal() {
+    this.showModal = !this.showModal;
   }
 
-  closeModal(): void {
-    this.showModal = false;
+  addLog() {
+    if (!this.newLog.date || !this.newLog.startTime || !this.newLog.endTime) return;
+
+    const total = this.calculateHours(this.newLog.startTime, this.newLog.endTime, this.newLog.breakMin);
+
+    const entry: TimeLog = {
+      date: new Date(this.newLog.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      startTime: this.newLog.startTime,
+      endTime: this.newLog.endTime,
+      breakMin: this.newLog.breakMin,
+      totalHours: total.toFixed(2)
+    };
+
+    this.logs.unshift(entry); // Add to top of list
+    this.toggleModal();
     this.resetForm();
   }
 
-  saveLog(): void {
-    if (this.newLog.date && this.newLog.start && this.newLog.end) {
-      const start = new Date(`2025-01-01T${this.newLog.start}:00`);
-      const end = new Date(`2025-01-01T${this.newLog.end}:00`);
-
-      const diffMs = end.getTime() - start.getTime();
-      const totalHours = (diffMs / (1000 * 60 * 60)) - (this.newLog.break / 60);
-
-      // Add new log to the beginning of the array passed from parent
-      this.logs.unshift({
-        date: this.formatDate(this.newLog.date),
-        start: this.newLog.start,
-        end: this.newLog.end,
-        break: this.newLog.break,
-        total: totalHours > 0 ? totalHours.toFixed(2) : '0.00'
-      });
-
-      this.closeModal();
-    }
+  private calculateHours(start: string, end: string, pause: number): number {
+    const s = start.split(':');
+    const e = end.split(':');
+    const startDate = new Date(0, 0, 0, parseInt(s[0]), parseInt(s[1]));
+    const endDate = new Date(0, 0, 0, parseInt(e[0]), parseInt(e[1]));
+    let diff = endDate.getTime() - startDate.getTime();
+    let hours = diff / 1000 / 60 / 60;
+    return Math.max(0, hours - (pause / 60)); // Ensure non-negative
   }
 
   private resetForm() {
-    this.newLog = { date: '', start: '', end: '', break: 0 };
+    this.newLog = { date: '', startTime: '', endTime: '', breakMin: 0 };
   }
 
-  private formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric'
-    });
-  }
 }
