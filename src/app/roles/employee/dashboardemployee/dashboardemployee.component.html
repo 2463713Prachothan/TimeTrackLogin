@@ -52,10 +52,9 @@
 
         <div class="tab-content">
             <app-log-hours *ngIf="activeTab === 'time-logging'"></app-log-hours>
+            <app-tasksassigned *ngIf="activeTab === 'my-tasks'"></app-tasksassigned>
 
-            <div *ngIf="activeTab !== 'time-logging'" class="placeholder-view">
-                <p>This module ({{activeTab}}) is coming soon based on LLD specifications.</p>
-            </div>
+           
         </div>
     </div>
 </div>
