@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+// FIX 1: Double check this path! 
+import { ManagerDataService } from '../../../core/services/manager-data.service'; 
 
 interface TimeLog {
   employee: string;
@@ -19,51 +21,43 @@ interface TimeLog {
   styleUrls: ['./team-logs.component.css']
 })
 export class TeamLogsComponent implements OnInit {
-  readonly MOCK_TODAY = 'Dec 15'; //
+  readonly MOCK_TODAY = 'Jan 12';
 
-  // This is your "Database". Any name added here automatically updates the UI
-  allLogs: TimeLog[] = [
-    { employee: 'John Smith', date: 'Dec 15', startTime: '09:00', endTime: '17:30', break: 60, totalHours: 7.50 },
-    { employee: 'Emily Davis', date: 'Dec 15', startTime: '08:30', endTime: '17:00', break: 60, totalHours: 7.50 },
-    { employee: 'David Wilson', date: 'Dec 15', startTime: '09:00', endTime: '18:30', break: 60, totalHours: 8.50 },
-    { employee: 'John Smith', date: 'Dec 14', startTime: '09:00', endTime: '18:00', break: 60, totalHours: 8.00 },
-    { employee: 'John Smith', date: 'Dec 13', startTime: '09:15', endTime: '17:45', break: 45, totalHours: 7.75 }
-  ];
-
-  // Dynamically generated lists
+  allLogs: TimeLog[] = [];
   uniqueMembers: string[] = [];
   filteredLogs: TimeLog[] = [];
   
   selectedMember: string = 'All Team Members';
-  selectedTimeFrame: string = 'Today'; // Default view
+  selectedTimeFrame: string = 'Today';
+
+  // FIX 2: Ensure Service is "providedIn: root" as shown above
+  constructor(private dataService: ManagerDataService) {}
 
   ngOnInit() {
-    // Automatically extract unique names from the data
-    this.uniqueMembers = [...new Set(this.allLogs.map(log => log.employee))];
-    this.updateDashboard();
+    // FIX 3: Add (data: any[]) to define the type
+    this.dataService.logs$.subscribe((data: any[]) => {
+      this.allLogs = data;
+      this.uniqueMembers = [...new Set(this.allLogs.map((log: any) => log.employee))];
+      this.updateDashboard();
+    });
   }
 
-  // Dynamic Filtering Logic
   updateDashboard() {
     let temp = [...this.allLogs];
 
-    // 1. Filter by Member
     if (this.selectedMember !== 'All Team Members') {
       temp = temp.filter(log => log.employee === this.selectedMember);
     }
 
-    // 2. Filter by Time Frame
     if (this.selectedTimeFrame === 'Today') {
       this.filteredLogs = temp.filter(log => log.date === this.MOCK_TODAY);
     } else if (this.selectedTimeFrame === 'All Time') {
       this.filteredLogs = temp;
     } else {
-      // "This Week" is empty as per current design
-      this.filteredLogs = [];
+      this.filteredLogs = []; 
     }
   }
 
-  // Dynamic Top Summary Stats
   get summaryStats() {
     const data = this.filteredLogs;
     if (data.length === 0) return { total: '0.0', avg: '0.0', entries: 0 };
@@ -78,7 +72,6 @@ export class TeamLogsComponent implements OnInit {
     };
   }
 
-  // Dynamic Individual Card Stats
   getMemberStats(name: string) {
     const memberLogs = this.allLogs.filter(l => l.employee === name);
     let timeframeLogs: TimeLog[] = [];
