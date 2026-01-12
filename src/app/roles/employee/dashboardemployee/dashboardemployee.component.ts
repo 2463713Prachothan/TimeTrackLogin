@@ -2,10 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener } from '@angular/core';
 import { LogHoursComponent } from "../loghours/loghours.component";
 import { TasksComponent } from "../tasksassigned/tasksassigned.component";
+import { PersonalreportsComponent } from '../personalreports/personalreports.component';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule, LogHoursComponent, TasksComponent],
+  imports: [CommonModule, LogHoursComponent, TasksComponent, PersonalreportsComponent],
   templateUrl: './dashboardemployee.component.html',
   styleUrl: './dashboardemployee.component.css',
 })
