@@ -31,9 +31,9 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit {
         datasets: [{
           label: 'Hours',
           data: [0, 0, 0, 0, 0, 0, 0],
-          borderColor: '#6366f1',
+          borderColor: '#8cc63f',
           tension: 0.4,
-          pointBackgroundColor: '#6366f1'
+          pointBackgroundColor: '#8cc63f'
         }]
       },
       options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 4 } } }
@@ -47,7 +47,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit {
         labels: ['John', 'Emily', 'David'],
         datasets: [{
           data: [24, 8, 9],
-          backgroundColor: '#6366f1',
+          backgroundColor: '#8cc63f',
           borderRadius: 5
         }]
       },

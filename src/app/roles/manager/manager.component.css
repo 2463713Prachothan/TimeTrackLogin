@@ -1,5 +1,5 @@
 .dashboard-wrapper {
-  background-color: #f8fafc;
+  background-color: #f3faeb;
   min-height: 100vh;
   font-family: 'Inter', sans-serif;
 }
@@ -33,6 +33,6 @@
 }
 
 .active-tab {
-  background-color: #6366f1 !important; /* The purple-blue color from your design */
+  background-color: #8cc63f !important; /* The purple-blue color from your design */
   color: white !important;
 }
