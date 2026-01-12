@@ -44,24 +44,35 @@
     </div>
 
     <div class="list-group list-group-flush">
-      <div class="card border mb-3 p-3 shadow-sm task-item" *ngFor="let task of tasks; let i = index">
-        <div class="d-flex justify-content-between align-items-start">
-          <div class="d-flex">
-            <div class="me-3 mt-1">
-              <i class="bi" [ngClass]="task.status === 'Completed' ? 'bi-check-circle-fill text-success' : 'bi-clock text-primary'"></i>
-            </div>
-            <div>
-              <h6 class="fw-bold mb-1">{{ task.title }}</h6>
-              <p class="small text-muted mb-1">{{ task.description }}</p>
-              <small class="text-muted">Assigned to: {{ task.assignedTo }} • Est. {{ task.hours }} hours</small>
-            </div>
-          </div>
-          <button class="btn btn-outline-danger btn-sm border-0" (click)="deleteTask(i)">
-            <i class="bi bi-trash3"></i>
-          </button>
+  <div class="card border mb-3 p-3 shadow-sm task-item" *ngFor="let task of tasks; let i = index">
+    <div class="d-flex justify-content-between align-items-start">
+      <div class="d-flex">
+        <div class="me-3 mt-1">
+          <i class="bi" [ngClass]="{
+            'bi-check-circle-fill text-success': task.status === 'Completed',
+            'bi-play-circle-fill text-primary': task.status === 'In Progress',
+            'bi-dash-circle text-muted': task.status === 'Pending'
+          }"></i>
+        </div>
+        <div>
+          <h6 class="fw-bold mb-1">{{ task.title }}</h6>
+          
+          <span class="badge rounded-pill mb-2" [ngClass]="{
+            'bg-success-subtle text-success': task.status === 'Completed',
+            'bg-primary-subtle text-primary': task.status === 'In Progress',
+            'bg-light text-dark border': task.status === 'Pending'
+          }">{{ task.status }}</span>
+          
+          <p class="small text-muted mb-1">{{ task.description }}</p>
+          <small class="text-muted">Assigned to: {{ task.assignedTo }} • Est. {{ task.hours }} hours</small>
         </div>
       </div>
+      <button class="btn btn-outline-danger btn-sm border-0" (click)="deleteTask(i)">
+        <i class="bi bi-trash3"></i>
+      </button>
     </div>
+  </div>
+</div>
   </div>
 
   <div class="modal-backdrop fade show" *ngIf="showModal"></div>
@@ -82,14 +93,14 @@
             <textarea class="form-control rounded-3" [(ngModel)]="newTask.description" rows="3"></textarea>
           </div>
           <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label small text-muted">Assign To</label>
-              <select class="form-select rounded-3" [(ngModel)]="newTask.assignedTo">
-                <option value="John Smith">John Smith</option>
-                <option value="Emily Davis">Emily Davis</option>
-                <option value="David Wilson">David Wilson</option>
-              </select>
-            </div>
+          <div class="col-md-6 mb-3">
+          <label class="form-label small text-muted">Assign To</label>
+          <select class="form-select rounded-3" [(ngModel)]="newTask.assignedTo">
+            <option *ngFor="let member of teamMembers" [value]="member">
+            {{ member }}
+              </option>
+          </select>
+          </div>
             <div class="col-md-6 mb-3">
               <label class="form-label small text-muted">Estimated Hours</label>
               <input type="number" class="form-control rounded-3" [(ngModel)]="newTask.hours">
