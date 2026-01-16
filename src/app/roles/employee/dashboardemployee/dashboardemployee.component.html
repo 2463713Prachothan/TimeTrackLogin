@@ -4,6 +4,30 @@
     </div>
 
     <div class="nav-actions">
+        <div class="notification-container">
+            <button class="nav-icon-btn" (click)="toggleNotifications()">
+                <span class="bell-icon">🔔</span>
+                <span class="notification-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+            </button>
+
+            <div class="notification-dropdown" *ngIf="showNotifications">
+                <div class="dropdown-header">Notifications</div>
+                <div class="notification-list">
+                    <div class="notification-item unread">
+                        <strong>New Task Assigned</strong>
+                        <p>Complete the login module by EOD.</p>
+                        <span class="time">2 mins ago</span>
+                    </div>
+                    <div class="notification-item">
+                        <strong>Log Approved</strong>
+                        <p>Your hours for Dec 14 were approved.</p>
+                        <span class="time">1 hour ago</span>
+                    </div>
+                </div>
+                <div class="dropdown-footer">View All Notifications</div>
+            </div>
+        </div>
+
         <div class="user-info">
             <span class="employee-name">{{ employeeName }}</span>
             <span class="role-badge">{{ userRole }}</span>
@@ -26,27 +50,17 @@
     </div>
 </nav>
 
-<!--  -->
 <div class="dashboard-wrapper">
     <div class="container">
         <div class="dashboard-tabs">
-            <button class="tab-btn" [class.active]="activeTab === 'time-logging'"
-                (click)="setActiveTab('time-logging')">
+            <button class="tab-btn" [class.active]="activeTab === 'time-logging'" (click)="setActiveTab('time-logging')">
                 <span class="tab-icon">🕒</span> Time Logging
             </button>
-
             <button class="tab-btn" [class.active]="activeTab === 'my-tasks'" (click)="setActiveTab('my-tasks')">
                 <span class="tab-icon">📋</span> My Tasks
             </button>
-
-            <button class="tab-btn" [class.active]="activeTab === 'productivity'"
-                (click)="setActiveTab('productivity')">
+            <button class="tab-btn" [class.active]="activeTab === 'productivity'" (click)="setActiveTab('productivity')">
                 <span class="tab-icon">📈</span> Productivity
-            </button>
-
-            <button class="tab-btn" [class.active]="activeTab === 'notifications'"
-                (click)="setActiveTab('notifications')">
-                <span class="tab-icon">🔔</span> Notifications
             </button>
         </div>
 
@@ -54,8 +68,6 @@
             <app-log-hours *ngIf="activeTab === 'time-logging'"></app-log-hours>
             <app-tasksassigned *ngIf="activeTab === 'my-tasks'"></app-tasksassigned>
             <app-personalreports *ngIf="activeTab === 'productivity'"></app-personalreports>
-
-           
         </div>
     </div>
 </div>
