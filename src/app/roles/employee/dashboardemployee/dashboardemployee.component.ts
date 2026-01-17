@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener } from '@angular/core';
+import { Router } from '@angular/router';
 import { LogHoursComponent } from "../loghours/loghours.component";
 import { TasksComponent } from "../tasksassigned/tasksassigned.component";
 import { PersonalreportsComponent } from '../personalreports/personalreports.component';
@@ -11,9 +12,11 @@ import { PersonalreportsComponent } from '../personalreports/personalreports.com
   styleUrl: './dashboardemployee.component.css',
 })
 export class DashboardemployeeComponent {
-logout() {
-throw new Error('Method not implemented.');
-}
+  constructor(private router: Router) {}
+
+  logout() {
+    this.router.navigate(['']);
+  }
   employeeName: string = 'John Doe'; 
   userRole: string = 'Employee';
   activeTab: string = 'time-logging';

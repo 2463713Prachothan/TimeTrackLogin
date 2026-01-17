@@ -1,35 +1,28 @@
-<nav class="unique-navbar">
-    <div class="nav-content">
-        <div class="brand-wrapper">
-            <div class="logo-orb">TT</div>
-            <div class="brand-text">
-                <span class="main-name">TIMETRACK</span>
-                <span class="status-badge">Admin Portal</span>
-            </div>
+<!-- Admin Dashboard Navbar -->
+<nav class="navbar admin-header">
+    <div class="logo">
+        <img src="/assets/logo.png" alt="Logo">
+        <span class="logo-text">TimeTrack</span>
+    </div>
+
+    <div class="nav-actions">
+        <div class="user-info">
+            <span class="admin-name">Administrator</span>
+            <span class="role-badge admin-badge">Admin</span>
         </div>
 
-        <div class="profile-section" #profileContainer style="position: relative;">
-            <div class="profile-pill" (click)="toggleDropdown($event)">
-                <div class="user-meta">
-                    <span class="u-name">kobikrishna</span>
-                    <span class="u-role">ADMIN</span>
-                </div>
-                <div class="avatar-ring">
-                    <img src="https://ui-avatars.com/api/?name=Michael+Brown&background=6366f1&color=fff" alt="Avatar">
-                </div>
-            </div>
+        <div class="profile-container">
+            <button class="profile-circle admin-circle" (click)="toggleDropdown($event)">
+                A
+            </button>
 
-            <div class="unique-dropdown" *ngIf="isDropdownOpen">
-                <div class="dropdown-header">
-                    <p>Account Settings</p>
+            <div class="profile-dropdown" *ngIf="isDropdownOpen">
+                <div class="dropdown-item">
+                    <span class="item-icon">👤</span> My Profile
                 </div>
-                <ul class="dropdown-links">
-                    <li><i class="fa-solid fa-user-gear"></i> My Profile</li>
-                    <li><i class="fa-solid fa-shield-halved"></i> Privacy</li>
-                    <li class="logout-item" (click)="onLogout()">
-                        <i class="fa-solid fa-power-off"></i> Logout
-                    </li>
-                </ul>
+                <div class="dropdown-item logout" (click)="onLogout()">
+                    <span class="item-icon">→</span> Logout
+                </div>
             </div>
         </div>
     </div>

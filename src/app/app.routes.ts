@@ -10,7 +10,8 @@ import { employeeGuard } from './core/guards/employee.guard';
 
 
 export const routes: Routes = [
-    { path: '', component: HomeComponent },
+    { path: '', component: HomeComponent }, 
+    
     { path: 'signup', 
         loadComponent: () => import('./home/signup/signup.component').then(m => m.SignupComponent)
      },
@@ -22,7 +23,6 @@ export const routes: Routes = [
         loadComponent: () => import('./roles/admin/dashboard/dashboard.component').then(m => m.DashboardComponent), 
         canActivate: [adminGuard]
      },
-
     { path: 'manager', 
         loadComponent: () => import('./roles/manager/manager.component').then(m => m.ManagerComponent), 
         canActivate: [managerGuard] 
@@ -31,7 +31,6 @@ export const routes: Routes = [
          loadComponent: () => import('./roles/employee/dashboardemployee/dashboardemployee.component').then(m => m.DashboardemployeeComponent),
           canActivate: [employeeGuard]
     },
-    { path: '', redirectTo: 'signin', pathMatch: 'full' },
     {
         path: 'admin',
         component: AdminComponent,
@@ -43,6 +42,8 @@ export const routes: Routes = [
             { path: '', redirectTo: 'users', pathMatch: 'full' } 
         ]
     },
+    // 2. Wildcard route for 404/unknown paths (optional but recommended)
+    { path: '**', redirectTo: '' }
 ];
 
 

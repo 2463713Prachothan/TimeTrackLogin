@@ -1,5 +1,6 @@
 import { Component, HostListener, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common'; // Required if using *ngIf in standalone
+import { Router } from '@angular/router';
 
 // Import the components from your folder structure
 import { ManageusersComponent } from './manageusers/manageusers.component';
@@ -23,6 +24,8 @@ export class AdminComponent {
   activeTab = 'users';
   isDropdownOpen = false;
 
+  constructor(private router: Router) {}
+
   // Reference to the profile section to check click location
   @ViewChild('profileContainer') profileContainer!: ElementRef;
 
@@ -34,13 +37,12 @@ export class AdminComponent {
   // AUTO-CLOSE LOGIC: Closes dropdown if you click anywhere else
   @HostListener('document:click', ['$event'])
   clickout(event: any) {
-    if (this.isDropdownOpen && !this.profileContainer.nativeElement.contains(event.target)) {
+    if (this.isDropdownOpen && this.profileContainer && !this.profileContainer.nativeElement.contains(event.target)) {
       this.isDropdownOpen = false;
     }
   }
 
   onLogout() {
-    // Add your navigation logic here (e.g., this.router.navigate(['/']))
-    console.log("Logged out successfully");
+    this.router.navigate(['']);
   }
 }
