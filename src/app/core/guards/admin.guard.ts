@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../services/auth.service';
 
 
 export const adminGuard: CanActivateFn = () => {
@@ -17,7 +17,7 @@ export const adminGuard: CanActivateFn = () => {
         router.navigate(['/signin']);
     } else {
         
-        router.navigate(['/employee/dashboardemployee']);
+        router.navigate(['/signin']);
     }
     return false;
 };

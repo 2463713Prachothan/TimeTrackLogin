@@ -1,21 +1,23 @@
 import { RouterModule, Routes } from '@angular/router';
 import { HomeComponent } from './roles/auth/home/home.component';
 import { authGuard } from './core/guards/auth.guard';
-import { adminGuard } from './core/services/guards/admin.guard';
-import { managerGuard } from './core/services/guards/manager.guard';
-import { employeeGuard } from './core/services/guards/employee.guard';
+import { adminGuard } from './core/guards/admin.guard';
+import { managerGuard } from './core/guards/manager.guard';
+import { employeeGuard } from './core/guards/employee.guard';
 
- export const routes: Routes = [
-   { path: '',component:HomeComponent},
-   { path:'signup', loadComponent: () => import('./roles/auth/home/signup/signup.component').then(m => m.SignupComponent)},
-  { path:'signin',
-     loadComponent: () => import('./roles/auth/home/signin/signin.component')      .then(m => m.SigninComponent)},
-    { path: 'admin/dashboard', loadComponent: () => import('./roles/admin/dashboard/dashboard.component').then(m => m.DashboardComponent), canActivate: [adminGuard] }, 
+export const routes: Routes = [
+    { path: '', component: HomeComponent },
+    { path: 'signup', loadComponent: () => import('./roles/auth/home/signup/signup.component').then(m => m.SignupComponent) },
+    {
+        path: 'signin',
+        loadComponent: () => import('./roles/auth/home/signin/signin.component').then(m => m.SigninComponent)
+    },
+    { path: 'admin/dashboard', loadComponent: () => import('./roles/admin/dashboard/dashboard.component').then(m => m.DashboardComponent), canActivate: [adminGuard] },
 
-    { path: 'manager', loadComponent: () => import('./roles/manager/manager.component').then(m => m.ManagerComponent), canActivate: [managerGuard]},
-   { path: 'employee/dashboardemployee', loadComponent: () => import('./roles/employee/dashboardemployee/dashboardemployee.component').then(m => m.DashboardemployeeComponent), canActivate: [employeeGuard] },
-  { path: '', redirectTo: 'signin', pathMatch: 'full' },
-  {
+    { path: 'manager', loadComponent: () => import('./roles/manager/manager.component').then(m => m.ManagerComponent), canActivate: [managerGuard] },
+    { path: 'employee/dashboardemployee', loadComponent: () => import('./roles/employee/dashboardemployee/dashboardemployee.component').then(m => m.DashboardemployeeComponent), canActivate: [employeeGuard] },
+    { path: '', redirectTo: 'signin', pathMatch: 'full' },
+    {
         path: 'admin',
         component: AdminComponent,
         canActivate: [adminGuard],
@@ -26,7 +28,7 @@ import { employeeGuard } from './core/services/guards/employee.guard';
             { path: '', redirectTo: 'users', pathMatch: 'full' } // Default to users tab
         ]
     },
- ];
+];
 
 // // @NgModule({
 // //     imports: [RouterModule.forRoot(routes)],
@@ -43,5 +45,5 @@ import { GeneratereportsComponent } from './roles/admin/generatereports/generate
 import { AdminComponent } from './roles/admin/admin.component';
 
 
-    // Admin becomes a parent route
-    
+// Admin becomes a parent route
+
