@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { managerGuard } from '../../core/services/guards/manager.guard';
+import { managerGuard } from '../../core/guards/index';
 
 export const MANAGER_ROUTES: Routes = [
     {

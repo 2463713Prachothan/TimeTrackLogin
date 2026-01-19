@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { employeeGuard } from '../../core/services/guards/employee.guard';
+import { employeeGuard } from '../../core/guards/index';
 export const EMPLOYEE_ROUTES: Routes = [
     {
         path: 'dashboard',
