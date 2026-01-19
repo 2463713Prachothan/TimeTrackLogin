@@ -1,6 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core'; // Import Input
+import { Component, Input, inject, OnInit } from '@angular/core'; // Import Input
 import { FormsModule } from '@angular/forms';
+import { TimeLogService, TimeLog as ServiceTimeLog } from '../../../core/services/time-log.service';
+import { NotificationService } from '../../../core/services/notification.service';
+
 
 interface TimeLog {
   date: string;
@@ -18,15 +21,39 @@ interface TimeLog {
   templateUrl: './loghours.component.html',
   styleUrl: './loghours.component.css',
 })
-export class LogHoursComponent {
-  showModal = false;
+export class LogHoursComponent implements OnInit {
+  // Inject services
+  private timeLogService = inject(TimeLogService);
+  private notificationService = inject(NotificationService);
 
-  // Initial Data based on LLD
-  logs: TimeLog[] = [
-    { date: 'Sun, Dec 15', startTime: '09:00', endTime: '17:30', breakMin: 60, totalHours: '7.50' },
-    { date: 'Sat, Dec 14', startTime: '09:00', endTime: '18:00', breakMin: 60, totalHours: '8.00' },
-    { date: 'Fri, Dec 13', startTime: '09:15', endTime: '17:45', breakMin: 45, totalHours: '7.75' }
-  ];
+  showModal = false;
+  logs: TimeLog[] = [];
+
+  ngOnInit() {
+    this.loadTimeLogs();
+  }
+
+  /**
+   * Load time logs from the TimeLogService
+   */
+  private loadTimeLogs() {
+    this.timeLogService.getLogs().subscribe(
+      (serviceLogs: ServiceTimeLog[]) => {
+        // Transform service data to component format
+        this.logs = serviceLogs.map(log => ({
+          date: log.date,
+          startTime: log.startTime,
+          endTime: log.endTime,
+          breakMin: log.break,
+          totalHours: log.totalHours.toFixed(2)
+        }));
+      },
+      (error) => {
+        console.error('Error loading time logs:', error);
+        this.notificationService.error('Failed to load time logs');
+      }
+    );
+  }
 
   // Form Model for Two-Way Binding
   newLog = { date: '', startTime: '', endTime: '', breakMin: 0 };
@@ -36,21 +63,30 @@ export class LogHoursComponent {
   }
 
   addLog() {
-    if (!this.newLog.date || !this.newLog.startTime || !this.newLog.endTime) return;
+    if (!this.newLog.date || !this.newLog.startTime || !this.newLog.endTime) {
+      this.notificationService.warning('Please fill in all required fields');
+      return;
+    }
 
     const total = this.calculateHours(this.newLog.startTime, this.newLog.endTime, this.newLog.breakMin);
 
-    const entry: TimeLog = {
+    const newTimeLog: ServiceTimeLog = {
+      employee: 'Current Employee', // You can get this from Auth Service
       date: new Date(this.newLog.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
       startTime: this.newLog.startTime,
       endTime: this.newLog.endTime,
-      breakMin: this.newLog.breakMin,
-      totalHours: total.toFixed(2)
+      break: this.newLog.breakMin,
+      totalHours: total,
+      status: 'Pending'
     };
 
-    this.logs.unshift(entry); // Add to top of list
+    // Add log using the service
+    this.timeLogService.addLog(newTimeLog);
+    this.notificationService.success('Time log added successfully');
+
     this.toggleModal();
     this.resetForm();
+    this.loadTimeLogs(); // Reload the logs
   }
 
   private calculateHours(start: string, end: string, pause: number): number {
