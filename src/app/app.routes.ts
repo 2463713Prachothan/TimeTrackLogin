@@ -1,17 +1,10 @@
 import { RouterModule, Routes } from '@angular/router';
 import { HomeComponent } from './home/home.component';
-<<<<<<< HEAD
-import { authGuard } from './core/guards/auth.guard';
-import { adminGuard } from './core/guards/admin.guard';
-import { managerGuard } from './core/guards/manager.guard';
-import { employeeGuard } from './core/guards/employee.guard';
-=======
 import { AdminComponent } from './roles/admin/admin.component';
 import { adminGuard, managerGuard, employeeGuard } from './core/guards/index';
 import { ManageusersComponent } from './roles/admin/manageusers/manageusers.component';
 import { GeneratereportsComponent } from './roles/admin/generatereports/generatereports.component';
 import { SystemConfigComponent } from './roles/admin/system-config/system-config.component';
->>>>>>> ae1469b0901dd928681cd2aebb5d538c1d26ebd9
 
 export const routes: Routes = [
     { path: '', component: HomeComponent },
@@ -47,10 +40,10 @@ export const routes: Routes = [
 
 
 // Import the components you use for the tabs
-import { ManageusersComponent } from './roles/admin/manageusers/manageusers.component';
-import { SystemConfigComponent } from './roles/admin/system-config/system-config.component';
-import { GeneratereportsComponent } from './roles/admin/generatereports/generatereports.component';
-import { AdminComponent } from './roles/admin/admin.component';
+// import { ManageusersComponent } from './roles/admin/manageusers/manageusers.component';
+// import { SystemConfigComponent } from './roles/admin/system-config/system-config.component';
+// import { GeneratereportsComponent } from './roles/admin/generatereports/generatereports.component';
+// import { AdminComponent } from './roles/admin/admin.component';
 
 
 // Admin becomes a parent route
