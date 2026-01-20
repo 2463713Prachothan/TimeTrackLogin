@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { TeamLogsComponent } from './team-logs/team-logs.component';
@@ -14,6 +14,9 @@ import { ManagerDataService } from '../../core/services/manager-data.service'; /
   styleUrls: ['./manager.component.css']
 })
 export class ManagerComponent implements OnInit {
+
+  isDropdownOpen = false;
+  user: any = { name: '', role: '', initial: '' };
   tab: string = 'logs';
   
   // These variables will hold the live numbers
@@ -26,21 +29,40 @@ export class ManagerComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+
+    // Dynamically get the logged-in user's name and role
+    this.dataService.currentUser$.subscribe(userData => {
+      console.log('User detected in Navbar:', userData);
+      this.user = userData;
+    });
     // 1. Get Live Task Count
     this.dataService.tasks$.subscribe(tasks => {
       // Counts tasks that are NOT completed
       this.activeTasks = tasks.filter(t => t.status !== 'Completed').length;
     });
 
-    // 2. Get Live Member Count
     this.dataService.logs$.subscribe(logs => {
-      // Finds unique names in the log list
-      const names = new Set(logs.map(l => l.employee));
-      this.totalMembers = names.size;
+    const names = new Set(logs.map(l => l.employee));
+    this.totalMembers = names.size;
+  });
+
+// Replace your logs$ subscription for totalMembers with this:
+    this.dataService.performance$.subscribe(members => {
+    this.totalMembers = members.length;
     });
   }
 
+  toggleDropdown(event: Event) {
+    event.stopPropagation();
+    this.isDropdownOpen = !this.isDropdownOpen;
+  }
+
+  @HostListener('document:click')
+  closeDropdown() {
+    this.isDropdownOpen = false;
+  }
+
   onLogout() {
-    this.router.navigate(['/']);
+    this.router.navigate(['']);
   }
 }

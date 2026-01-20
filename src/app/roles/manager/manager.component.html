@@ -1,23 +1,35 @@
 <div class="dashboard-wrapper py-4 px-4">
-  <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded shadow-sm border">
-    <div class="d-flex align-items-center">
-      <div class="bg-primary rounded p-2 me-2 text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-        <i class="bi bi-clock-history fs-5"></i>
-      </div>
-      <div>
-        <h6 class="mb-0 fw-bold">TimeTrack</h6>
-        <small class="text-muted">Manager Dashboard</small>
-      </div>
+  <nav class="navbar manager-header">
+    <div class="logo">
+        <img src="/assets/logo.png" alt="Logo">
+        <span class="logo-text">TimeTrack</span>
     </div>
-    <div class="d-flex align-items-center">
-      <div class="text-end me-3">
-        <p class="mb-0 fw-bold small">Sarah Johnson</p>
-        <small class="text-muted" style="font-size: 11px;">Engineering</small>
-      </div>
-      <button class="btn btn-sm text-muted"><i class="bi bi-box-arrow-right"></i> Logout</button>
-    </div>
-  </div>
 
+    <div class="nav-actions">
+        <div class="user-info">
+            <span class="admin-name">{{ user.name }}</span>
+            <span class="role-badge manager-badge">{{ user.role }}</span>
+        </div>
+
+        <div class="profile-container">
+            <button class="profile-circle admin-circle" (click)="toggleDropdown($event)">
+                {{ user.initial }}
+            </button>
+
+            <div class="profile-dropdown" *ngIf="isDropdownOpen">
+                <div class="dropdown-item">
+                    <span class="item-icon">👤</span> My Profile
+                </div>
+                <div class="dropdown-item logout" (click)="onLogout()">
+                    <span class="item-icon">→</span> Logout
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+
+<br><br><br>
   <div class="row g-3 mb-4">
     <div class="col-md-3">
       <div class="card p-3 border-0 shadow-sm stat-card">

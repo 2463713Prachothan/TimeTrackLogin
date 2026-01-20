@@ -5,6 +5,24 @@ import { BehaviorSubject, Observable } from 'rxjs';
   providedIn: 'root' // <--- This is the most important line
 })
 export class ManagerDataService {
+
+// manager-data.service.ts
+private currentUserSubject = new BehaviorSubject<any>({
+  name: 'Loading...', 
+  role: '',
+  initial: ''
+});
+
+  currentUser$ = this.currentUserSubject.asObservable();
+
+// Call this function when a user logs in to update the navbar globally
+setUser(name: string, role: string) {
+  this.currentUserSubject.next({
+    name: name,
+    role: role,
+    initial: name.charAt(0).toUpperCase()
+  });
+}
   
   // 1. DUMMY DATA FOR TIME LOGS
   private initialLogs = [
