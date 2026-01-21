@@ -1,1 +1,26 @@
-/* You can add global styles to this file, and also import other style files */
+/* styles.css */
+
+/* 1. Import Poppins from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* 2. Apply to the root and body */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  /* Fallback fonts included for safety */
+  font-family: 'Poppins', sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 3. Force form elements to use Poppins */
+/* This ensures your Signup/Signin inputs look consistent */
+input, button, select, textarea, span, label, p, h1, h2, h3, h4 {
+  font-family: 'Poppins', sans-serif !important;
+}
+
+/* 4. Special fix for the Navbar logo and user name */
+.logo-text, .admin-name, .role-badge {
+  font-family: 'Poppins', sans-serif !important;
+  letter-spacing: 0.3px; /* Poppins looks best with slight spacing */
+}
