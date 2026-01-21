@@ -60,7 +60,7 @@ if (user.role === 'Manager') {
       this.managerDataService.setUser(displayName, user.role);
     }
         // 2. Show soft notification and navigate immediately
-      this.notificationService.success(`Welcome back, ${displayName}!`);
+      this.notificationService.success(`Welcome, ${displayName}!`);
       this.authService.navigateToDashboard(user.role);
       } else {
         this.notificationService.error('Invalid email or password.');
