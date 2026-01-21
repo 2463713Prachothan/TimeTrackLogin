@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ManagerDataService } from '../../core/services/manager-data.service';
 
 @Component({
   selector: 'app-signin',
@@ -17,6 +18,7 @@ export class SigninComponent {
   private router = inject(Router);
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
+  private managerDataService = inject(ManagerDataService);
 
   roles: string[] = ['Employee', 'Manager', 'Admin'];
   signinForm: FormGroup;
@@ -51,11 +53,15 @@ export class SigninComponent {
           return;
         }
 
-        // 2. Show soft notification and navigate immediately
-        this.notificationService.success(`Welcome back, ${user.fullName}!`);
+        // We check for user.fullName because that is what you save in Signup
+const displayName = user.fullName || 'Manager';
 
-        // Navigate to the dashboard without waiting for alert
-        this.authService.navigateToDashboard(user.role);
+if (user.role === 'Manager') {
+      this.managerDataService.setUser(displayName, user.role);
+    }
+        // 2. Show soft notification and navigate immediately
+      this.notificationService.success(`Welcome back, ${displayName}!`);
+      this.authService.navigateToDashboard(user.role);
       } else {
         this.notificationService.error('Invalid email or password.');
       }

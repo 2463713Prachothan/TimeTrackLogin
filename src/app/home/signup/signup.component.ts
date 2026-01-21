@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractContro
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ManagerDataService } from '../../core/services/manager-data.service';
 
 @Component({
   selector: 'app-signup',
@@ -17,6 +18,7 @@ export class SignupComponent {
   private router = inject(Router);
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
+  private managerDataService = inject(ManagerDataService);
   signupForm: FormGroup;
   // This must be false for the password to be hidden (dotted) by default
   showPassword = false;
@@ -64,7 +66,7 @@ export class SignupComponent {
   // Handles form submission
   onSubmit() {
     if (this.signupForm.valid) {
-      const userData = {
+      const userData:any = {
         fullName: this.signupForm.value.fullName,
         email: this.signupForm.value.email.toLowerCase(),
         role: this.signupForm.value.role,
@@ -74,6 +76,11 @@ export class SignupComponent {
 
       // Register user
       this.authService.register(userData);
+
+      // If the person just registering is a Manager, update the navbar name
+    if (userData.role === 'Manager') {
+      this.managerDataService.setUser(userData.fullName, userData.role);
+    }
 
       // Show soft notification
       this.notificationService.success(`Account created successfully for ${userData.fullName}!`);
