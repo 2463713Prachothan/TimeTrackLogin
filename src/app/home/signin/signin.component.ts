@@ -53,18 +53,21 @@ export class SigninComponent {
           return;
         }
 
-        // We check for user.fullName because that is what you save in Signup
-const displayName = user.fullName || 'Manager';
+        // Get the actual user name
+        const displayName = user.fullName || user.role;
 
-if (user.role === 'Manager') {
-      this.managerDataService.setUser(displayName, user.role);
-    }
+        // Store user data for all roles
+        if (user.role === 'Manager') {
+          this.managerDataService.setUser(displayName, user.role);
+        }
+
         // 2. Show soft notification and navigate immediately
-      this.notificationService.success(`Welcome, ${displayName}!`);
-      this.authService.navigateToDashboard(user.role);
+        this.notificationService.success(`Welcome, ${displayName}!`);
+        this.authService.navigateToDashboard(user.role);
       } else {
         this.notificationService.error('Invalid email or password.');
       }
     }
   }
+  
 }
