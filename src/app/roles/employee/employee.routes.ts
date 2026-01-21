@@ -1,15 +1,20 @@
 import { Routes } from '@angular/router';
-<<<<<<< HEAD
-import { employeeGuard } from '../../core/guards/employee.guard';
-=======
-import { employeeGuard } from '../../core/guards/index';
->>>>>>> ae1469b0901dd928681cd2aebb5d538c1d26ebd9
+import { EmployeeComponent } from './employee.component';
+import { DashboardemployeeComponent } from './dashboardemployee/dashboardemployee.component';
+import { LogHoursComponent } from './loghours/loghours.component';
+import { PersonalreportsComponent } from './personalreports/personalreports.component';
+import { TasksComponent } from './tasksassigned/tasksassigned.component';
+
 export const EMPLOYEE_ROUTES: Routes = [
     {
-        path: 'dashboard',
-        loadComponent: () => import('./dashboardemployee/dashboardemployee.component')
-            .then(m => m.DashboardemployeeComponent), // Changed from EmployeeDashboardComponent
-        canActivate: [employeeGuard]
-    },
-    { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
+        path: '',
+        component: EmployeeComponent,
+        children: [
+            { path: 'dashboard', component: DashboardemployeeComponent },
+            { path: 'loghours', component: LogHoursComponent },
+            { path: 'tasks', component: TasksComponent},
+            { path: 'reports', component: PersonalreportsComponent },
+            { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
+        ]
+    }
 ];
