@@ -142,7 +142,7 @@ export class NotificationComponent {
             case 'success':
                 return '✓';
             case 'error':
-                return '✕';
+                return '⚠';
             case 'warning':
                 return '⚠';
             case 'info':

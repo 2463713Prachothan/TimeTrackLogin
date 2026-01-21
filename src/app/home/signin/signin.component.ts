@@ -48,8 +48,11 @@ export class SigninComponent {
 
         // 1. First, check if the role matches
         if (selectedRole !== user.role) {
-          this.notificationService.error(`Access Denied: You are registered as ${user.role}, not ${selectedRole}.`);
-          this.authService.logout();
+          this.notificationService.error(`Access Denied: You are registered as ${user.role}, not ${selectedRole}.`, 5000);
+          // Delay logout to ensure notification is visible
+          setTimeout(() => {
+            this.authService.logout();
+          }, 500);
           return;
         }
 
@@ -65,7 +68,7 @@ export class SigninComponent {
         this.notificationService.success(`Welcome, ${displayName}!`);
         this.authService.navigateToDashboard(user.role);
       } else {
-        this.notificationService.error('Invalid email or password.');
+        this.notificationService.error('Invalid email or password.', 4000);
       }
     }
   }

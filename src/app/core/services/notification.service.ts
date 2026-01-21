@@ -28,7 +28,7 @@ export class NotificationService {
     /**
      * Show an error notification
      */
-    error(message: string, duration: number = 5000) {
+    error(message: string, duration: number = 4000) {
         this.addNotification('error', message, duration);
     }
 
