@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { NotificationService } from '../../core/services/notification.service';
 
 @Component({
   selector: 'app-signup',
@@ -15,6 +16,7 @@ export class SignupComponent {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private authService = inject(AuthService);
+  private notificationService = inject(NotificationService);
   signupForm: FormGroup;
   // This must be false for the password to be hidden (dotted) by default
   showPassword = false;
@@ -24,9 +26,9 @@ export class SignupComponent {
 
   // Departments for the dropdown
   departments: string[] = [
-    'Dot-net Angular', 
-    'Java Angular', 
-    'Java React', 
+    'Dot-net Angular',
+    'Java Angular',
+    'Java React',
     'Multi cloud'
   ];
   constructor() {
@@ -60,24 +62,25 @@ export class SignupComponent {
   }
 
   // Handles form submission
- // signup.component.ts
-onSubmit() {
-  if (this.signupForm.valid) {
-    const userData = {
-      fullName: this.signupForm.value.fullName,
-      email: this.signupForm.value.email.toLowerCase(),
-      role: this.signupForm.value.role,
-      department: this.signupForm.value.department,
-      password: this.signupForm.value.password
-    };
-    
-    // Save to localStorage so Sign-In can find it later
-   
-    this.authService.register(userData);
-    alert(`Account created for ${this.signupForm.value.fullName} as ${userData.role}`);
-    this.router.navigate(['/signin']);
-  }
-    else{
+  onSubmit() {
+    if (this.signupForm.valid) {
+      const userData = {
+        fullName: this.signupForm.value.fullName,
+        email: this.signupForm.value.email.toLowerCase(),
+        role: this.signupForm.value.role,
+        department: this.signupForm.value.department,
+        password: this.signupForm.value.password
+      };
+
+      // Register user
+      this.authService.register(userData);
+
+      // Show soft notification
+      this.notificationService.success(`Account created successfully for ${userData.fullName}!`);
+
+      // Navigate to signin without waiting for alert
+      this.router.navigate(['/signin']);
+    } else {
       this.signupForm.markAllAsTouched();
     }
   }
