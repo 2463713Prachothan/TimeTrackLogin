@@ -46,7 +46,7 @@ export const adminGuard: CanActivateFn = () => {
   if (!user) {
     router.navigate(['/signin']);
   } else {
-    router.navigate(['/employee/dashboardemployee']);
+    router.navigate(['/unauthorized']);
   }
   return false;
 };
@@ -67,7 +67,7 @@ export const employeeGuard: CanActivateFn = () => {
   if (!user) {
     router.navigate(['/signin']);
   } else {
-    router.navigate(['/admin/dashboard']);
+    router.navigate(['/unauthorized']);
   }
   return false;
 };
@@ -88,7 +88,7 @@ export const managerGuard: CanActivateFn = () => {
   if (!user) {
     router.navigate(['/signin']);
   } else {
-    router.navigate(['/employee/dashboardemployee']);
+    router.navigate(['/unauthorized']);
   }
   return false;
 };

@@ -7,7 +7,7 @@ import { TasksComponent } from './tasksassigned/tasksassigned.component';
 
 export const EMPLOYEE_ROUTES: Routes = [
     {
-        path: '',
+        path: 'employee',
         component: EmployeeComponent,
         children: [
             { path: 'dashboard', component: DashboardemployeeComponent },

@@ -1,0 +1,35 @@
+<div class="unauthorized-container">
+    <div class="unauthorized-content">
+        <div class="error-icon">🔒</div>
+        <h1 class="error-title">Access Denied</h1>
+        <p class="error-code">401 - Unauthorized</p>
+        
+        <p class="error-message">
+            You are not authorized to access this page. Please sign in with a valid account to continue.
+        </p>
+
+        <div class="error-illustration">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <!-- Lock Icon -->
+                <rect x="60" y="90" width="80" height="70" rx="4" fill="none" stroke="#e74c3c" stroke-width="3"/>
+                <path d="M 80 90 V 60 A 40 40 0 0 1 120 60 V 90" fill="none" stroke="#e74c3c" stroke-width="3"/>
+                <!-- Lock Shackle Opening -->
+                <circle cx="100" cy="130" r="6" fill="#e74c3c"/>
+            </svg>
+        </div>
+
+        <div class="error-actions">
+            <button class="btn-primary" (click)="goToSignIn()">
+                Sign In
+            </button>
+            <button class="btn-secondary" (click)="goHome()">
+                Go to Home
+            </button>
+        </div>
+
+        <p class="error-info">
+            <span class="info-icon">ℹ️</span>
+            If you believe you should have access, please contact your administrator.
+        </p>
+    </div>
+</div>

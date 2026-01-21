@@ -6,7 +6,7 @@ import { TeamAnalyticsComponent } from './team-analytics/team-analytics.componen
 
 export const MANAGER_ROUTES: Routes = [
     {
-        path: '',
+        path: 'manager',
         component: ManagerComponent,
         children: [
             { path: 'task-management', component: TaskManagementComponent },

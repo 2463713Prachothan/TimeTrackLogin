@@ -6,7 +6,7 @@ import { SystemConfigComponent } from './system-config/system-config.component';
 
 export const ADMIN_ROUTES: Routes = [
     {
-        path: '',
+        path: 'admin',
         component: AdminComponent,
         children: [
             { path: 'users', component: ManageusersComponent },
