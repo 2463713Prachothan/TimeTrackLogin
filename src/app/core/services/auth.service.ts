@@ -11,6 +11,7 @@ export class AuthService {
 
   // 1. Hardcoded Admin Data (No registration needed)
   private readonly ADMIN_USER = {
+    fullName: 'Admin',
     email: 'admin@gmail.com',
     password: 'AdminPassword@123',
     role: 'Admin',
