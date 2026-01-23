@@ -29,8 +29,18 @@ export class LogHoursComponent implements OnInit {
   showModal = false;
   logs: TimeLog[] = [];
 
+  // Statistics
+  todayHours: number = 0;
+  thisWeekHours: number = 0;
+  daysLogged: number = 0;
+
   ngOnInit() {
     this.loadTimeLogs();
+
+    // Subscribe to logs updates to recalculate stats
+    this.timeLogService.getLogs().subscribe(() => {
+      this.calculateStatistics();
+    });
   }
 
   /**
@@ -47,12 +57,55 @@ export class LogHoursComponent implements OnInit {
           breakMin: log.break,
           totalHours: log.totalHours.toFixed(2)
         }));
+
+        // Calculate statistics
+        this.calculateStatistics();
       },
       (error) => {
         console.error('Error loading time logs:', error);
         this.notificationService.error('Failed to load time logs');
       }
     );
+  }
+
+  /**
+   * Calculate statistics from logs
+   */
+  private calculateStatistics() {
+    // Get today's date in the same format as stored dates (e.g., "Jan 23")
+    const today = new Date();
+    const todayString = today.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+
+    // Calculate today's hours
+    this.todayHours = this.logs
+      .filter(log => log.date.includes(todayString))
+      .reduce((sum, log) => sum + parseFloat(log.totalHours), 0);
+
+    // Calculate this week's hours (last 7 days)
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    this.thisWeekHours = this.logs
+      .filter(log => {
+        const logDate = this.parseDate(log.date);
+        return logDate >= sevenDaysAgo && logDate <= today;
+      })
+      .reduce((sum, log) => sum + parseFloat(log.totalHours), 0);
+
+    // Count days logged
+    this.daysLogged = this.logs.length;
+  }
+
+  /**
+   * Parse date string to Date object
+   */
+  private parseDate(dateString: string): Date {
+    const today = new Date();
+    const year = today.getFullYear();
+    return new Date(`${dateString}, ${year}`);
   }
 
   // Form Model for Two-Way Binding

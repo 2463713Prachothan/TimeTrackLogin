@@ -4,7 +4,7 @@
             <div class="card-body">
                 <div class="text-group">
                     <span class="label">Today's Hours</span>
-                    <span class="value">0 hrs</span>
+                    <span class="value">{{ todayHours | number:'1.2-2' }} hrs</span>
                 </div>
                 <div class="icon-box blue">🕒</div>
             </div>
@@ -14,7 +14,7 @@
             <div class="card-body">
                 <div class="text-group">
                     <span class="label">This Week</span>
-                    <span class="value">23.3 hrs</span>
+                    <span class="value">{{ thisWeekHours | number:'1.2-2' }} hrs</span>
                 </div>
                 <div class="icon-box green">📅</div>
             </div>
