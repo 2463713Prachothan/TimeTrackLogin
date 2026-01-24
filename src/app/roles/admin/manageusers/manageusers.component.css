@@ -205,21 +205,29 @@
 }
 
 .user-table th {
-    padding: 16px;
+    padding: 18px 16px;
     background: #f8fafc;
     color: #64748b;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.025em;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e2e8f0;
+    text-align: left;
 }
 
 .user-table td {
     padding: 16px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
     color: #334155;
     font-size: 14px;
     vertical-align: middle;
+    text-align: left;
+}
+
+.user-table tbody tr:hover {
+    background-color: #f8fafc;
+    transition: background-color 0.2s ease;
 }
 
 /* Role Badges */
@@ -276,35 +284,77 @@
 .actions {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: 12px;
 }
 
-.action-icon {
-    font-size: 18px;
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 2px solid transparent;
+    border-radius: 8px;
     cursor: pointer;
-    transition: all 0.2s;
-    color: #94a3b8;
+    transition: all 0.3s ease;
+    font-size: 20px;
+    background-color: #f0f0f0;
+    padding: 0;
 }
 
-.action-icon:hover {
+.action-btn:hover {
     transform: scale(1.15);
-    color: #8cc63f;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.fa-pen:hover {
-    color: #5d46e2;
+.edit-btn {
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.05);
 }
 
-.fa-user-check {
-    color: #10b981;
+.edit-btn:hover {
+    background-color: rgba(59, 130, 246, 0.15);
+    border-color: #1d4ed8;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
-.fa-user-slash {
-    color: #94a3b8;
+.status-btn {
+    border-color: #10b981;
 }
 
-.delete:hover {
-    color: #ef4444;
+.status-btn.active-btn {
+    background-color: rgba(16, 185, 129, 0.05);
+}
+
+.status-btn.active-btn:hover {
+    background-color: rgba(16, 185, 129, 0.15);
+    border-color: #059669;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    transform: scale(1.15) rotate(10deg);
+}
+
+.status-btn.inactive-btn {
+    background-color: rgba(239, 68, 68, 0.05);
+}
+
+.status-btn.inactive-btn:hover {
+    background-color: rgba(239, 68, 68, 0.15);
+    border-color: #dc2626;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    transform: scale(1.15) rotate(-10deg);
+}
+
+.delete-btn {
+    border-color: #ef4444;
+    background-color: rgba(239, 68, 68, 0.05);
+}
+
+.delete-btn:hover {
+    background-color: rgba(239, 68, 68, 0.15);
+    border-color: #dc2626;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    transform: scale(1.15) rotate(5deg);
 }
 
 /* --- Modal Styling --- */

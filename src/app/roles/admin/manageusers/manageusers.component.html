@@ -60,7 +60,6 @@
                     <th>Role</th>
                     <th>Department</th>
                     <th>Status</th>
-                    <th>Type</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -81,17 +80,20 @@
                             {{user.status}}
                         </span>
                     </td>
-                    <td><span class="badge-type">Demo</span></td>
                     <td class="actions">
-                        <i class="fa-solid fa-pen action-icon" (click)="openEditModal(user)" title="Edit User"></i>
+                        <button class="action-btn edit-btn" (click)="openEditModal(user)" title="Edit User">
+                            ✏️
+                        </button>
 
-                        <i class="fa-solid action-icon"
-                            [ngClass]="user.status === 'Active' ? 'fa-user-check' : 'fa-user-slash'"
-                            (click)="toggleStatus(user)"
-                            [style.color]="user.status === 'Active' ? '#10b981' : '#ef4444'" title="Toggle Status"></i>
+                        <button class="action-btn status-btn" (click)="toggleStatus(user)"
+                            [ngClass]="user.status === 'Active' ? 'active-btn' : 'inactive-btn'"
+                            [title]="'Change Status: ' + (user.status === 'Active' ? 'Inactive' : 'Active')">
+                            {{ user.status === 'Active' ? '✅' : '❌' }}
+                        </button>
 
-                        <i class="fa-solid fa-user-minus action-icon delete" (click)="deleteUser(user.email)"
-                            title="Delete User"></i>
+                        <button class="action-btn delete-btn" (click)="deleteUser(user.email)" title="Delete User">
+                            🗑️
+                        </button>
                     </td>
                 </tr>
             </tbody>
