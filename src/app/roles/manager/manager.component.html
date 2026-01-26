@@ -1,41 +1,43 @@
 <div class="dashboard-wrapper py-4 px-4">
+  <!--Nav Bar-->
   <nav class="navbar manager-header">
     <div class="logo">
-        <img src="/assets/logo.png" alt="Logo">
-        <span class="logo-text">TimeTrack</span>
+      <img src="/assets/logo.png" alt="Logo">
+      <span class="logo-text">TimeTrack</span>
     </div>
 
     <div class="nav-actions">
-        <div class="user-info">
-            <span class="admin-name">{{ user.name }}</span>
-            <span class="role-badge manager-badge">{{ user.role }}</span>
-        </div>
+      <div class="user-info">
+        <span class="admin-name">{{ user.name }}</span>
+        <span class="role-badge manager-badge">{{ user.role }}</span>
+      </div>
 
-        <div class="profile-container">
-            <button class="profile-circle admin-circle" (click)="toggleDropdown($event)">
-                {{ user.initial }}
-            </button>
+      <div class="profile-container">
+        <button class="profile-circle admin-circle" (click)="toggleDropdown($event)">
+          {{ user.initial }}
+        </button>
 
-            <div class="profile-dropdown" *ngIf="isDropdownOpen">
-                <div class="dropdown-item">
-                    <span class="item-icon"><i class="bi bi-person-circle"></i></span> My Profile
-                </div>
-                <div class="dropdown-item logout" (click)="onLogout()">
-                    <span class="item-icon"><i class="bi bi-box-arrow-right"></i></span> Logout
-                </div>
-            </div>
+        <div class="profile-dropdown" *ngIf="isDropdownOpen">
+          <div class="dropdown-item">
+            <span class="item-icon"><i class="bi bi-person-circle"></i></span> My Profile
+          </div>
+          <div class="dropdown-item logout" (click)="onLogout()">
+            <span class="item-icon"><i class="bi bi-box-arrow-right"></i></span> Logout
+          </div>
         </div>
+      </div>
     </div>
-</nav>
+  </nav>
 
-
-<br><br><br>
+  <!--Components-->
+  <br><br><br>
   <div class="row g-3 mb-4">
     <div class="col-md-3">
       <div class="card p-3 border-0 shadow-sm stat-card">
         <small class="text-muted fw-medium">Team Members</small>
         <div class="d-flex justify-content-between align-items-center mt-2">
-          <h4 class="fw-bold mb-0">{{ totalMembers }}</h4> <div class="icon-shape bg-light-blue"><i class="bi bi-people-fill text-primary"></i></div>
+          <h4 class="fw-bold mb-0">{{ totalMembers }}</h4>
+          <div class="icon-shape bg-light-blue"><i class="bi bi-people-fill text-primary"></i></div>
         </div>
       </div>
     </div>
@@ -44,16 +46,17 @@
       <div class="card p-3 border-0 shadow-sm stat-card">
         <small class="text-muted fw-medium">Active Tasks</small>
         <div class="d-flex justify-content-between align-items-center mt-2">
-          <h4 class="fw-bold mb-0">{{ activeTasks }}</h4> <div class="icon-shape bg-light-green"><i class="bi bi-check2-square text-success"></i></div>
+          <h4 class="fw-bold mb-0">{{ activeTasks }}</h4>
+          <div class="icon-shape bg-light-green"><i class="bi bi-check2-square text-success"></i></div>
         </div>
       </div>
     </div>
-    
+
     <div class="col-md-3">
       <div class="card p-3 border-0 shadow-sm stat-card">
         <small class="text-muted fw-medium">Team Hours (Today)</small>
         <div class="d-flex justify-content-between align-items-center mt-2">
-          <h4 class="fw-bold mb-0">0.0</h4>
+          <h4 class="fw-bold mb-0">38.5 hrs</h4>
           <div class="icon-shape bg-light-purple"><i class="bi bi-clock text-purple"></i></div>
         </div>
       </div>
@@ -69,15 +72,19 @@
     </div>
   </div>
 
+  <!--Switching Tab-->
   <div class="d-flex justify-content-center mb-4">
     <div class="tab-container p-1 shadow-sm bg-white rounded border">
-      <button class="btn px-4 py-2 border-0" [ngClass]="tab === 'logs' ? 'btn-primary active-tab shadow-sm' : 'text-muted'" (click)="tab = 'logs'">
+      <button class="btn px-4 py-2 border-0"
+        [ngClass]="tab === 'logs' ? 'btn-primary active-tab shadow-sm' : 'text-muted'" (click)="tab = 'logs'">
         <i class="bi bi-clock me-2"></i> Team Time Logs
       </button>
-      <button class="btn px-4 py-2 border-0" [ngClass]="tab === 'tasks' ? 'btn-primary active-tab shadow-sm' : 'text-muted'" (click)="tab = 'tasks'">
+      <button class="btn px-4 py-2 border-0"
+        [ngClass]="tab === 'tasks' ? 'btn-primary active-tab shadow-sm' : 'text-muted'" (click)="tab = 'tasks'">
         <i class="bi bi-list-check me-2"></i> Task Management
       </button>
-      <button class="btn px-4 py-2 border-0" [ngClass]="tab === 'analytics' ? 'btn-primary active-tab shadow-sm' : 'text-muted'" (click)="tab = 'analytics'">
+      <button class="btn px-4 py-2 border-0"
+        [ngClass]="tab === 'analytics' ? 'btn-primary active-tab shadow-sm' : 'text-muted'" (click)="tab = 'analytics'">
         <i class="bi bi-graph-up me-2"></i> Team Analytics
       </button>
     </div>
@@ -88,4 +95,4 @@
     <app-task-management *ngSwitchCase="'tasks'"></app-task-management>
     <app-team-analytics *ngSwitchCase="'analytics'"></app-team-analytics>
   </div>
-</div>  
+</div>

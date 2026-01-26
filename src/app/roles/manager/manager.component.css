@@ -1,4 +1,7 @@
-/* Update these specific classes in your existing CSS */
+/* Ensure the dashboard content doesn't hide under the fixed navbar */
+.dashboard-wrapper {
+    padding-top: 20px;
+}
 
 .role-badge.manager-badge {
     color: #8cc63f; /* Matches your green theme in image_bdefc0.png */
@@ -14,10 +17,7 @@
     background-color: #7ab332; /* Slightly darker on hover */
 }
 
-/* Ensure the dashboard content doesn't hide under the fixed navbar */
-.dashboard-wrapper {
-    padding-top: 20px;
-}
+
 /* --- Navbar Styling --- */
 .navbar {
     display: flex;

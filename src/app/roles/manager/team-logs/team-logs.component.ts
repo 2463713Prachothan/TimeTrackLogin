@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-// FIX 1: Double check this path! 
 import { ManagerDataService } from '../../../core/services/manager-data.service'; 
 
 interface TimeLog {
@@ -22,6 +21,7 @@ interface TimeLog {
 })
 export class TeamLogsComponent implements OnInit {
   readonly MOCK_TODAY = 'Jan 12';
+  readonly MOCK_WEEK = ['Jan 10', 'Jan 11', 'Jan 12']; 
 
   allLogs: TimeLog[] = [];
   uniqueMembers: string[] = [];
@@ -30,11 +30,9 @@ export class TeamLogsComponent implements OnInit {
   selectedMember: string = 'All Team Members';
   selectedTimeFrame: string = 'Today';
 
-  // FIX 2: Ensure Service is "providedIn: root" as shown above
   constructor(private dataService: ManagerDataService) {}
 
   ngOnInit() {
-    // FIX 3: Add (data: any[]) to define the type
     this.dataService.logs$.subscribe((data: any[]) => {
       this.allLogs = data;
       this.uniqueMembers = [...new Set(this.allLogs.map((log: any) => log.employee))];
@@ -51,6 +49,8 @@ export class TeamLogsComponent implements OnInit {
 
     if (this.selectedTimeFrame === 'Today') {
       this.filteredLogs = temp.filter(log => log.date === this.MOCK_TODAY);
+    } else if (this.selectedTimeFrame === 'This Week') {
+      this.filteredLogs = temp.filter(log => this.MOCK_WEEK.includes(log.date));
     } else if (this.selectedTimeFrame === 'All Time') {
       this.filteredLogs = temp;
     } else {
@@ -58,6 +58,7 @@ export class TeamLogsComponent implements OnInit {
     }
   }
 
+  // This is the getter that was "missing"
   get summaryStats() {
     const data = this.filteredLogs;
     if (data.length === 0) return { total: '0.0', avg: '0.0', entries: 0 };
@@ -67,7 +68,7 @@ export class TeamLogsComponent implements OnInit {
 
     return {
       total: totalHours.toFixed(1),
-      avg: (totalHours / uniqueDays).toFixed(1),
+      avg: (totalHours / (uniqueDays || 1)).toFixed(1),
       entries: data.length
     };
   }
@@ -78,6 +79,8 @@ export class TeamLogsComponent implements OnInit {
 
     if (this.selectedTimeFrame === 'Today') {
       timeframeLogs = memberLogs.filter(l => l.date === this.MOCK_TODAY);
+    } else if (this.selectedTimeFrame === 'This Week') {
+      timeframeLogs = memberLogs.filter(l => this.MOCK_WEEK.includes(l.date));
     } else if (this.selectedTimeFrame === 'All Time') {
       timeframeLogs = memberLogs;
     }
@@ -87,4 +90,4 @@ export class TeamLogsComponent implements OnInit {
       days: new Set(timeframeLogs.map(l => l.date)).size
     };
   }
-}
+} 

@@ -74,3 +74,16 @@
 .custom-logs-table tbody tr:hover {
   background-color: #f9fafb;
 }
+
+
+.form-select:focus {
+  border-color: #8bc63f !important; 
+}
+
+.form-select:hover {
+  border-color: #8cc63f;
+}
+
+.custom-logs-table tbody tr:hover {
+  background-color: #f1f8f1 !important;
+}
