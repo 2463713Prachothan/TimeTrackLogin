@@ -70,7 +70,7 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label>Date</label>
-                    <input type="date" [(ngModel)]="newLog.date">
+                    <input type="date" [(ngModel)]="newLog.date" [max]="todayDate">
                 </div>
                 <div class="form-row">
                     <div class="form-group">

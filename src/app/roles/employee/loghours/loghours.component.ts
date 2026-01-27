@@ -110,6 +110,13 @@ export class LogHoursComponent implements OnInit {
 
   // Form Model for Two-Way Binding
   newLog = { date: '', startTime: '', endTime: '', breakMin: 0 };
+  todayDate: string = '';
+
+  constructor() {
+    // Set today's date in YYYY-MM-DD format for the date input max attribute
+    const today = new Date();
+    this.todayDate = today.toISOString().split('T')[0];
+  }
 
   toggleModal() {
     this.showModal = !this.showModal;
@@ -118,6 +125,12 @@ export class LogHoursComponent implements OnInit {
   addLog() {
     if (!this.newLog.date || !this.newLog.startTime || !this.newLog.endTime) {
       this.notificationService.warning('Please fill in all required fields');
+      return;
+    }
+
+    // Validate that the date is not a future date
+    if (!this.isValidDate(this.newLog.date)) {
+      this.notificationService.warning('Cannot log hours for future dates');
       return;
     }
 
@@ -140,6 +153,19 @@ export class LogHoursComponent implements OnInit {
     this.toggleModal();
     this.resetForm();
     this.loadTimeLogs(); // Reload the logs
+  }
+
+  /**
+   * Validate that the date is not in the future
+   */
+  private isValidDate(dateString: string): boolean {
+    const selectedDate = new Date(dateString);
+    const today = new Date();
+    // Set time to midnight for comparison
+    selectedDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    // Date must be today or in the past
+    return selectedDate <= today;
   }
 
   private calculateHours(start: string, end: string, pause: number): number {
