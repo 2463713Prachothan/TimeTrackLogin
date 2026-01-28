@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, inject, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { LogHoursComponent } from "../loghours/loghours.component";
 import { TasksComponent } from "../tasksassigned/tasksassigned.component";
@@ -13,8 +13,10 @@ import { AuthService } from '../../../core/services/auth.service';
   styleUrl: './dashboardemployee.component.css',
 })
 export class DashboardemployeeComponent implements OnInit {
-  private authService = inject(AuthService);
-  private router = inject(Router);
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) { }
 
   employeeName: string = 'Employee';
   userRole: string = 'Employee';
@@ -49,6 +51,8 @@ export class DashboardemployeeComponent implements OnInit {
   }
 
   toggleNotifications() {
+    this.showNotifications = !this.showNotifications;
+    this.showDropdown = false; // Close others
     this.showNotifications = !this.showNotifications;
     this.showDropdown = false; // Close others
   }
