@@ -1,4 +1,4 @@
-import { Component , OnInit, AfterViewInit, ViewChild, ElementRef} from '@angular/core';
+import { Component, OnInit, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Chart, registerables } from 'chart.js';
 
@@ -11,8 +11,8 @@ Chart.register(...registerables);
   templateUrl: './personalreports.component.html',
   styleUrls: ['./personalreports.component.css']
 })
-export class PersonalreportsComponent implements AfterViewInit{ 
- @ViewChild('barChart') barChartCanvas!: ElementRef;
+export class PersonalreportsComponent implements AfterViewInit {
+  @ViewChild('barChart') barChartCanvas!: ElementRef;
   @ViewChild('pieChart') pieChartCanvas!: ElementRef;
 
   ngAfterViewInit() {

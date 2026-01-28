@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common'; // Required for ngClass/ngStyle in older versions
 import { TaskService, Task } from '../../../core/services/task.service';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -22,9 +22,10 @@ interface TaskDisplay {
   styleUrls: ['./tasksassigned.component.css']
 })
 export class TasksComponent implements OnInit {
-  // Inject services
-  private taskService = inject(TaskService);
-  private notificationService = inject(NotificationService);
+  constructor(
+    private taskService: TaskService,
+    private notificationService: NotificationService
+  ) { }
 
   activeTab: string = 'My Tasks';
   stats = [

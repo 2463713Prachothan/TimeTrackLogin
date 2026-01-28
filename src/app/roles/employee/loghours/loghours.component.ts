@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, inject, OnInit } from '@angular/core'; // Import Input
+import { Component, Input, OnInit } from '@angular/core'; // Import Input
 import { FormsModule } from '@angular/forms';
 import { TimeLogService, TimeLog as ServiceTimeLog } from '../../../core/services/time-log.service';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -22,9 +22,10 @@ interface TimeLog {
   styleUrl: './loghours.component.css',
 })
 export class LogHoursComponent implements OnInit {
-  // Inject services
-  private timeLogService = inject(TimeLogService);
-  private notificationService = inject(NotificationService);
+  constructor(
+    private timeLogService: TimeLogService,
+    private notificationService: NotificationService
+  ) { }
 
   showModal = false;
   logs: TimeLog[] = [];
