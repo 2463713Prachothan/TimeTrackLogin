@@ -20,58 +20,60 @@ export class ManagerComponent implements OnInit {
   user: any = { name: '', role: '', initial: '' };
   tab: string = 'logs';
 
-  // These variables will hold the live numbers
+  // Dashboard metrics
   totalMembers: number = 0;
   activeTasks: number = 0;
+  totalHoursToday: number = 0;
+  completionRate: number = 0;
 
   constructor(
-    private router: Router, // Inject the router
-    private dataService: ManagerDataService, // Inject the service
-    private authService: AuthService // Add this injection
+    private router: Router,
+    private dataService: ManagerDataService,
+    private authService: AuthService
   ) { }
 
   ngOnInit() {
-
-    // Current user info for the navbar/profile
+    // Subscribe to user data for navbar
     this.dataService.currentUser$.subscribe(userData => {
-      console.log('User detected in Navbar:', userData);
       this.user = userData;
     });
-    // Active tasks count
+
+    // Calculate active tasks and completion rate
     this.dataService.tasks$.subscribe(tasks => {
       this.activeTasks = tasks.filter(t => t.status !== 'Completed').length;
+      const completedTasks = tasks.filter(t => t.status === 'Completed').length;
+      this.completionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
     });
 
-    // Count Total members
-    this.dataService.logs$.subscribe(logs => {
-      const names = new Set(logs.map(l => l.employee));
-      this.totalMembers = names.size;
-    });
-
-    // Replace your logs$ subscription for totalMembers with this:
+    // Get total team members count
     this.dataService.performance$.subscribe(members => {
       this.totalMembers = members.length;
     });
+
+    // Calculate today's total hours from logs
+    this.dataService.logs$.subscribe(logs => {
+      const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const todayLogs = logs.filter(log => log.date === today);
+      this.totalHoursToday = todayLogs.reduce((sum, log) => sum + log.totalHours, 0);
+    });
   }
 
+  // Toggle user profile dropdown
   toggleDropdown(event: Event) {
     event.stopPropagation();
     this.isDropdownOpen = !this.isDropdownOpen;
   }
 
+  // Close dropdown when clicking outside
   @HostListener('document:click')
   closeDropdown() {
     this.isDropdownOpen = false;
   }
 
+  // Handle user logout
   onLogout() {
-    // Clear the navbar data in ManagerDataService
     this.dataService.clearUser();
-
-    // Clear the session in AuthService
     this.authService.logout();
-
-    // Navigate back to sign-in
     this.router.navigate(['/signin']);
   }
 }

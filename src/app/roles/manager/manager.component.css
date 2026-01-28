@@ -154,22 +154,6 @@
     font-size: 1.1rem; /* Adjust size to match your font preference */
 }
 
-.dropdown-item {
-    display: flex;
-    align-items: center;
-    padding: 10px 15px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.dropdown-item:hover {
-    background-color: #f8f9fa;
-}
-
-.logout:hover {
-    color: #dc3545; /* Turns red on hover for logout */
-}
-
 
 
 .dashboard-wrapper {

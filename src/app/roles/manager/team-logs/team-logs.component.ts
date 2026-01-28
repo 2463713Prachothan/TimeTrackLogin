@@ -20,19 +20,35 @@ interface TimeLog {
   styleUrls: ['./team-logs.component.css']
 })
 export class TeamLogsComponent implements OnInit {
-  readonly MOCK_TODAY = 'Jan 12';
-  readonly MOCK_WEEK = ['Jan 10', 'Jan 11', 'Jan 12']; 
+  readonly today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  readonly currentWeekDates = this.getCurrentWeekDates();
 
   allLogs: TimeLog[] = [];
   uniqueMembers: string[] = [];
   filteredLogs: TimeLog[] = [];
-  
+
   selectedMember: string = 'All Team Members';
   selectedTimeFrame: string = 'Today';
 
   constructor(private dataService: ManagerDataService) {}
 
+  // Generate current week date strings
+  private getCurrentWeekDates(): string[] {
+    const dates: string[] = [];
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+      dates.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    }
+    return dates;
+  }
+
   ngOnInit() {
+    // Load and process time logs
     this.dataService.logs$.subscribe((data: any[]) => {
       this.allLogs = data;
       this.uniqueMembers = [...new Set(this.allLogs.map((log: any) => log.employee))];
@@ -40,25 +56,28 @@ export class TeamLogsComponent implements OnInit {
     });
   }
 
+  // Filter logs based on selected criteria
   updateDashboard() {
     let temp = [...this.allLogs];
 
+    // Filter by member
     if (this.selectedMember !== 'All Team Members') {
       temp = temp.filter(log => log.employee === this.selectedMember);
     }
 
+    // Filter by timeframe
     if (this.selectedTimeFrame === 'Today') {
-      this.filteredLogs = temp.filter(log => log.date === this.MOCK_TODAY);
+      this.filteredLogs = temp.filter(log => log.date === this.today);
     } else if (this.selectedTimeFrame === 'This Week') {
-      this.filteredLogs = temp.filter(log => this.MOCK_WEEK.includes(log.date));
+      this.filteredLogs = temp.filter(log => this.currentWeekDates.includes(log.date));
     } else if (this.selectedTimeFrame === 'All Time') {
       this.filteredLogs = temp;
     } else {
-      this.filteredLogs = []; 
+      this.filteredLogs = [];
     }
   }
 
-  // This is the getter that was "missing"
+  // Calculate summary statistics for filtered logs
   get summaryStats() {
     const data = this.filteredLogs;
     if (data.length === 0) return { total: '0.0', avg: '0.0', entries: 0 };
@@ -73,14 +92,15 @@ export class TeamLogsComponent implements OnInit {
     };
   }
 
+  // Get individual member statistics
   getMemberStats(name: string) {
     const memberLogs = this.allLogs.filter(l => l.employee === name);
     let timeframeLogs: TimeLog[] = [];
 
     if (this.selectedTimeFrame === 'Today') {
-      timeframeLogs = memberLogs.filter(l => l.date === this.MOCK_TODAY);
+      timeframeLogs = memberLogs.filter(l => l.date === this.today);
     } else if (this.selectedTimeFrame === 'This Week') {
-      timeframeLogs = memberLogs.filter(l => this.MOCK_WEEK.includes(l.date));
+      timeframeLogs = memberLogs.filter(l => this.currentWeekDates.includes(l.date));
     } else if (this.selectedTimeFrame === 'All Time') {
       timeframeLogs = memberLogs;
     }

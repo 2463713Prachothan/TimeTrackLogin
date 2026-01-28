@@ -56,7 +56,7 @@
       <div class="card p-3 border-0 shadow-sm stat-card">
         <small class="text-muted fw-medium">Team Hours (Today)</small>
         <div class="d-flex justify-content-between align-items-center mt-2">
-          <h4 class="fw-bold mb-0">38.5 hrs</h4>
+          <h4 class="fw-bold mb-0">{{ totalHoursToday.toFixed(1) }} hrs</h4>
           <div class="icon-shape bg-light-purple"><i class="bi bi-clock text-purple"></i></div>
         </div>
       </div>
@@ -65,7 +65,7 @@
       <div class="card p-3 border-0 shadow-sm stat-card">
         <small class="text-muted fw-medium">Completion Rate</small>
         <div class="d-flex justify-content-between align-items-center mt-2">
-          <h4 class="fw-bold mb-0">20%</h4>
+          <h4 class="fw-bold mb-0">{{ completionRate }}%</h4>
           <div class="icon-shape bg-light-yellow"><i class="bi bi-graph-up-arrow text-warning"></i></div>
         </div>
       </div>

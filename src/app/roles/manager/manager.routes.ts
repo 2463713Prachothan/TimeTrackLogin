@@ -12,7 +12,7 @@ export const MANAGER_ROUTES: Routes = [
             { path: 'task-management', component: TaskManagementComponent },
             { path: 'team-logs', component: TeamLogsComponent },
             { path: 'team-analytics', component: TeamAnalyticsComponent },
-            { path: '', redirectTo: 'task-management', pathMatch: 'full' }
+            { path: '', redirectTo: 'team-logs', pathMatch: 'full' }
         ]
     }
 ];
