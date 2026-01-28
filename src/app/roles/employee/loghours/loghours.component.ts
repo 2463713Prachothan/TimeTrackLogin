@@ -22,11 +22,6 @@ interface TimeLog {
   styleUrl: './loghours.component.css',
 })
 export class LogHoursComponent implements OnInit {
-  constructor(
-    private timeLogService: TimeLogService,
-    private notificationService: NotificationService
-  ) { }
-
   showModal = false;
   logs: TimeLog[] = [];
 
@@ -34,6 +29,19 @@ export class LogHoursComponent implements OnInit {
   todayHours: number = 0;
   thisWeekHours: number = 0;
   daysLogged: number = 0;
+
+  // Form Model for Two-Way Binding
+  newLog = { date: '', startTime: '', endTime: '', breakMin: 0 };
+  todayDate: string = '';
+
+  constructor(
+    private timeLogService: TimeLogService,
+    private notificationService: NotificationService
+  ) {
+    // Set today's date in YYYY-MM-DD format for the date input max attribute
+    const today = new Date();
+    this.todayDate = today.toISOString().split('T')[0];
+  }
 
   ngOnInit() {
     this.loadTimeLogs();
@@ -107,16 +115,6 @@ export class LogHoursComponent implements OnInit {
     const today = new Date();
     const year = today.getFullYear();
     return new Date(`${dateString}, ${year}`);
-  }
-
-  // Form Model for Two-Way Binding
-  newLog = { date: '', startTime: '', endTime: '', breakMin: 0 };
-  todayDate: string = '';
-
-  constructor() {
-    // Set today's date in YYYY-MM-DD format for the date input max attribute
-    const today = new Date();
-    this.todayDate = today.toISOString().split('T')[0];
   }
 
   toggleModal() {
