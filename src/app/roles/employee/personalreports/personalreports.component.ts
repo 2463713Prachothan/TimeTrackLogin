@@ -1,9 +1,6 @@
-import { Component, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Chart, registerables } from 'chart.js';
-import { TimeLogService } from '../../../core/services/time-log.service';
-import { TaskService } from '../../../core/services/task.service';
-import { NotificationService } from '../../../core/services/notification.service';
 
 Chart.register(...registerables);
 
@@ -15,11 +12,6 @@ Chart.register(...registerables);
   styleUrls: ['./personalreports.component.css']
 })
 export class PersonalreportsComponent implements AfterViewInit {
-  constructor(
-    private timeLogService: TimeLogService,
-    private taskService: TaskService,
-    private notificationService: NotificationService
-  ) { }
   @ViewChild('barChart') barChartCanvas!: ElementRef;
   @ViewChild('pieChart') pieChartCanvas!: ElementRef;
 
