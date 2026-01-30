@@ -28,7 +28,7 @@ export class PersonalreportsComponent implements AfterViewInit {
         datasets: [{
           label: 'Hours Logged',
           data: [7.8, 8.2, 7.5],
-          backgroundColor: '#8cc63f', // Deep purple from your design
+          backgroundColor: '#8cc63f',
           borderRadius: 8
         }]
       },

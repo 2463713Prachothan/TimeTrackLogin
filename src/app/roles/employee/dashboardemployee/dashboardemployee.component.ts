@@ -53,7 +53,5 @@ export class DashboardemployeeComponent implements OnInit {
   toggleNotifications() {
     this.showNotifications = !this.showNotifications;
     this.showDropdown = false; // Close others
-    this.showNotifications = !this.showNotifications;
-    this.showDropdown = false; // Close others
   }
 }
