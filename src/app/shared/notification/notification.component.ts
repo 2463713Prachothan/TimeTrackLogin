@@ -3,14 +3,13 @@ import { CommonModule } from '@angular/common';
 import { NotificationService } from '../../core/services/notification.service';
 
 @Component({
-    selector: 'app-notification',
-    standalone: true,
-    imports: [CommonModule],
-    template: `
+  selector: 'app-notification',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
     <div class="notification-container">
       <div *ngFor="let notification of notifications()" 
-           [ngClass]="'notification notification-' + notification.type"
-           [@slideIn]>
+           [ngClass]="'notification notification-' + notification.type">
         <div class="notification-content">
           <span class="notification-icon">{{ getIcon(notification.type) }}</span>
           <span class="notification-message">{{ notification.message }}</span>
@@ -21,7 +20,7 @@ import { NotificationService } from '../../core/services/notification.service';
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .notification-container {
       position: fixed;
       top: 20px;
@@ -133,26 +132,26 @@ import { NotificationService } from '../../core/services/notification.service';
   `]
 })
 export class NotificationComponent {
-    private notificationService = inject(NotificationService);
+  private notificationService = inject(NotificationService);
 
-    notifications = this.notificationService.notifications;
+  notifications = this.notificationService.notifications;
 
-    getIcon(type: string): string {
-        switch (type) {
-            case 'success':
-                return '✓';
-            case 'error':
-                return '⚠';
-            case 'warning':
-                return '⚠';
-            case 'info':
-                return 'ℹ';
-            default:
-                return '•';
-        }
+  getIcon(type: string): string {
+    switch (type) {
+      case 'success':
+        return '✓';
+      case 'error':
+        return '⚠';
+      case 'warning':
+        return '⚠';
+      case 'info':
+        return 'ℹ';
+      default:
+        return '•';
     }
+  }
 
-    close(id: string): void {
-        this.notificationService.removeNotification(id);
-    }
+  close(id: string): void {
+    this.notificationService.removeNotification(id);
+  }
 }
