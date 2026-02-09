@@ -3,7 +3,7 @@
     <div class="stat-card">
       <div class="stat-text">
         <span class="label">Total Hours Logged</span>
-        <h2 class="value">23.3 hrs</h2>
+        <h2 class="value">{{ totalHoursLogged.toFixed(1) }} hrs</h2>
         <span class="subtext green">Last 7 days</span>
       </div>
       <div class="icon-box blue-tint">📈</div>
@@ -12,8 +12,8 @@
     <div class="stat-card">
       <div class="stat-text">
         <span class="label">Task Completion Rate</span>
-        <h2 class="value">33%</h2>
-        <span class="subtext">1 of 3 tasks</span>
+        <h2 class="value">{{ taskCompletionRate }}%</h2>
+        <span class="subtext">{{ completedTasks }} of {{ totalTasks }} tasks</span>
       </div>
       <div class="icon-box green-tint">🎯</div>
     </div>
@@ -21,8 +21,8 @@
     <div class="stat-card">
       <div class="stat-text">
         <span class="label">Efficiency Score</span>
-        <h2 class="value">82%</h2>
-        <span class="subtext">Task time / Total time</span>
+        <h2 class="value">{{ efficiencyScore }}%</h2>
+        <span class="subtext">Task completion progress</span>
       </div>
       <div class="icon-box purple-tint">🏅</div>
     </div>
@@ -30,7 +30,7 @@
 
   <div class="charts-parallel-grid">
     <div class="chart-card">
-      <h3>📊 Daily Hours Logged</h3>
+      <h3>📊 Daily Hours Logged (Last 7 Days)</h3>
       <div class="canvas-wrapper">
         <canvas #barChart></canvas>
       </div>
@@ -51,7 +51,7 @@
       <div class="insight-icon">🔵</div>
       <div class="insight-content">
         <strong>Weekly Average</strong>
-        <p>You're averaging 7.8 hours per day</p>
+        <p>You're averaging {{ weeklyAverage }} hours per day</p>
       </div>
     </div>
 
@@ -59,7 +59,15 @@
       <div class="insight-icon">✅</div>
       <div class="insight-content">
         <strong>Task Progress</strong>
-        <p>You have 1 task currently in progress</p>
+        <p>You have {{ inProgressTasks }} task(s) currently in progress</p>
+      </div>
+    </div>
+
+    <div class="insight-item purple-insight">
+      <div class="insight-icon">📋</div>
+      <div class="insight-content">
+        <strong>Pending Tasks</strong>
+        <p>You have {{ pendingTasks }} task(s) pending</p>
       </div>
     </div>
   </div>

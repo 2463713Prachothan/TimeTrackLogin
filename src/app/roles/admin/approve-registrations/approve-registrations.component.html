@@ -1,0 +1,78 @@
+<div class="approval-container">
+  
+
+    <div class="tabs">
+        <button 
+            [class.active]="activeTab === 'pending'"
+            (click)="activeTab = 'pending'"
+            class="tab-btn">
+            Pending ({{ getPendingCount() }})
+        </button>
+        <button 
+            [class.active]="activeTab === 'approved'"
+            (click)="activeTab = 'approved'"
+            class="tab-btn">
+            Approved ({{ getApprovedCount() }})
+        </button>
+        <button 
+            [class.active]="activeTab === 'rejected'"
+            (click)="activeTab = 'rejected'"
+            class="tab-btn">
+            Rejected ({{ getRejectedCount() }})
+        </button>
+    </div>
+
+    <div class="registrations-list" *ngIf="filteredRegistrations.length > 0; else noData">
+        <div class="registration-card" *ngFor="let reg of filteredRegistrations" [class.status-pending]="reg.status === 'Pending'" [class.status-approved]="reg.status === 'Approved'" [class.status-rejected]="reg.status === 'Rejected'">
+            <div class="card-header">
+                <div class="user-info">
+                    <h3>{{ reg.fullName }}</h3>
+                    <p class="email">{{ reg.email }}</p>
+                </div>
+                <span class="status-badge" [class]="'status-' + reg.status.toLowerCase()">
+                    {{ reg.status }}
+                </span>
+            </div>
+
+            <div class="card-body">
+                <div class="info-row">
+                    <span class="label">Role:</span>
+                    <span class="value">{{ reg.role }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Department:</span>
+                    <span class="value">{{ reg.department }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Applied Date:</span>
+                    <span class="value">{{ reg.appliedDate }}</span>
+                </div>
+                <div class="info-row" *ngIf="reg.approvedDate">
+                    <span class="label">{{ reg.status === 'Approved' ? 'Approved' : 'Rejected' }} Date:</span>
+                    <span class="value">{{ reg.approvedDate }}</span>
+                </div>
+                <div class="info-row" *ngIf="reg.approvedBy">
+                    <span class="label">{{ reg.status === 'Approved' ? 'Approved' : 'Rejected' }} By:</span>
+                    <span class="value">{{ reg.approvedBy }}</span>
+                </div>
+            </div>
+
+            <div class="card-actions" *ngIf="reg.status === 'Pending'">
+                <button class="btn btn-approve" (click)="approveRegistration(reg)">✓ Approve</button>
+                <button class="btn btn-reject" (click)="rejectRegistration(reg)">✕ Reject</button>
+            </div>
+
+            <div class="card-actions" *ngIf="reg.status !== 'Pending'">
+                <button class="btn btn-delete" (click)="deleteRegistration(reg)">🗑️ Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <ng-template #noData>
+        <div class="no-data">
+            <p *ngIf="activeTab === 'pending'">No pending registrations</p>
+            <p *ngIf="activeTab === 'approved'">No approved registrations</p>
+            <p *ngIf="activeTab === 'rejected'">No rejected registrations</p>
+        </div>
+    </ng-template>
+</div>

@@ -1,19 +1,22 @@
 import { Injectable, inject, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+import { ApiService } from './api.service';
 
 export interface User {
     id?: string;
     email: string;
     password?: string;
-    firstName: string;
-    lastName: string;
+    fullName: string;
     role: 'Employee' | 'Manager' | 'Admin';
     department?: string;
     phone?: string;
     joinDate?: string;
     status?: 'Active' | 'Inactive';
     createdDate?: Date;
+    managerId?: string;  // For employees: their assigned manager
+    assignedEmployees?: string[];  // For managers: list of employee IDs
 }
 
 @Injectable({
@@ -22,15 +25,15 @@ export interface User {
 export class UserService {
 
     private platformId = inject(PLATFORM_ID);
+    private apiService = inject(ApiService);
 
     private initialUsers: User[] = [
         {
             id: '1',
             email: 'akash@gmail.com',
-            firstName: 'Akash',
-            lastName: 'Kumar',
+            fullName: 'Akash Kumar',
             role: 'Employee',
-            department: 'Development',
+            department: 'Java Angular',
             phone: '9876543210',
             joinDate: '2023-01-15',
             status: 'Active'
@@ -38,10 +41,9 @@ export class UserService {
         {
             id: '2',
             email: 'chandana@gmail.com',
-            firstName: 'Chandana',
-            lastName: 'Sharma',
+            fullName: 'Chandana Sharma',
             role: 'Employee',
-            department: 'QA',
+            department: 'Dot-net Angular',
             phone: '9876543211',
             joinDate: '2023-03-10',
             status: 'Active'
@@ -49,10 +51,9 @@ export class UserService {
         {
             id: '3',
             email: 'prachothan@gmail.com',
-            firstName: 'Prachothan',
-            lastName: 'Reddy',
+            fullName: 'Prachothan Reddy',
             role: 'Employee',
-            department: 'Development',
+            department: 'Multi cloud',
             phone: '9876543212',
             joinDate: '2023-02-20',
             status: 'Active'
@@ -60,21 +61,20 @@ export class UserService {
         {
             id: '4',
             email: 'umesh@gmail.com',
-            firstName: 'Umesh',
-            lastName: 'Singh',
+            fullName: 'Umesh Singh',
             role: 'Manager',
-            department: 'Development',
+            department: 'Java React',
             phone: '9876543213',
             joinDate: '2022-06-15',
-            status: 'Active'
+            status: 'Active',
+            assignedEmployees: ['1', '2', '3', '5']  // Assigned all employees for testing
         },
         {
             id: '5',
             email: 'gopi@gmail.com',
-            firstName: 'Gopi',
-            lastName: 'Krishna',
+            fullName: 'Gopi Krishna',
             role: 'Employee',
-            department: 'Support',
+            department: 'Dot-net Angular',
             phone: '9876543214',
             joinDate: '2023-04-01',
             status: 'Active'
@@ -88,7 +88,47 @@ export class UserService {
     currentUserChanged = signal<User | null>(null);
 
     constructor() {
-        this.loadUsersFromStorage();
+        this.loadUsers();
+    }
+
+    /**
+     * Load users from API, with fallback to storage
+     */
+    private loadUsers(): void {
+        this.apiService.getUsers().subscribe({
+            next: (users: any[]) => {
+                if (users && users.length > 0) {
+                    // Merge API data with initialUsers to preserve assignedEmployees if missing
+                    const mergedUsers = this.mergeWithInitialUsers(users);
+                    this.usersSubject.next(mergedUsers);
+                    this.saveUsersToStorage(mergedUsers);
+                } else {
+                    // Fallback to stored users
+                    this.loadUsersFromStorage();
+                }
+            },
+            error: () => {
+                // API failed, use stored data
+                this.loadUsersFromStorage();
+            }
+        });
+    }
+
+    /**
+     * Merge API users with initial users to preserve assignedEmployees and other fields
+     */
+    private mergeWithInitialUsers(apiUsers: User[]): User[] {
+        return apiUsers.map(apiUser => {
+            const initialUser = this.initialUsers.find(u => u.id === apiUser.id);
+            if (initialUser && !apiUser.assignedEmployees && initialUser.assignedEmployees) {
+                // If API user missing assignedEmployees but initial user has it, use initial
+                return {
+                    ...apiUser,
+                    assignedEmployees: initialUser.assignedEmployees
+                };
+            }
+            return apiUser;
+        });
     }
 
     /**
@@ -134,29 +174,67 @@ export class UserService {
     }
 
     /**
-     * Add a new user
+     * Add a new user (creates via API)
      */
     addUser(user: User) {
         user.id = user.id || `user_${Date.now()}`;
         user.createdDate = new Date();
         user.status = user.status || 'Active';
         const currentUsers = this.usersSubject.value;
-        const newUsers = [...currentUsers, user];
-        this.usersSubject.next(newUsers);
-        this.saveUsersToStorage(newUsers);
+        
+        // Check if user with same email already exists
+        const emailLower = user.email.toLowerCase();
+        const existingUserIndex = currentUsers.findIndex(u => u.email.toLowerCase() === emailLower);
+        
+        if (existingUserIndex === -1) {
+            // Call API to create user
+            this.apiService.createUser(user).subscribe({
+                next: (newUser) => {
+                    const newUsers = [...currentUsers, newUser];
+                    this.usersSubject.next(newUsers);
+                    this.saveUsersToStorage(newUsers);
+                },
+                error: (err) => {
+                    console.error('Error creating user:', err);
+                    // Fallback: add to local storage anyway
+                    const newUsers = [...currentUsers, user];
+                    this.usersSubject.next(newUsers);
+                    this.saveUsersToStorage(newUsers);
+                }
+            });
+        } else {
+            // User already exists, update instead
+            console.warn(`User with email ${user.email} already exists. Updating existing user.`);
+            this.updateUser(currentUsers[existingUserIndex].id!, user);
+        }
     }
 
     /**
-     * Update an existing user
+     * Update an existing user (updates via API)
      */
     updateUser(id: string, updatedUser: Partial<User>) {
         const currentUsers = this.usersSubject.value;
         const index = currentUsers.findIndex(user => user.id === id);
         if (index !== -1) {
-            currentUsers[index] = { ...currentUsers[index], ...updatedUser };
-            this.usersSubject.next([...currentUsers]);
-            this.saveUsersToStorage(currentUsers);
-            this.currentUserChanged.set(currentUsers[index]);
+            const updated = { ...currentUsers[index], ...updatedUser };
+            
+            // Call API to update user
+            this.apiService.updateUser(id, updated).subscribe({
+                next: (result) => {
+                    currentUsers[index] = result;
+                    this.usersSubject.next([...currentUsers]);
+                    this.saveUsersToStorage(currentUsers);
+                    this.currentUserChanged.set(currentUsers[index]);
+                },
+                error: (err) => {
+                    console.error('Error updating user:', err);
+                    // Fallback: update locally anyway
+                    currentUsers[index] = updated;
+                    this.usersSubject.next([...currentUsers]);
+                    this.saveUsersToStorage(currentUsers);
+                    this.currentUserChanged.set(currentUsers[index]);
+                }
+            });
         }
     }
 
@@ -185,13 +263,12 @@ export class UserService {
     }
 
     /**
-     * Search users by name (firstName or lastName)
+     * Search users by name (fullName)
      */
     searchUsersByName(name: string): User[] {
         const searchTerm = name.toLowerCase();
         return this.usersSubject.value.filter(user =>
-            user.firstName.toLowerCase().includes(searchTerm) ||
-            user.lastName.toLowerCase().includes(searchTerm)
+            user.fullName.toLowerCase().includes(searchTerm)
         );
     }
 
@@ -214,7 +291,9 @@ export class UserService {
      */
     private saveUsersToStorage(users: User[]) {
         if (isPlatformBrowser(this.platformId)) {
-            localStorage.setItem('users', JSON.stringify(users));
+            // Deduplicate before saving
+            const deduplicatedUsers = this.deduplicateUsers(users);
+            localStorage.setItem('users', JSON.stringify(deduplicatedUsers));
         }
     }
 
@@ -226,12 +305,72 @@ export class UserService {
             const savedUsers = localStorage.getItem('users');
             if (savedUsers) {
                 try {
-                    this.usersSubject.next(JSON.parse(savedUsers));
+                    let users = JSON.parse(savedUsers);
+                    // Migrate old format (firstName/lastName) to new format (fullName)
+                    users = this.migrateUsersToFullName(users);
+                    // Deduplicate users by email (keep first occurrence)
+                    users = this.deduplicateUsers(users);
+                    // Merge with initial users to preserve assignedEmployees
+                    users = this.mergeWithInitialUsers(users);
+                    this.usersSubject.next(users);
+                    console.log('✅ UserService.loadUsersFromStorage - Loaded', users.length, 'users from localStorage:', users.map((u: User) => ({ fullName: u.fullName, email: u.email, hasPassword: !!u.password })));
+                    // Save migrated data back to storage
+                    this.saveUsersToStorage(users);
                 } catch (e) {
                     console.error('Error loading users from storage', e);
+                    // Fallback to initial users
+                    this.usersSubject.next(this.initialUsers);
                 }
+            } else {
+                // No saved data, use initial users
+                console.log('ℹ️ UserService.loadUsersFromStorage - No saved users, using initial users');
+                this.usersSubject.next(this.initialUsers);
+                this.saveUsersToStorage(this.initialUsers);
             }
+        } else {
+            // Server-side rendering, use initial data
+            this.usersSubject.next(this.initialUsers);
         }
+    }
+
+    /**
+     * Migrate users from old format (firstName/lastName) to new format (fullName)
+     */
+    private migrateUsersToFullName(users: User[]): User[] {
+        return users.map(user => {
+            // If user already has fullName, keep it
+            if (user.fullName) {
+                return user;
+            }
+            // If user has firstName/lastName, combine them
+            if ((user as any).firstName || (user as any).lastName) {
+                const firstName = (user as any).firstName || '';
+                const lastName = (user as any).lastName || '';
+                return {
+                    ...user,
+                    fullName: `${firstName} ${lastName}`.trim() || user.email
+                };
+            }
+            // Fallback to email if no name data
+            return {
+                ...user,
+                fullName: user.fullName || user.email
+            };
+        });
+    }
+
+    /**
+     * Remove duplicate users by email
+     */
+    private deduplicateUsers(users: User[]): User[] {
+        const seen = new Map<string, User>();
+        users.forEach(user => {
+            const emailKey = user.email.toLowerCase();
+            if (!seen.has(emailKey)) {
+                seen.set(emailKey, user);
+            }
+        });
+        return Array.from(seen.values());
     }
 
     /**
@@ -247,5 +386,40 @@ export class UserService {
     getDepartments(): string[] {
         const departments = new Set(this.usersSubject.value.map(user => user.department).filter(Boolean) as string[]);
         return Array.from(departments);
+    }
+
+    /**
+     * Check if a user has an active timer session
+     * Status should be "Active" if they have a running timer
+     */
+    hasActiveTimerSession(userId: string): boolean {
+        if (typeof window === 'undefined' || !window.localStorage) return false;
+        
+        try {
+            const timerSession = localStorage.getItem('timerSession');
+            const userSession = localStorage.getItem('user_session');
+            
+            // If there's a timer session and it belongs to this user, they're active
+            if (timerSession && userSession) {
+                const user = JSON.parse(userSession);
+                return user.id === userId;
+            }
+        } catch (error) {
+            console.error('Error checking active timer session:', error);
+        }
+        
+        return false;
+    }
+
+    /**
+     * Get computed status for a user (Active if timer running, otherwise stored status)
+     */
+    getComputedStatus(user: User): 'Active' | 'Inactive' {
+        // If user has an active timer session, they're Active
+        if (this.hasActiveTimerSession(user.id || '')) {
+            return 'Active';
+        }
+        // Otherwise return their stored status
+        return user.status || 'Inactive';
     }
 }

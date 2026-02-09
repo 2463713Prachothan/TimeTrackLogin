@@ -1,6 +1,7 @@
 import { Injectable, signal, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
+import { RegistrationService } from './registration.service';
 
 @Injectable({
   providedIn: 'root'
@@ -8,6 +9,7 @@ import { Router } from '@angular/router';
 export class AuthService {
   private router = inject(Router);
   private platformId = inject(PLATFORM_ID);
+  private registrationService = inject(RegistrationService);
 
   // 1. Hardcoded Admin Data (No registration needed)
   private readonly ADMIN_USER = {
@@ -45,26 +47,54 @@ export class AuthService {
 
     // A. Check Hardcoded Admin
     if (emailLower === this.ADMIN_USER.email && password === this.ADMIN_USER.password) {
-      this.currentUser.set({ ...this.ADMIN_USER });
-      this.saveToStorage(this.ADMIN_USER);
-     // this.navigateToDashboard(this.ADMIN_USER.role);
+      this.currentUser.set({ ...this.ADMIN_USER, id: 'admin' });
+      this.saveToStorage({ ...this.ADMIN_USER, id: 'admin' });
+      console.log('✅ AuthService.login - Admin login successful');
       return true;
     }
 
+    // B. Check Registered Users in localStorage
     const usersJson = localStorage.getItem('users');
     
     if (usersJson) {
-   const users: any[] = JSON.parse(usersJson);
-    const foundUser = users.find(u => 
-        u.email.toLowerCase() === emailLower && u.password === password
-      );
+      const users: any[] = JSON.parse(usersJson);
+      console.log('🔍 AuthService.login - Checking', users.length, 'users for email:', emailLower);
+      
+      const foundUser = users.find(u => {
+        const emailMatch = u.email.toLowerCase() === emailLower;
+        const passwordMatch = u.password === password;
+        if (emailMatch) {
+          console.log(`   Found user "${u.fullName}" with email ${u.email} - Password match: ${passwordMatch}`);
+        }
+        return emailMatch && passwordMatch;
+      });
+      
       if (foundUser) {
-        this.currentUser.set(foundUser);
-        this.saveToStorage(foundUser);
+        // Construct fullName from available data
+        let fullName = foundUser.fullName;
+        if (!fullName) {
+          // Fallback: combine firstName and lastName if they exist
+          const firstName = foundUser.firstName || '';
+          const lastName = foundUser.lastName || '';
+          fullName = `${firstName} ${lastName}`.trim() || foundUser.email;
+        }
+        
+        const userToSet = {
+          ...foundUser,
+          fullName: fullName,
+          id: foundUser.id // Ensure ID is included
+        };
+        this.currentUser.set(userToSet);
+        this.saveToStorage(userToSet);
+        console.log('✅ AuthService.login - User login successful:', { fullName: fullName, email: foundUser.email });
         return true;
+      } else {
+        console.log('❌ AuthService.login - No matching user found or password incorrect');
       }
+    } else {
+      console.warn('⚠️ AuthService.login - No users found in localStorage');
     }
-      return false;
+    return false;
   }
 
 
@@ -72,21 +102,17 @@ export class AuthService {
     // B. Check Registered Users in localStorage
    
   /**
-   * Registers a new user and adds them to the local 'users' array.
+   * Registers a new user as pending approval.
    * Does NOT allow Admin registration.
    */
   register(userData: any) {
     if (isPlatformBrowser(this.platformId)) {
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      // Add to pending registrations for admin approval
+      this.registrationService.addPendingRegistration(userData);
       
-      // Save the new user to the "database"
-      users.push(userData);
-      localStorage.setItem('users', JSON.stringify(users));
-
-      // Auto-login after registration
-      this.currentUser.set(userData);
-      this.saveToStorage(userData);
-      this.navigateToDashboard(userData.role);
+      // Show message and redirect to signin
+      alert('Your registration has been submitted for approval. Please wait for admin to approve your account.');
+      this.router.navigate(['/signin']);
     }
   }
 
@@ -103,15 +129,20 @@ export class AuthService {
     const r = role.toLowerCase();
     
     if (r === 'admin') {
-      this.router.navigate(['/admin']);
+      this.router.navigate(['/admin/users']);
     } else if (r === 'employee') {
-      this.router.navigate(['/employee/dashboardemployee']);
+      this.router.navigate(['/employee/loghours']);
     } else {
-      this.router.navigate(['/manager']);
+      this.router.navigate(['/manager/team-logs']);
     }
   }
 
   logout() {
+    // Clear timer session when logging out
+    if (isPlatformBrowser(this.platformId)) {
+      localStorage.removeItem('timerSession');
+    }
+    
     this.currentUser.set(null);
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem('user_session');

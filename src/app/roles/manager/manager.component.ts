@@ -1,24 +1,22 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnInit, HostListener, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
-import { TeamLogsComponent } from './team-logs/team-logs.component';
-import { TaskManagementComponent } from './task-management/task-management.component';
-import { TeamAnalyticsComponent } from './team-analytics/team-analytics.component';
+import { Router, RouterOutlet, RouterModule } from '@angular/router';
 import { ManagerDataService } from '../../core/services/manager-data.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ProfileModalComponent } from '../../shared/profile-modal/profile-modal.component';
 
 @Component({
   selector: 'app-manager',
   standalone: true,
-  imports: [CommonModule, TeamLogsComponent, TaskManagementComponent, TeamAnalyticsComponent],
+  imports: [CommonModule, RouterOutlet, RouterModule, ProfileModalComponent],
   templateUrl: './manager.component.html',
   styleUrls: ['./manager.component.css']
 })
 export class ManagerComponent implements OnInit {
+  @ViewChild(ProfileModalComponent) profileModal!: ProfileModalComponent;
 
   isDropdownOpen = false;
   user: any = { name: '', role: '', initial: '' };
-  tab: string = 'logs';
 
   // Dashboard metrics
   totalMembers: number = 0;
@@ -35,7 +33,13 @@ export class ManagerComponent implements OnInit {
   ngOnInit() {
     // Subscribe to user data for navbar
     this.dataService.currentUser$.subscribe(userData => {
-      this.user = userData;
+      const fullName = userData.fullName || userData.name || 'Manager';
+      
+      this.user = {
+        name: fullName,
+        role: userData.role,
+        initial: fullName.charAt(0).toUpperCase()
+      };
     });
 
     // Calculate active tasks and completion rate
@@ -45,9 +49,9 @@ export class ManagerComponent implements OnInit {
       this.completionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
     });
 
-    // Get total team members count
-    this.dataService.performance$.subscribe(members => {
-      this.totalMembers = members.length;
+    // Get total team members count - Simple and direct
+    this.dataService.teamMembers$.subscribe(count => {
+      this.totalMembers = count;
     });
 
     // Calculate today's total hours from logs
@@ -70,7 +74,20 @@ export class ManagerComponent implements OnInit {
     this.isDropdownOpen = false;
   }
 
-  // Handle user logout
+  /**
+   * Open the profile modal
+   */
+  openProfile() {
+    this.isDropdownOpen = false; // Close dropdown
+    if (this.profileModal) {
+      this.profileModal.openProfile();
+    }
+  }
+
+  // Navigate to different sections
+  navigateTo(section: string) {
+    this.router.navigate(['/manager', section]);
+  }
   onLogout() {
     this.dataService.clearUser();
     this.authService.logout();

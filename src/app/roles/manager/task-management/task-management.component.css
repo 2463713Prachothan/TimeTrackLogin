@@ -8,6 +8,7 @@
 
 .task-item:hover {
   border-color: #8cc63f !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
 .modal-backdrop {
@@ -16,17 +17,323 @@
 
 .form-control:focus, .form-select:focus {
   border-color: #8cc63f;
-  box-shadow: 0 0 0 0.25rem rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 0.25rem rgba(140, 198, 63, 0.1);
 }
 
 .btn-primary {
   background-color: #8cc63f;
   border-color: #8cc63f;
-  transition: background 0.2s;
-
+  transition: all 0.2s ease;
 }
 
 .btn-primary:hover {
-  color: #8cc63f;
-  background-color: white;
+  background-color: #7ab82f;
+  border-color: #7ab82f;
+  box-shadow: 0 4px 12px rgba(140, 198, 63, 0.3);
+}
+
+/* --- Tabs Navigation --- */
+.tabs-navigation {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.tab-button {
+    padding: 12px 20px;
+    border: none;
+    background: none;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    position: relative;
+}
+
+.tab-button:hover {
+    color: #1e293b;
+    background-color: #f1f5f9;
+}
+
+.tab-button.active {
+    color: #8cc63f;
+    border-bottom-color: #8cc63f;
+    background: none;
+}
+
+.tab-button i {
+    font-size: 16px;
+}
+
+.notification-badge {
+    display: inline-block;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    margin-left: 8px;
+}
+
+/* --- Task ID Badge --- */
+.task-id-badge {
+    display: inline-block;
+    background: #f0fdf4;
+    color: #4a7c59;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* --- Submission Table --- */
+.table-responsive {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead {
+    background-color: #f1f5f9;
+}
+
+.table th {
+    padding: 12px 16px;
+    font-weight: 600;
+    color: #64748b;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+.table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.table tbody tr.table-light {
+    background-color: #eff6ff;
+}
+
+/* --- Badge Styles --- */
+.badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-success {
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+.badge-danger {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-info {
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.badge-secondary {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+/* --- Submission Details --- */
+.submission-details {
+    border-left: 4px solid #8cc63f;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    font-size: 14px;
+}
+
+.detail-row strong {
+    color: #1e293b;
+    font-weight: 600;
+    min-width: 120px;
+}
+
+.detail-row span,
+.detail-row p {
+    color: #64748b;
+    text-align: right;
+    flex: 1;
+}
+
+/* --- Approval Form --- */
+.approval-action,
+.reassign-date,
+.approval-comments {
+    margin-bottom: 16px;
+}
+
+.approval-action label,
+.reassign-date label,
+.approval-comments label {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.form-control,
+.form-select {
+    padding: 12px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.form-control:focus,
+.form-select:focus {
+    outline: none;
+    border-color: #8cc63f;
+    box-shadow: 0 0 0 3px rgba(140, 198, 63, 0.1);
+}
+
+.form-control::placeholder {
+    color: #cbd5e1;
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* --- No Data Messages --- */
+.text-center.py-5 {
+    padding: 60px 20px !important;
+}
+
+.text-center i {
+    color: #cbd5e1;
+    margin-bottom: 16px;
+}
+
+.text-center p {
+    color: #94a3b8;
+    font-size: 16px;
+    margin: 0;
+}
+
+/* --- Modal Enhancements --- */
+.modal-header {
+    padding: 24px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.modal-header .btn-close {
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.modal-header .btn-close:hover {
+    opacity: 1;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #f1f5f9;
+    gap: 8px;
+}
+
+.modal-footer .btn {
+    margin: 0;
+}
+
+/* --- Button Styles --- */
+.btn-outline-primary {
+    color: #8cc63f;
+    border-color: #8cc63f;
+}
+
+.btn-outline-primary:hover {
+    background-color: #8cc63f;
+    color: white;
+}
+
+.btn-outline-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-warning {
+    background-color: #f59e0b;
+    color: white;
+    border-color: #f59e0b;
+}
+
+.btn-warning:hover {
+    background-color: #d97706;
+    border-color: #d97706;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 12px;
+    }
+    
+    .table th,
+    .table td {
+        padding: 10px 8px;
+    }
+    
+    .tabs-navigation {
+        flex-wrap: wrap;
+    }
+    
+    .tab-button {
+        flex: 1;
+        justify-content: center;
+    }
 }

@@ -1,5 +1,7 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { BehaviorSubject, Observable, interval } from 'rxjs';
+import { tap, switchMap, map } from 'rxjs/operators';
+import { ApiService } from './api.service';
 
 export interface TimeLog {
     id?: string;
@@ -7,106 +9,123 @@ export interface TimeLog {
     employeeId?: string;
     date: string;
     startTime: string;
-    endTime: string;
+    endTime?: string;  // Optional - for ongoing logs
     break: number; // in minutes
     totalHours: number;
+    currentHours?: number; // Real-time hours for ongoing logs
     description?: string;
-    status?: 'Pending' | 'Approved' | 'Rejected';
+    status?: 'Pending' | 'Approved' | 'Rejected' | 'In Progress';
     createdDate?: Date;
+    isLive?: boolean; // Indicates if this is a live/ongoing log
 }
 
 @Injectable({
     providedIn: 'root'
 })
 export class TimeLogService {
+    private apiService = inject(ApiService);
 
-    private initialLogs: TimeLog[] = [
-        {
-            id: '1',
-            employee: 'Akash',
-            date: 'Jan 12',
-            startTime: '09:00',
-            endTime: '17:30',
-            break: 60,
-            totalHours: 7.50,
-            status: 'Approved'
-        },
-        {
-            id: '2',
-            employee: 'Chandana',
-            date: 'Jan 12',
-            startTime: '08:30',
-            endTime: '17:00',
-            break: 60,
-            totalHours: 7.50,
-            status: 'Approved'
-        },
-        {
-            id: '3',
-            employee: 'Prachothan',
-            date: 'Jan 12',
-            startTime: '09:00',
-            endTime: '18:30',
-            break: 60,
-            totalHours: 8.50,
-            status: 'Pending'
-        },
-        {
-            id: '4',
-            employee: 'Akash',
-            date: 'Jan 11',
-            startTime: '09:00',
-            endTime: '18:00',
-            break: 60,
-            totalHours: 8.00,
-            status: 'Approved'
-        },
-        {
-            id: '5',
-            employee: 'Chandana',
-            date: 'Jan 11',
-            startTime: '09:00',
-            endTime: '17:00',
-            break: 30,
-            totalHours: 7.50,
-            status: 'Approved'
-        },
-        {
-            id: '6',
-            employee: 'Prachothan',
-            date: 'Jan 10',
-            startTime: '10:00',
-            endTime: '19:00',
-            break: 60,
-            totalHours: 8.00,
-            status: 'Approved'
-        },
-        {
-            id: '7',
-            employee: 'Gopi Krishna',
-            date: 'Jan 12',
-            startTime: '10:00',
-            endTime: '19:00',
-            break: 60,
-            totalHours: 8.00,
-            status: 'Pending'
-        },
-        {
-            id: '8',
-            employee: 'Umesh',
-            date: 'Jan 12',
-            startTime: '08:00',
-            endTime: '16:00',
-            break: 60,
-            totalHours: 7.00,
-            status: 'Approved'
-        }
-    ];
+    private initialLogs: TimeLog[] = [];
 
     private logsSubject = new BehaviorSubject<TimeLog[]>(this.initialLogs);
     logs$ = this.logsSubject.asObservable();
+    private refreshInterval = 5000; // Refresh every 5 seconds
 
-    constructor() { }
+    constructor() {
+        this.loadLogs();
+        this.startRealtimeUpdates();
+    }
+
+    /**
+     * Start real-time updates of logs with live hour calculations
+     */
+    private startRealtimeUpdates(): void {
+        interval(this.refreshInterval).subscribe(() => {
+            const currentLogs = this.logsSubject.value;
+            const updatedLogs = this.calculateLiveHours(currentLogs);
+            this.logsSubject.next(updatedLogs);
+        });
+    }
+
+    /**
+     * Calculate live hours for ongoing logs
+     */
+    private calculateLiveHours(logs: TimeLog[]): TimeLog[] {
+        const now = new Date();
+        const currentTimeStr = now.toTimeString().slice(0, 5); // HH:MM format
+        
+        return logs.map(log => {
+            if (log.isLive && log.status === 'In Progress') {
+                const hours = this.calculateHours(log.startTime, currentTimeStr, log.break);
+                return {
+                    ...log,
+                    currentHours: Math.max(0, hours),
+                    totalHours: Math.max(0, hours)
+                };
+            }
+            return log;
+        });
+    }
+
+    /**
+     * Load time logs from localStorage, API, or initialLogs
+     */
+    private loadLogs(): void {
+        // Try to load from localStorage first (persistent storage)
+        const savedLogs = this.loadLogsFromStorage();
+        if (savedLogs && savedLogs.length > 0) {
+            this.logsSubject.next(savedLogs);
+            return;
+        }
+
+        // If no localStorage data, try API
+        this.apiService.getTimeLogs().subscribe({
+            next: (logs: any[]) => {
+                if (logs && logs.length > 0) {
+                    this.logsSubject.next(logs);
+                    this.saveLogsToStorage(logs);
+                } else {
+                    // Already set initial logs in BehaviorSubject constructor
+                    this.saveLogsToStorage(this.initialLogs);
+                }
+            },
+            error: (err) => {
+                console.error('Error loading time logs:', err);
+                // Already set initial logs in BehaviorSubject constructor
+                this.saveLogsToStorage(this.initialLogs);
+            }
+        });
+    }
+
+    /**
+     * Load time logs from localStorage
+     */
+    private loadLogsFromStorage(): TimeLog[] {
+        if (typeof window === 'undefined' || !window.localStorage) {
+            return [];
+        }
+        try {
+            const stored = localStorage.getItem('timeLogs');
+            return stored ? JSON.parse(stored) : [];
+        } catch (error) {
+            console.error('Error loading logs from storage:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Save time logs to localStorage
+     */
+    private saveLogsToStorage(logs: TimeLog[]): void {
+        if (typeof window === 'undefined' || !window.localStorage) {
+            return;
+        }
+        try {
+            localStorage.setItem('timeLogs', JSON.stringify(logs));
+        } catch (error) {
+            console.error('Error saving logs to storage:', error);
+        }
+    }
 
     /**
      * Get all time logs
@@ -137,18 +156,34 @@ export class TimeLogService {
     }
 
     /**
-     * Add a new time log
+     * Add a new time log (creates via API and persists to localStorage)
      */
     addLog(log: TimeLog) {
         log.id = log.id || `log_${Date.now()}`;
         log.createdDate = new Date();
         log.status = log.status || 'Pending';
-        const currentLogs = this.logsSubject.value;
-        this.logsSubject.next([...currentLogs, log]);
+        
+        // Call API to create time log
+        this.apiService.createTimeLog(log).subscribe({
+            next: (newLog) => {
+                const currentLogs = this.logsSubject.value;
+                const updatedLogs = [...currentLogs, newLog];
+                this.logsSubject.next(updatedLogs);
+                this.saveLogsToStorage(updatedLogs);
+            },
+            error: (err) => {
+                console.error('Error creating time log:', err);
+                // Fallback: add locally and persist to localStorage
+                const currentLogs = this.logsSubject.value;
+                const updatedLogs = [...currentLogs, log];
+                this.logsSubject.next(updatedLogs);
+                this.saveLogsToStorage(updatedLogs);
+            }
+        });
     }
 
     /**
-     * Update an existing time log
+     * Update an existing time log (updates via API and persists to localStorage)
      */
     updateLog(id: string, updatedLog: Partial<TimeLog>) {
         const currentLogs = this.logsSubject.value;
@@ -159,19 +194,42 @@ export class TimeLogService {
                 const startTime = updatedLog.startTime || currentLogs[index].startTime;
                 const endTime = updatedLog.endTime || currentLogs[index].endTime;
                 const breakTime = updatedLog.break !== undefined ? updatedLog.break : currentLogs[index].break;
-                updatedLog.totalHours = this.calculateHours(startTime, endTime, breakTime);
+                
+                // Only calculate if both startTime and endTime are available
+                if (startTime && endTime) {
+                    updatedLog.totalHours = this.calculateHours(startTime, endTime, breakTime);
+                }
             }
-            currentLogs[index] = { ...currentLogs[index], ...updatedLog };
-            this.logsSubject.next([...currentLogs]);
+            const updated = { ...currentLogs[index], ...updatedLog };
+            
+            // Call API to update time log
+            this.apiService.updateTimeLog(id, updated).subscribe({
+                next: (result) => {
+                    currentLogs[index] = result;
+                    const updatedLogs = [...currentLogs];
+                    this.logsSubject.next(updatedLogs);
+                    this.saveLogsToStorage(updatedLogs);
+                },
+                error: (err) => {
+                    console.error('Error updating time log:', err);
+                    // Fallback: update locally and persist to localStorage
+                    currentLogs[index] = updated;
+                    const updatedLogs = [...currentLogs];
+                    this.logsSubject.next(updatedLogs);
+                    this.saveLogsToStorage(updatedLogs);
+                }
+            });
         }
     }
 
     /**
-     * Delete a time log
+     * Delete a time log (removes from memory and localStorage)
      */
     deleteLog(id: string) {
         const currentLogs = this.logsSubject.value;
-        this.logsSubject.next(currentLogs.filter(log => log.id !== id));
+        const updatedLogs = currentLogs.filter(log => log.id !== id);
+        this.logsSubject.next(updatedLogs);
+        this.saveLogsToStorage(updatedLogs);
     }
 
     /**
@@ -198,6 +256,7 @@ export class TimeLogService {
 
     /**
      * Calculate hours between start and end time minus break
+     * Caps at maximum 24 hours per day
      */
     private calculateHours(startTime: string, endTime: string, breakMinutes: number): number {
         const [startHour, startMin] = startTime.split(':').map(Number);
@@ -206,8 +265,22 @@ export class TimeLogService {
         const startTotalMin = startHour * 60 + startMin;
         const endTotalMin = endHour * 60 + endMin;
 
-        const workingMinutes = endTotalMin - startTotalMin - breakMinutes;
-        return workingMinutes / 60;
+        // Handle midnight crossing (if end time is before start time on same day display)
+        let workingMinutes = endTotalMin - startTotalMin - breakMinutes;
+        
+        // If working minutes is negative, add 24 hours (crossed midnight)
+        if (workingMinutes < 0) {
+            workingMinutes += 24 * 60;
+        }
+
+        let hours = workingMinutes / 60;
+        
+        // Cap at 24 hours maximum per day
+        if (hours > 24) {
+            hours = 24;
+        }
+        
+        return hours;
     }
 
     /**
@@ -215,5 +288,69 @@ export class TimeLogService {
      */
     getLogCountByStatus(status: string): number {
         return this.logsSubject.value.filter(log => log.status === status).length;
+    }
+
+    /**
+     * Save daily time log from timer session
+     * Called when employee logs out
+     * Caps daily hours at 24 hours and ends at midnight (12:00 AM)
+     */
+    saveDailyTimeLog(): void {
+        const timerSession = localStorage.getItem('timerSession');
+        if (!timerSession) return;
+
+        try {
+            const session = JSON.parse(timerSession);
+            const sessionStartTime = new Date(session.startTime);
+            let currentTime = new Date();
+            
+            // Check if we've crossed into the next day
+            const sessionDate = new Date(sessionStartTime);
+            sessionDate.setHours(0, 0, 0, 0);
+            
+            const currentDate = new Date(currentTime);
+            currentDate.setHours(0, 0, 0, 0);
+            
+            // If we're on a different day, cap the log at midnight of the session day
+            if (currentDate.getTime() > sessionDate.getTime()) {
+                currentTime = new Date(sessionDate);
+                currentTime.setDate(currentTime.getDate() + 1); // Set to midnight of next day
+                currentTime.setHours(0, 0, 0, 0);
+            }
+            
+            // Calculate total hours
+            const totalSeconds = Math.floor((currentTime.getTime() - sessionStartTime.getTime()) / 1000);
+            let totalHours = totalSeconds / 3600;
+            
+            // Cap at 24 hours maximum per day
+            if (totalHours > 24) {
+                totalHours = 24;
+            }
+
+            // Get employee name from user session
+            const userSession = localStorage.getItem('user_session');
+            const userData = userSession ? JSON.parse(userSession) : {};
+            const employeeName = userData.fullName || userData.name || 'Employee';
+
+            // Create time log
+            const newLog: TimeLog = {
+                id: Date.now().toString(),
+                employee: employeeName,
+                date: sessionStartTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+                startTime: sessionStartTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+                endTime: currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+                break: 0,
+                totalHours: totalHours,
+                status: 'Pending'
+            };
+
+            // Add the log
+            this.addLog(newLog);
+
+            // Clear the timer session
+            localStorage.removeItem('timerSession');
+        } catch (error) {
+            console.error('Error saving daily time log:', error);
+        }
     }
 }
