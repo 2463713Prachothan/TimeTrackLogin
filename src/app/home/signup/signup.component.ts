@@ -66,27 +66,48 @@ export class SignupComponent {
   // Handles form submission
   onSubmit() {
     if (this.signupForm.valid) {
-      const userData:any = {
-        fullName: this.signupForm.value.fullName,
+      const userData: any = {
+        name: this.signupForm.value.fullName,
         email: this.signupForm.value.email.toLowerCase(),
         role: this.signupForm.value.role,
         department: this.signupForm.value.department,
         password: this.signupForm.value.password
       };
 
-      // Register user
-      this.authService.register(userData);
+      // Register user via API
+      this.authService.register(userData).subscribe({
+        next: (response) => {
 
-      // If the person just registering is a Manager, update the navbar name
-    if (userData.role === 'Manager') {
-      this.managerDataService.setUser(userData.fullName, userData.role);
-    }
+          console.log('Registration successful:', response);
+          // If the person just registering is a Manager, update the navbar name
+          if (userData.role === 'Manager') {
+            this.managerDataService.setUser(userData.name, userData.role);
+          }
 
-      // Show soft notification
-      this.notificationService.success(`Account created successfully for ${userData.fullName}!`);
+          // Show soft notification
+          this.notificationService.success(`Account created successfully for ${userData.name}!`);
 
-      // Navigate to signin without waiting for alert
-      this.router.navigate(['/signin']);
+          // Navigate to signin
+          this.router.navigate(['/signin']);
+        },
+        error: (err) => {
+          console.error('Registration failed:', err);
+          // Parse ASP.NET Core validation errors
+          if (err.error?.errors) {
+            const validationErrors = err.error.errors;
+            const messages = Object.keys(validationErrors)
+              .map(key => {
+                const val = validationErrors[key];
+                return Array.isArray(val) ? val.join(', ') : String(val);
+              })
+              .join(' | ');
+            this.notificationService.error(messages);
+          } else {
+            const message = err.error?.title || err.error?.message || 'Registration failed. Please try again.';
+            this.notificationService.error(message);
+          }
+        }
+      });
     } else {
       this.signupForm.markAllAsTouched();
     }

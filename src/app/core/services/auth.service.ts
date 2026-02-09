@@ -1,6 +1,8 @@
 import { Injectable, signal, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -8,6 +10,9 @@ import { Router } from '@angular/router';
 export class AuthService {
   private router = inject(Router);
   private platformId = inject(PLATFORM_ID);
+  private http = inject(HttpClient);
+
+  private readonly API_URL = 'https://localhost:7172/api/Auth';
 
   // 1. Hardcoded Admin Data (No registration needed)
   private readonly ADMIN_USER = {
@@ -36,58 +41,26 @@ export class AuthService {
   }
 
   /**
-   * Main Login Logic: Checks Admin first, then LocalStorage users.
+   * Login via API. Returns an Observable with the server response.
    */
-  login(email: string, password: string): boolean {
-    if (!isPlatformBrowser(this.platformId)) return false;
-
-    const emailLower = email.toLowerCase();
-
-    // A. Check Hardcoded Admin
-    if (emailLower === this.ADMIN_USER.email && password === this.ADMIN_USER.password) {
-      this.currentUser.set({ ...this.ADMIN_USER });
-      this.saveToStorage(this.ADMIN_USER);
-     // this.navigateToDashboard(this.ADMIN_USER.role);
-      return true;
-    }
-
-    const usersJson = localStorage.getItem('users');
-    
-    if (usersJson) {
-   const users: any[] = JSON.parse(usersJson);
-    const foundUser = users.find(u => 
-        u.email.toLowerCase() === emailLower && u.password === password
-      );
-      if (foundUser) {
-        this.currentUser.set(foundUser);
-        this.saveToStorage(foundUser);
-        return true;
-      }
-    }
-      return false;
+  login(email: string, password: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/login`, { email, password });
   }
 
+  /**
+   * Sets the current user after a successful login response.
+   */
+  setCurrentUser(user: any) {
+    this.currentUser.set(user);
+    this.saveToStorage(user);
+  }
 
-
-    // B. Check Registered Users in localStorage
-   
   /**
    * Registers a new user and adds them to the local 'users' array.
    * Does NOT allow Admin registration.
    */
-  register(userData: any) {
-    if (isPlatformBrowser(this.platformId)) {
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      
-      // Save the new user to the "database"
-      users.push(userData);
-      localStorage.setItem('users', JSON.stringify(users));
-
-      // Auto-login after registration
-      this.currentUser.set(userData);
-      this.saveToStorage(userData);
-      this.navigateToDashboard(userData.role);
-    }
+  register(userData: any): Observable<any> {
+    return this.http.post(`${this.API_URL}/register`, userData);
   }
 
   private saveToStorage(user: any) {
@@ -101,7 +74,7 @@ export class AuthService {
   navigateToDashboard(role: string) {
     if (!role) return;
     const r = role.toLowerCase();
-    
+
     if (r === 'admin') {
       this.router.navigate(['/admin']);
     } else if (r === 'employee') {
@@ -124,4 +97,3 @@ export class AuthService {
     return this.currentUser() !== null;
   }
 }
-    
