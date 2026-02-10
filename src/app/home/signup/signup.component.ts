@@ -74,40 +74,19 @@ export class SignupComponent {
         password: this.signupForm.value.password
       };
 
-      // Register user via API
-      this.authService.registerAsync(userData).subscribe({
-        next: (response: any) => {
+      // Register user via local storage flow
+      this.authService.register(userData);
 
-          console.log('Registration successful:', response);
-          // If the person just registering is a Manager, update the navbar name
-          if (userData.role === 'Manager') {
-            this.managerDataService.setUser(userData.name, userData.role);
-          }
+      // If the person just registering is a Manager, update the navbar name
+      if (userData.role === 'Manager') {
+        this.managerDataService.setUser(userData.name, userData.role);
+      }
 
-          // Show soft notification
-          this.notificationService.success(`Account created successfully for ${userData.name}!`);
+      // Show soft notification
+      this.notificationService.success(`Account created successfully for ${userData.name}!`);
 
-          // Navigate to signin
-          this.router.navigate(['/signin']);
-        },
-        error: (err: any) => {
-          console.error('Registration failed:', err);
-          // Parse ASP.NET Core validation errors
-          if (err.error?.errors) {
-            const validationErrors = err.error.errors;
-            const messages = Object.keys(validationErrors)
-              .map(key => {
-                const val = validationErrors[key];
-                return Array.isArray(val) ? val.join(', ') : String(val);
-              })
-              .join(' | ');
-            this.notificationService.error(messages);
-          } else {
-            const message = err.error?.title || err.error?.message || 'Registration failed. Please try again.';
-            this.notificationService.error(message);
-          }
-        }
-      });
+      // Navigate to signin
+      this.router.navigate(['/signin']);
     } else {
       this.signupForm.markAllAsTouched();
     }
