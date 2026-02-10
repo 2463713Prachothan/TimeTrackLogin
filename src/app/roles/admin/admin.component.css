@@ -153,12 +153,20 @@
     border-radius: 12px;
     padding: 24px;
     display: flex;
+    flex-direction: column;
     justify-content: space-between;
-    align-items: center;
     box-shadow: 0 4px 12px rgba(140, 198, 63, 0.06);
     /* Subtle green-tinted shadow */
     border: 1px solid #e2eecf;
     /* Soft green border */
+    min-height: 160px;
+}
+
+.stat-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
 }
 
 .stat-info span {
@@ -166,7 +174,6 @@
     font-size: 14px;
     font-weight: 500;
     display: block;
-    margin-bottom: 8px;
 }
 
 .stat-info h2 {
@@ -204,9 +211,111 @@
     /* Brand Purple */
 }
 
+.icon-red {
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
 .icon-yellow {
     background-color: #fffbeb;
     color: #f59e0b;
+}
+
+/* Card Buttons Styling */
+.card-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.btn-status {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #e2eecf;
+    background: #f9faf7;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.btn-status.active-btn {
+    color: #059669;
+    border-color: #059669;
+    background: #ecfdf5;
+}
+
+.btn-status.inactive-btn {
+    color: #dc2626;
+    border-color: #dc2626;
+    background: #fee2e2;
+}
+
+.btn-status:hover {
+    transform: translateY(-2px);
+}
+
+.btn-status.active {
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Clickable Cards */
+.stat-card.clickable {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.stat-card.clickable:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(140, 198, 63, 0.15);
+    border-color: #8cc63f;
+}
+
+.stat-card.clickable.active {
+    background: #f0fdf4;
+    border-color: #8cc63f;
+    box-shadow: 0 6px 16px rgba(140, 198, 63, 0.2);
+}
+
+/* Filter Info Display */
+.filter-info {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    color: #166534;
+    font-weight: 500;
+}
+
+.filter-info strong {
+    color: #059669;
+    font-weight: 700;
+}
+
+.close-filter {
+    background: transparent;
+    border: none;
+    color: #059669;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.close-filter:hover {
+    background: #c1fae8;
 }
 
 /* Navigation Styling - Updated for Green/Purple Theme */
@@ -216,9 +325,15 @@
     /* Centers the tabs in the middle of the row */
     align-items: center;
     gap: 12px;
-    margin: 30px 0;
-    /* Adds spacing above and below the row */
-    width: 100%;
+    margin: 0 0 30px 0;
+    /* Adds spacing below the row */
+    width: calc(100% - 60px);
+    position: sticky;
+    top: 70px;
+    background-color: #f3faeb;
+    z-index: 999;
+    padding: 15px 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .pill-nav button {

@@ -1,4 +1,25 @@
 <div class="container-fluid p-0">
+  <!-- Tab Navigation -->
+  <div class="tabs-navigation mb-4">
+    <button 
+      class="tab-button" 
+      [class.active]="activeTab === 'Manage Tasks'"
+      (click)="activeTab = 'Manage Tasks'">
+      <i class="fas fa-tasks"></i> Manage Tasks
+    </button>
+    <button 
+      class="tab-button" 
+      [class.active]="activeTab === 'Submissions'"
+      (click)="activeTab = 'Submissions'">
+      <i class="fas fa-file-check"></i> Task Submissions
+      @if (getPendingSubmissionsCount() > 0) {
+      <span class="notification-badge">{{ getPendingSubmissionsCount() }}</span>
+      }
+    </button>
+  </div>
+
+  <!-- Manage Tasks Tab -->
+  @if (activeTab === 'Manage Tasks') {
   <div class="row g-3 mb-4">
     <div class="col-md-4">
       <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
@@ -44,73 +65,335 @@
     </div>
 
     <div class="list-group list-group-flush">
-  <div class="card border mb-3 p-3 shadow-sm task-item" *ngFor="let task of tasks; let i = index">
-    <div class="d-flex justify-content-between align-items-start">
-      <div class="d-flex">
-        <div class="me-3 mt-1">
-          <i class="bi" [ngClass]="{
-            'bi-check-circle-fill text-success': task.status === 'Completed',
-            'bi-play-circle-fill text-primary': task.status === 'In Progress',
-            'bi-dash-circle text-muted': task.status === 'Pending'
-          }"></i>
-        </div>
-        <div>
-          <h6 class="fw-bold mb-1">{{ task.title }}</h6>
-          
-          <span class="badge rounded-pill mb-2" [ngClass]="{
-            'bg-success-subtle text-success': task.status === 'Completed',
-            'bg-primary-subtle text-primary': task.status === 'In Progress',
-            'bg-light text-dark border': task.status === 'Pending'
-          }">{{ task.status }}</span>
-          
-          <p class="small text-muted mb-1">{{ task.description }}</p>
-          <small class="text-muted">Assigned to: {{ task.assignedTo }} • Est. {{ task.hours }} hours</small>
+      @for (task of tasks; track task.id) {
+      <div class="card border mb-3 p-3 shadow-sm task-item">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="d-flex flex-grow-1">
+            <div class="me-3 mt-1">
+              <i class="bi" [ngClass]="{
+                'bi-check-circle-fill text-success': task.status === 'Completed',
+                'bi-play-circle-fill text-primary': task.status === 'In Progress',
+                'bi-dash-circle text-muted': task.status === 'Pending'
+              }"></i>
+            </div>
+            <div class="flex-grow-1">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <h6 class="fw-bold mb-0">{{ task.title }}</h6>
+                <span class="task-id-badge">#{{ task.taskId }}</span>
+              </div>
+              
+              <div class="mb-2">
+                <span class="badge rounded-pill me-2" [ngClass]="{
+                  'bg-success-subtle text-success': task.status === 'Completed',
+                  'bg-primary-subtle text-primary': task.status === 'In Progress',
+                  'bg-light text-dark border': task.status === 'Pending'
+                }">{{ task.status }}</span>
+                
+                <span class="badge rounded-pill" [ngClass]="getPriorityClass(task.priority)">
+                  {{ task.priority }} Priority
+                </span>
+              </div>
+              
+              <p class="small text-muted mb-1">{{ task.description }}</p>
+              <small class="text-muted">
+                <strong>Assigned to:</strong>
+                <span class="badge bg-info-subtle text-info me-1">{{ task.assignedTo }}</span>
+                • Est. {{ task.hours }} hours
+                @if (task.dueDate) {
+                • Due: {{ task.dueDate | date: 'MMM dd, yyyy' }}
+                }
+              </small>
+            </div>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary btn-sm border-0" (click)="openEditModal(task)">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-outline-danger btn-sm border-0" (click)="deleteTask(task)">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </div>
         </div>
       </div>
-      <button class="btn btn-outline-danger btn-sm border-0" (click)="deleteTask(i)">
-        <i class="bi bi-trash3"></i>
-      </button>
+      }
+      @if (tasks.length === 0) {
+      <div class="text-center py-5">
+        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+        <p class="text-muted">No tasks created yet</p>
+      </div>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- Task Submissions Tab -->
+  @if (activeTab === 'Submissions') {
+  <div class="card border-0 shadow-sm p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h5 class="fw-bold mb-0">Task Submissions</h5>
+      <span class="badge bg-danger" *ngIf="getPendingSubmissionsCount() > 0">
+        {{ getPendingSubmissionsCount() }} Pending
+      </span>
+    </div>
+
+    @if (taskSubmissions.length > 0) {
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead class="table-light">
+          <tr>
+            <th>Employee</th>
+            <th>Task</th>
+            <th>Task ID</th>
+            <th>Completion</th>
+            <th>Hours</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Submitted</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (submission of taskSubmissions; track submission.id) {
+          <tr [class.table-light]="submission.approvalStatus === 'Pending'">
+            <td class="fw-bold">{{ submission.submittedBy }}</td>
+            <td>{{ submission.taskTitle }}</td>
+            <td><span class="task-id-badge">#{{ submission.taskId }}</span></td>
+            <td>
+              <span [class]="'badge ' + getCompletionStatusClass(submission.completionStatus)">
+                {{ submission.completionStatus }}
+              </span>
+            </td>
+            <td>{{ submission.hoursSpent }} hrs</td>
+            <td>
+              <span [class]="'badge ' + getPriorityClass(submission.priority)">
+                {{ submission.priority }}
+              </span>
+            </td>
+            <td>
+              <span [class]="'badge ' + getStatusClass(submission.approvalStatus)">
+                {{ submission.approvalStatus }}
+              </span>
+            </td>
+            <td class="small text-muted">
+              {{ submission.submittedDate | date: 'MMM dd, yyyy HH:mm' }}
+            </td>
+            <td>
+              <button 
+                class="btn btn-sm btn-outline-primary"
+                (click)="openApprovalModal(submission)"
+                [disabled]="submission.approvalStatus !== 'Pending'">
+                <i class="fas fa-eye"></i> Review
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <div class="text-center py-5">
+      <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+      <p class="text-muted">No submissions to review</p>
+    </div>
+    }
+  </div>
+  }
+</div>
+
+<!-- Create Task Modal -->
+<div class="modal-backdrop fade show" *ngIf="showModal"></div>
+<div class="modal fade show d-block" *ngIf="showModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4 p-2">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="fw-bold">New Task</h5>
+        <button type="button" class="btn-close" (click)="showModal = false"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label small text-muted">Task Title</label>
+          <input type="text" class="form-control rounded-3" [(ngModel)]="newTask.title" placeholder="Enter task title">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small text-muted">Description</label>
+          <textarea class="form-control rounded-3" [(ngModel)]="newTask.description" rows="3"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small text-muted">Assign To</label>
+          <select class="form-select rounded-3" [(ngModel)]="newTask.assignedTo">
+            <option value="">Select Team Member</option>
+            @for (member of teamMembers; track member) {
+            <option [value]="member">{{ member }}</option>
+            }
+          </select>
+        </div>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label small text-muted">Estimated Hours</label>
+            <input type="number" class="form-control rounded-3" [(ngModel)]="newTask.hours" min="0" step="0.5">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label small text-muted">Priority</label>
+            <select class="form-select rounded-3" [(ngModel)]="newTask.priority">
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label small text-muted">Due Date</label>
+            <input type="date" class="form-control rounded-3" [(ngModel)]="newTask.dueDate">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-light px-4" (click)="showModal = false">Cancel</button>
+        <button class="btn btn-primary px-4 fw-bold" (click)="addTask()">Create Task</button>
+      </div>
     </div>
   </div>
 </div>
-  </div>
 
-  <div class="modal-backdrop fade show" *ngIf="showModal"></div>
-  <div class="modal fade show d-block" *ngIf="showModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content border-0 shadow-lg rounded-4 p-2">
-        <div class="modal-header border-0 pb-0">
-          <h5 class="fw-bold">New Task</h5>
-          <button type="button" class="btn-close" (click)="showModal = false"></button>
+<!-- Edit Task Modal -->
+<div class="modal-backdrop fade show" *ngIf="showEditModal"></div>
+<div class="modal fade show d-block" *ngIf="showEditModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4 p-2">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="fw-bold">Edit Task</h5>
+        <button type="button" class="btn-close" (click)="closeEditModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label small text-muted">Task Title</label>
+          <input type="text" class="form-control rounded-3" [(ngModel)]="editTask.title" placeholder="Enter task title">
         </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label small text-muted">Task Title</label>
-            <input type="text" class="form-control rounded-3" [(ngModel)]="newTask.title" placeholder="Enter task title">
-          </div>
-          <div class="mb-3">
-            <label class="form-label small text-muted">Description</label>
-            <textarea class="form-control rounded-3" [(ngModel)]="newTask.description" rows="3"></textarea>
-          </div>
-          <div class="row">
-          <div class="col-md-6 mb-3">
+        <div class="mb-3">
+          <label class="form-label small text-muted">Description</label>
+          <textarea class="form-control rounded-3" [(ngModel)]="editTask.description" rows="3"></textarea>
+        </div>
+        <div class="mb-3">
           <label class="form-label small text-muted">Assign To</label>
-          <select class="form-select rounded-3" [(ngModel)]="newTask.assignedTo">
-            <option *ngFor="let member of teamMembers" [value]="member">
-            {{ member }}
-              </option>
+          <select class="form-select rounded-3" [(ngModel)]="editTask.assignedTo">
+            <option value="">Select Team Member</option>
+            @for (member of teamMembers; track member) {
+            <option [value]="member">{{ member }}</option>
+            }
           </select>
-          </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label small text-muted">Estimated Hours</label>
-              <input type="number" class="form-control rounded-3" [(ngModel)]="newTask.hours">
-            </div>
+        </div>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label small text-muted">Estimated Hours</label>
+            <input type="number" class="form-control rounded-3" [(ngModel)]="editTask.hours" min="0" step="0.5">
           </div>
         </div>
-        <div class="modal-footer border-0 pt-0">
-          <button class="btn btn-light px-4" (click)="showModal = false">Cancel</button>
-          <button class="btn btn-primary px-4 fw-bold" (click)="addTask()">Create Task</button>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label small text-muted">Status</label>
+            <select class="form-select rounded-3" [(ngModel)]="editTask.status">
+              <option value="Pending">Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label small text-muted">Priority</label>
+            <select class="form-select rounded-3" [(ngModel)]="editTask.priority">
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
         </div>
+        <div class="mb-3">
+          <label class="form-label small text-muted">Due Date</label>
+          <input type="date" class="form-control rounded-3" [(ngModel)]="editTask.dueDate">
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-light px-4" (click)="closeEditModal()">Cancel</button>
+        <button class="btn btn-primary px-4 fw-bold" (click)="saveEditTask()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Submission Approval Modal -->
+<div class="modal-backdrop fade show" *ngIf="showApprovalModal && selectedSubmission"></div>
+<div class="modal fade show d-block" *ngIf="showApprovalModal && selectedSubmission" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4 p-2">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="fw-bold">Review Task Submission</h5>
+        <button type="button" class="btn-close" (click)="closeApprovalModal()"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Submission Details -->
+        <div class="submission-details mb-4 p-3 bg-light rounded">
+          <div class="detail-row mb-2">
+            <strong>Employee:</strong>
+            <span>{{ selectedSubmission.submittedBy }}</span>
+          </div>
+          <div class="detail-row mb-2">
+            <strong>Task:</strong>
+            <span>{{ selectedSubmission.taskTitle }} (#{{ selectedSubmission.taskId }})</span>
+          </div>
+          <div class="detail-row mb-2">
+            <strong>Completion Status:</strong>
+            <span [class]="'badge ' + getCompletionStatusClass(selectedSubmission.completionStatus)">
+              {{ selectedSubmission.completionStatus }}
+            </span>
+          </div>
+          <div class="detail-row mb-2">
+            <strong>Hours Spent:</strong>
+            <span>{{ selectedSubmission.hoursSpent }} hours</span>
+          </div>
+          <div class="detail-row">
+            <strong>Comments:</strong>
+            <p class="text-muted mb-0">{{ selectedSubmission.comments || 'No comments' }}</p>
+          </div>
+        </div>
+
+        <!-- Approval Action -->
+        <div class="approval-action mb-3">
+          <label class="form-label small text-muted">Approval Action</label>
+          <select [(ngModel)]="approvalForm.status" class="form-select rounded-3">
+            <option value="Approved">Approve</option>
+            <option value="Rejected">Reject</option>
+            <option value="Need Changes">Request Changes</option>
+          </select>
+        </div>
+
+        <!-- Conditional Reassign Date -->
+        <div class="reassign-date mb-3" *ngIf="approvalForm.status === 'Approved'">
+          <label class="form-label small text-muted">Reassign to Date (Optional)</label>
+          <input type="date" [(ngModel)]="approvalForm.reassignDate" class="form-control rounded-3">
+        </div>
+
+        <!-- Comments -->
+        <div class="approval-comments">
+          <label class="form-label small text-muted">Your Comments</label>
+          <textarea 
+            [(ngModel)]="approvalForm.comments" 
+            class="form-control rounded-3" 
+            rows="3"
+            [placeholder]="approvalForm.status === 'Rejected' ? 'Explain why you are rejecting...' : 'Add your feedback...'">
+          </textarea>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button class="btn btn-light px-4" (click)="closeApprovalModal()">Cancel</button>
+        <button 
+          class="btn btn-warning px-4 fw-bold" 
+          (click)="reassignTaskDate()"
+          *ngIf="approvalForm.reassignDate && approvalForm.status === 'Approved'">
+          <i class="fas fa-calendar"></i> Reassign Date
+        </button>
+        <button class="btn btn-primary px-4 fw-bold" (click)="processSubmission()">
+          <i class="fas fa-check"></i> {{ approvalForm.status }}
+        </button>
       </div>
     </div>
   </div>

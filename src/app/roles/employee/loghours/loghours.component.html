@@ -1,10 +1,11 @@
 <div class="time-logging-view">
+    <!-- Statistics Row -->
     <div class="stats-row">
         <div class="stat-card">
             <div class="card-body">
                 <div class="text-group">
                     <span class="label">Today's Hours</span>
-                    <span class="value">{{ todayHours | number:'1.2-2' }} hrs</span>
+                    <span class="value timer-display">{{ displayTime }}</span>
                 </div>
                 <div class="icon-box blue">🕒</div>
             </div>
@@ -24,17 +25,24 @@
             <div class="card-body">
                 <div class="text-group">
                     <span class="label">Days Logged</span>
-                    <span class="value">{{ logs.length }} days</span>
+                    <span class="value">{{ daysLogged }} days</span>
                 </div>
                 <div class="icon-box purple">📊</div>
             </div>
         </div>
     </div>
 
+    <!-- Stop Logging Button -->
+    <div class="action-section">
+        <button class="stop-btn" (click)="saveAndClearSession()">
+            <span class="btn-icon">⏹️</span> Stop Logging & Save Time
+        </button>
+    </div>
+
+    <!-- Logs Section -->
     <div class="logs-section">
         <div class="logs-header">
             <h3>Time Logs</h3>
-            <button class="btn-primary" (click)="toggleModal()">+ Log Time</button>
         </div>
 
         <div class="table-responsive">
@@ -58,39 +66,6 @@
                     </tr>
                 </tbody>
             </table>
-        </div>
-    </div>
-
-    <div class="modal-overlay" *ngIf="showModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4>Manual Time Entry</h4>
-                <button class="close-btn" (click)="toggleModal()">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Date</label>
-                    <input type="date" [(ngModel)]="newLog.date" [max]="todayDate">
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Start Time</label>
-                        <input type="time" [(ngModel)]="newLog.startTime">
-                    </div>
-                    <div class="form-group">
-                        <label>End Time</label>
-                        <input type="time" [(ngModel)]="newLog.endTime">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Break (Minutes)</label>
-                    <input type="number" [(ngModel)]="newLog.breakMin">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-cancel" (click)="toggleModal()">Cancel</button>
-                <button class="btn-save" (click)="addLog()">Save Log</button>
-            </div>
         </div>
     </div>
 </div>

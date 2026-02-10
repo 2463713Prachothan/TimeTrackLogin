@@ -1,26 +1,32 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
-import { LogHoursComponent } from "../loghours/loghours.component";
-import { TasksComponent } from "../tasksassigned/tasksassigned.component";
-import { PersonalreportsComponent } from '../personalreports/personalreports.component';
+import { Component, inject, OnInit } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { TimeLogService } from '../../../core/services/time-log.service';
+import { TaskService, Task } from '../../../core/services/task.service';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule, LogHoursComponent, TasksComponent, PersonalreportsComponent],
+  imports: [CommonModule, RouterLink],
   templateUrl: './dashboardemployee.component.html',
   styleUrl: './dashboardemployee.component.css',
 })
 export class DashboardemployeeComponent implements OnInit {
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) { }
+  private authService = inject(AuthService);
+  private router = inject(Router);
+  private timeLogService = inject(TimeLogService);
+  private taskService = inject(TaskService);
 
   employeeName: string = 'Employee';
   userRole: string = 'Employee';
-  activeTab: string = 'time-logging';
+
+  // Quick stats
+  totalHoursToday: number = 0;
+  totalHoursWeek: number = 0;
+  completedTasks: number = 0;
+  inProgressTasks: number = 0;
+  pendingTasks: number = 0;
+  taskCompletionRate: number = 0;
 
   ngOnInit() {
     // Get current user from AuthService
@@ -29,29 +35,57 @@ export class DashboardemployeeComponent implements OnInit {
       // Use fullName from registered data, not email
       this.employeeName = currentUser.fullName || 'Employee';
       this.userRole = currentUser.role || 'Employee';
+
+      // Load productivity stats
+      this.loadStats(currentUser);
     }
   }
 
-  logout() {
-    this.authService.logout();
-    this.router.navigate(['']);
-  }
+  /**
+   * Load productivity statistics
+   */
+  private loadStats(currentUser: any) {
+    // Load time logs
+    this.timeLogService.getLogs().subscribe((logs: any[]) => {
+      const myLogs = logs.filter(log => 
+        log.employee === currentUser.fullName || log.employeeId === currentUser.id
+      );
 
-  showDropdown: boolean = false;
-  showNotifications: boolean = false; // Controls the bell dropdown
-  unreadCount: number = 1;
+      // Calculate today's hours
+      const today = new Date().toDateString();
+      const todayLogs = myLogs.filter(log => 
+        new Date(log.date).toDateString() === today
+      );
+      this.totalHoursToday = todayLogs.reduce((sum, log) => sum + (log.totalHours || 0), 0);
 
-  setActiveTab(tab: string) {
-    this.activeTab = tab;
-  }
+      // Calculate this week's hours
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekLogs = myLogs.filter(log => new Date(log.date) >= weekAgo);
+      this.totalHoursWeek = weekLogs.reduce((sum, log) => sum + (log.totalHours || 0), 0);
 
-  toggleDropdown() {
-    this.showDropdown = !this.showDropdown;
-    this.showNotifications = false; // Close others
-  }
+      console.log('Time Stats:', { today: this.totalHoursToday, week: this.totalHoursWeek });
+    });
 
-  toggleNotifications() {
-    this.showNotifications = !this.showNotifications;
-    this.showDropdown = false; // Close others
+    // Load tasks
+    this.taskService.getTasks().subscribe((tasks: Task[]) => {
+      const myTasks = tasks.filter(task => 
+        task.assignedTo.toLowerCase() === currentUser.fullName.toLowerCase()
+      );
+
+      this.completedTasks = myTasks.filter(t => t.status === 'Completed').length;
+      this.inProgressTasks = myTasks.filter(t => t.status === 'In Progress').length;
+      this.pendingTasks = myTasks.filter(t => t.status === 'Pending').length;
+
+      const total = myTasks.length;
+      this.taskCompletionRate = total > 0 ? Math.round((this.completedTasks / total) * 100) : 0;
+
+      console.log('Task Stats:', { 
+        completed: this.completedTasks, 
+        inProgress: this.inProgressTasks, 
+        pending: this.pendingTasks,
+        rate: this.taskCompletionRate
+      });
+    });
   }
 }

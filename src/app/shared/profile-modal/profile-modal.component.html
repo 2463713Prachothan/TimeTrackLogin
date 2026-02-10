@@ -1,0 +1,82 @@
+<div class="profile-modal-overlay" *ngIf="isOpen" (click)="closeProfile()">
+  <div class="profile-modal-container" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="profile-modal-header">
+      <h2>User Profile</h2>
+      <button class="close-btn" (click)="closeProfile()">✕</button>
+    </div>
+
+    <!-- Content -->
+    <div class="profile-modal-content" *ngIf="currentUser">
+      <!-- Profile Avatar Section -->
+      <div class="profile-avatar-section">
+        <div class="avatar-circle">
+          {{ currentUser.fullName?.charAt(0).toUpperCase() || 'U' }}
+        </div>
+        <h3>{{ currentUser.fullName }}</h3>
+        <span [ngClass]="'badge ' + getRoleBadgeClass()">
+          {{ currentUser.role }}
+        </span>
+      </div>
+
+      <!-- Details Grid -->
+      <div class="profile-details">
+        <!-- Email -->
+        <div class="detail-item">
+          <label>Email Address</label>
+          <p>{{ currentUser.email }}</p>
+        </div>
+
+        <!-- Role -->
+        <div class="detail-item">
+          <label>Role</label>
+          <p>{{ currentUser.role }}</p>
+        </div>
+
+        <!-- Department -->
+        <div class="detail-item">
+          <label>Department</label>
+          <p>{{ currentUser.department || 'Not Assigned' }}</p>
+        </div>
+
+        <!-- Manager (for Employees) -->
+        <div class="detail-item" *ngIf="currentUser.role === 'Employee'">
+          <label>Manager</label>
+          <p>{{ managerName }}</p>
+        </div>
+
+        <!-- Phone -->
+        <div class="detail-item" *ngIf="currentUser.phone">
+          <label>Phone</label>
+          <p>{{ currentUser.phone }}</p>
+        </div>
+
+        <!-- Status -->
+        <div class="detail-item">
+          <label>Status</label>
+          <p>
+            <span [ngClass]="'status-badge ' + (currentUser.status === 'Active' ? 'status-active' : 'status-inactive')">
+              {{ currentUser.status || 'Active' }}
+            </span>
+          </p>
+        </div>
+
+        <!-- Team Members (for Managers) -->
+        <div class="detail-item" *ngIf="currentUser.role === 'Manager'">
+          <label>Team Members</label>
+          <p *ngIf="assignedEmployeesCount === 0">No team members assigned</p>
+          <div *ngIf="assignedEmployeesCount > 0" class="team-members-list">
+            <div class="team-member" *ngFor="let empName of assignedEmployeesNames">
+              <span class="member-icon">👤</span> {{ empName }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="profile-modal-footer">
+      <button class="btn-close" (click)="closeProfile()">Close</button>
+    </div>
+  </div>
+</div>

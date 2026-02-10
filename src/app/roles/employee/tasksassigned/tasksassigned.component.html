@@ -13,29 +13,233 @@
         }
     </div>
 
+    <!-- Tabs Navigation -->
+    <div class="tabs-navigation">
+        <button 
+            class="tab-button" 
+            [class.active]="activeTab === 'My Tasks'"
+            (click)="activeTab = 'My Tasks'">
+            <i class="fas fa-tasks"></i> My Tasks
+        </button>
+        <button 
+            class="tab-button" 
+            [class.active]="activeTab === 'Submissions'"
+            (click)="activeTab = 'Submissions'">
+            <i class="fas fa-paper-plane"></i> My Submissions
+        </button>
+    </div>
+
+    <!-- My Tasks Tab -->
+    @if (activeTab === 'My Tasks') {
     <div class="user-management-section">
         <h3 class="title">My Tasks</h3>
 
         <div class="task-list">
-            @for (task of taskList; track task.name) {
+            @for (task of taskList; track task.id || task.name) {
             <div class="task-item">
                 <div class="task-header">
-                    <span class="task-name">
-                        <i [class]="task.icon + ' ' + task.iconClass"></i> {{ task.name }}
-                    </span>
-                    <span [class]="task.statusClass">{{ task.status }}</span>
+                    <div class="task-info">
+                        <span class="task-name">
+                            <i [class]="task.icon + ' ' + task.iconClass"></i> 
+                            {{ task.name }}
+                        </span>
+                        <span class="task-id">#{{ task.taskId }}</span>
+                    </div>
+                    <div class="task-meta">
+                        <span [class]="'badge ' + task.statusClass">{{ task.status }}</span>
+                        <span [class]="'badge ' + getPriorityClass(task.priority)">
+                            {{ task.priority }}
+                        </span>
+                    </div>
+                </div>
+                <div class="task-description">
+                    {{ task.description }}
+                </div>
+                <div class="task-details">
+                    <span><i class="fas fa-hourglass"></i> {{ task.totalHours }} hours</span>
+                    @if (task.dueDate) {
+                    <span><i class="fas fa-calendar"></i> {{ task.dueDate | date: 'MMM dd, yyyy' }}</span>
+                    }
                 </div>
                 <div class="progress-container">
                     <div class="progress-info">
                         <span>Progress</span>
-                        <!-- <span>{{ task.currentHours }} / {{ task.totalHours }} hrs</span> -->
                     </div>
                     <div class="progress-bar-bg">
                         <div class="progress-fill" [style.width.%]="task.progress"></div>
                     </div>
                 </div>
+                <button 
+                    class="btn-submit-task"
+                    (click)="openSubmissionModal(task)"
+                    [disabled]="task.status === 'Completed'">
+                    <i class="fas fa-check-circle"></i> Submit Completion
+                </button>
+            </div>
+            }
+            @if (taskList.length === 0) {
+            <div class="no-tasks-message">
+                <i class="fas fa-inbox"></i>
+                <p>No tasks assigned to you</p>
             </div>
             }
         </div>
     </div>
+    }
+
+    <!-- Submissions Tab -->
+    @if (activeTab === 'Submissions') {
+    <div class="user-management-section">
+        <h3 class="title">My Task Submissions</h3>
+
+        @if (submissionHistory.length > 0) {
+        <div class="submissions-table">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Task</th>
+                        <th>Task ID</th>
+                        <th>Submitted</th>
+                        <th>Status</th>
+                        <th>Completion</th>
+                        <th>Hours</th>
+                        <th>Comments</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (submission of submissionHistory; track submission.id) {
+                    <tr>
+                        <td>{{ submission.taskTitle }}</td>
+                        <td><span class="task-id-badge">#{{ submission.taskId }}</span></td>
+                        <td>{{ submission.submittedDate | date: 'MMM dd, yyyy HH:mm' }}</td>
+                        <td>
+                            <span [class]="'badge ' + getSubmissionStatusClass(submission.approvalStatus)">
+                                {{ submission.approvalStatus }}
+                            </span>
+                        </td>
+                        <td>
+                            <span [class]="'badge ' + getCompletionStatusClass(submission.completionStatus)">
+                                {{ submission.completionStatus }}
+                            </span>
+                        </td>
+                        <td>{{ submission.hoursSpent }} hrs</td>
+                        <td class="comments-cell">
+                            {{ submission.comments || '-' }}
+                            @if (submission.approvalComments) {
+                            <div class="approval-comment">
+                                <strong>Manager:</strong> {{ submission.approvalComments }}
+                            </div>
+                            }
+                        </td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        } @else {
+        <div class="no-submissions-message">
+            <i class="fas fa-paper-plane"></i>
+            <p>No task submissions yet</p>
+        </div>
+        }
+    </div>
+    }
+
+    <!-- Task Submission Modal -->
+    @if (showSubmissionModal && selectedTask) {
+    <div class="modal-overlay" (click)="closeModal()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+                <h2>Submit Task Completion</h2>
+                <button class="modal-close" (click)="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Task Info -->
+                <div class="task-submission-info">
+                    <div class="info-row">
+                        <strong>Task:</strong>
+                        <span>{{ selectedTask.name }}</span>
+                    </div>
+                    <div class="info-row">
+                        <strong>Task ID:</strong>
+                        <span>#{{ selectedTask.taskId }}</span>
+                    </div>
+                    <div class="info-row">
+                        <strong>Priority:</strong>
+                        <span [class]="'badge ' + getPriorityClass(selectedTask.priority)">
+                            {{ selectedTask.priority }}
+                        </span>
+                    </div>
+                    <div class="info-row">
+                        <strong>Total Hours:</strong>
+                        <span>{{ selectedTask.totalHours }} hours</span>
+                    </div>
+                </div>
+
+                <!-- Submission Form -->
+                <form class="submission-form">
+                    <div class="form-group">
+                        <label for="completionStatus">Completion Status</label>
+                        <select 
+                            id="completionStatus"
+                            [(ngModel)]="submissionForm.completionStatus"
+                            name="completionStatus"
+                            class="form-control">
+                            <option value="Not Started">Not Started</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="hoursSpent">Hours Spent</label>
+                        <input 
+                            id="hoursSpent"
+                            type="number" 
+                            [(ngModel)]="submissionForm.hoursSpent"
+                            name="hoursSpent"
+                            class="form-control"
+                            min="0"
+                            step="0.5"
+                            placeholder="Enter hours spent">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="priority">Priority</label>
+                        <select 
+                            id="priority"
+                            [(ngModel)]="submissionForm.priority"
+                            name="priority"
+                            class="form-control">
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="comments">Comments</label>
+                        <textarea 
+                            id="comments"
+                            [(ngModel)]="submissionForm.comments"
+                            name="comments"
+                            class="form-control"
+                            rows="4"
+                            placeholder="Add any comments about the task completion..."></textarea>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" (click)="closeModal()">Cancel</button>
+                <button class="btn btn-primary" (click)="submitTaskCompletion()">
+                    <i class="fas fa-paper-plane"></i> Submit
+                </button>
+            </div>
+        </div>
+    </div>
+    }
 </div>

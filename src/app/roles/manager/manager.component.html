@@ -18,7 +18,7 @@
         </button>
 
         <div class="profile-dropdown" *ngIf="isDropdownOpen">
-          <div class="dropdown-item">
+          <div class="dropdown-item" (click)="openProfile()">
             <span class="item-icon"><i class="bi bi-person-circle"></i></span> My Profile
           </div>
           <div class="dropdown-item logout" (click)="onLogout()">
@@ -75,24 +75,25 @@
   <!--Switching Tab-->
   <div class="d-flex justify-content-center mb-4">
     <div class="tab-container p-1 shadow-sm bg-white rounded border">
-      <button class="btn px-4 py-2 border-0"
-        [ngClass]="tab === 'logs' ? 'btn-primary active-tab shadow-sm' : 'text-muted'" (click)="tab = 'logs'">
+      <button class="btn px-4 py-2 border-0" 
+        [routerLink]="'team-logs'" routerLinkActive="active-tab shadow-sm" [routerLinkActiveOptions]="{ exact: true }"
+        [ngClass]="{ 'btn-primary active-tab shadow-sm': false, 'text-muted': false }">
         <i class="bi bi-clock me-2"></i> Team Time Logs
       </button>
       <button class="btn px-4 py-2 border-0"
-        [ngClass]="tab === 'tasks' ? 'btn-primary active-tab shadow-sm' : 'text-muted'" (click)="tab = 'tasks'">
+        [routerLink]="'task-management'" routerLinkActive="active-tab shadow-sm" [routerLinkActiveOptions]="{ exact: true }"
+        [ngClass]="{ 'btn-primary active-tab shadow-sm': false, 'text-muted': false }">
         <i class="bi bi-list-check me-2"></i> Task Management
       </button>
       <button class="btn px-4 py-2 border-0"
-        [ngClass]="tab === 'analytics' ? 'btn-primary active-tab shadow-sm' : 'text-muted'" (click)="tab = 'analytics'">
+        [routerLink]="'team-analytics'" routerLinkActive="active-tab shadow-sm" [routerLinkActiveOptions]="{ exact: true }"
+        [ngClass]="{ 'btn-primary active-tab shadow-sm': false, 'text-muted': false }">
         <i class="bi bi-graph-up me-2"></i> Team Analytics
       </button>
     </div>
   </div>
 
-  <div [ngSwitch]="tab">
-    <app-team-logs *ngSwitchCase="'logs'"></app-team-logs>
-    <app-task-management *ngSwitchCase="'tasks'"></app-task-management>
-    <app-team-analytics *ngSwitchCase="'analytics'"></app-team-analytics>
-  </div>
+  <router-outlet></router-outlet>
+
+  <app-profile-modal #profileModal></app-profile-modal>
 </div>

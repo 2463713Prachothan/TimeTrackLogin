@@ -1,58 +1,107 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { TimeLogService } from './time-log.service';
+import { TaskService } from './task.service';
+import { UserService } from './user.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ManagerDataService {
+  private platformId = inject(PLATFORM_ID);
+  private timeLogService = inject(TimeLogService);
+  private taskService = inject(TaskService);
+  private userService = inject(UserService);
+
   // User session management
   private currentUserSubject = new BehaviorSubject<any>(this.getSavedUser());
   currentUser$ = this.currentUserSubject.asObservable();
 
-  // Sample time logs data
-  private initialLogs = [
-    { employee: 'Akash', date: this.getCurrentDate(), startTime: '09:00', endTime: '17:30', break: 60, totalHours: 7.50 },
-    { employee: 'Chandana chai', date: this.getCurrentDate(), startTime: '08:30', endTime: '17:00', break: 60, totalHours: 7.50 },
-    { employee: 'Prachothan reddy', date: this.getCurrentDate(), startTime: '09:00', endTime: '18:30', break: 60, totalHours: 8.50 },
-    { employee: 'Akash', date: this.getDateDaysAgo(1), startTime: '09:00', endTime: '18:00', break: 60, totalHours: 8.00 },
-    { employee: 'Chandana chai', date: this.getDateDaysAgo(1), startTime: '09:00', endTime: '17:00', break: 30, totalHours: 7.50 },
-    { employee: 'Prachothan reddy', date: this.getDateDaysAgo(2), startTime: '10:00', endTime: '19:00', break: 60, totalHours: 8.00 },
-    { employee: 'Gopi Krishna', date: this.getCurrentDate(), startTime: '10:00', endTime: '19:00', break: 60, totalHours: 8.00 },
-    { employee: 'Umesh', date: this.getCurrentDate(), startTime: '08:00', endTime: '16:00', break: 60, totalHours: 7.00 }
-  ];
+  // Team members count - Initialize with calculation right away
+  private teamMembersSubject: BehaviorSubject<number>;
+  teamMembers$: Observable<number>;
 
-  // Sample tasks data
-  private initialTasks = [
-    { title: 'API Integration', description: 'Connect frontend to login service', assignedTo: 'Akash', hours: 12, status: 'In Progress' },
-    { title: 'UI Refinement', description: 'Adjust table padding and font sizes', assignedTo: 'Chandana chai', hours: 4, status: 'Completed' },
-    { title: 'Database Design', description: 'Create SQL schema for time tracking', assignedTo: 'Prachothan reddy', hours: 20, status: 'Pending' },
-    { title: 'Unit Testing', description: 'Write tests for manager dashboard', assignedTo: 'Umesh', hours: 8, status: 'In Progress' }
-  ];
-
-  // Sample performance data
-  private initialPerformance = [
-    { name: 'Akash', hours: 35.5, tasks: 4, efficiency: 92, status: 'Excellent' },
-    { name: 'Chandana', hours: 28.0, tasks: 3, efficiency: 85, status: 'Excellent' },
-    { name: 'Prachothan', hours: 15.5, tasks: 1, efficiency: 45, status: 'Needs Attention' },
-    { name: 'Gopi', hours: 11.5, tasks: 1, efficiency: 27, status: 'Needs Attention' },
-    { name: 'Umesh', hours: 40.2, tasks: 6, efficiency: 98, status: 'Excellent' }
-  ];
-
-  // Reactive data streams
-  private logsSubject = new BehaviorSubject<any[]>(this.initialLogs);
-  private tasksSubject = new BehaviorSubject<any[]>(this.initialTasks);
-  private perfSubject = new BehaviorSubject<any[]>(this.initialPerformance);
-
-  logs$ = this.logsSubject.asObservable();
-  tasks$ = this.tasksSubject.asObservable();
-  performance$ = this.perfSubject.asObservable();
+  logs$: Observable<any[]>;
+  tasks$: Observable<any[]>;
 
   constructor() {
-    // Initialize with sample data
-    this.logsSubject.next(this.initialLogs);
-    this.tasksSubject.next(this.initialTasks);
-    this.perfSubject.next(this.initialPerformance);
-    this.setUser('Manager User', 'Manager');
+    // Initialize with logs from TimeLogService
+    this.logs$ = this.timeLogService.getLogs();
+    
+    // Get tasks from TaskService
+    this.tasks$ = this.taskService.getTasks();
+    
+    // Set user with actual manager name from session
+    const savedUser = this.getSavedUser();
+    this.setUser(savedUser.name, savedUser.role);
+
+    // Calculate initial team members count
+    const initialCount = this.calculateTeamMembersCountSync();
+    this.teamMembersSubject = new BehaviorSubject<number>(initialCount);
+    this.teamMembers$ = this.teamMembersSubject.asObservable();
+
+    // Load team members count - Subscribe to users so it updates whenever users change
+    this.userService.getUsers().subscribe(users => {
+      this.updateTeamMembersCount(users);
+    });
+  }
+
+  /**
+   * Calculate team members count synchronously from stored user data
+   */
+  private calculateTeamMembersCountSync(): number {
+    const currentManagerId = this.getCurrentManagerId();
+    
+    // Try to get users from localStorage if available
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const storedUsers = localStorage.getItem('users');
+        if (storedUsers) {
+          const users = JSON.parse(storedUsers);
+          const currentManager = users.find((u: any) => u.id === currentManagerId);
+          // Return the count of assigned employees (not the count of logs)
+          const assignedCount = currentManager?.assignedEmployees?.length || 0;
+          return assignedCount;
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * Update team members count based on assigned employees
+   */
+  private updateTeamMembersCount(users: any[]): void {
+    const currentManagerId = this.getCurrentManagerId();
+    const currentManager = users.find(u => u.id === currentManagerId);
+    
+    // Get the count of assigned employees
+    const assignedCount = currentManager?.assignedEmployees?.length || 0;
+    this.teamMembersSubject.next(assignedCount);
+  }
+
+  /**
+   * Get current manager ID from session
+   */
+  private getCurrentManagerId(): string {
+    if (!isPlatformBrowser(this.platformId)) {
+      return '';
+    }
+
+    const saved = localStorage.getItem('user_session');
+    if (saved) {
+      try {
+        const user = JSON.parse(saved);
+        return user.id || '';
+      } catch (e) {
+        console.error('Error parsing user_session:', e);
+        return '';
+      }
+    }
+    return '';
   }
 
   // Generate current date string
@@ -69,19 +118,23 @@ export class ManagerDataService {
 
   // Retrieve saved user from localStorage
   private getSavedUser() {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const saved = localStorage.getItem('user_session');
-      if (saved) {
-        const user = JSON.parse(saved);
-        const name = user.fullName || user.firstName || 'Manager';
-        return {
-          name: name,
-          role: user.role,
-          initial: name.charAt(0).toUpperCase()
-        };
-      }
+    if (!isPlatformBrowser(this.platformId)) {
+      return { name: 'Loading...', role: '', id: '', initial: '' };
     }
-    return { name: 'Loading...', role: '', initial: '' };
+
+    const saved = localStorage.getItem('user_session');
+    if (saved) {
+      const user = JSON.parse(saved);
+      let fullName = user.fullName || 'Manager'; // fallback to Manager if fullName not available
+      
+      return {
+        name: fullName,
+        role: user.role,
+        id: user.id,
+        initial: fullName.charAt(0).toUpperCase()
+      };
+    }
+    return { name: 'Loading...', role: '', id: '', initial: '' };
   }
 
   // Update current user session
@@ -102,22 +155,29 @@ export class ManagerDataService {
     });
   }
 
-  // Add new time log entry
+  // Add new time log entry (delegates to TimeLogService which handles API)
   addLog(log: any) {
-    const current = this.logsSubject.value;
-    this.logsSubject.next([...current, log]);
+    this.timeLogService.addLog(log);
   }
 
-  // Add new task
+  // Add new task (delegates to TaskService which handles API)
   addTask(task: any) {
-    const currentTasks = this.tasksSubject.value;
-    this.tasksSubject.next([task, ...currentTasks]);
+    this.taskService.addTask(task);
   }
 
-  // Remove task by index
-  deleteTask(index: number) {
-    const currentTasks = this.tasksSubject.value;
-    currentTasks.splice(index, 1);
-    this.tasksSubject.next([...currentTasks]);
+  // Update existing task (delegates to TaskService which handles API)
+  updateTask(id: string, task: any) {
+    this.taskService.updateTask(id, task);
+  }
+
+  // Remove task by ID (delegates to TaskService which handles API)
+  deleteTask(id: string) {
+    this.taskService.deleteTask(id);
+  }
+
+  // Refresh tasks to ensure latest data is displayed
+  refreshTasks() {
+    console.log('🔄 ManagerDataService.refreshTasks - Forcing task refresh');
+    this.taskService.refreshTasks();
   }
 }

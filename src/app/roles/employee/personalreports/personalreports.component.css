@@ -8,9 +8,12 @@
 /* --- Parallel Stat Cards --- */
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 24px;
   margin-bottom: 30px;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .stat-card {
@@ -52,6 +55,21 @@
   grid-template-columns: 1.3fr 0.7fr; 
   gap: 24px;
   margin-bottom: 30px;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 1024px) {
+  .charts-parallel-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .charts-parallel-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .chart-card {
@@ -81,6 +99,9 @@
   padding: 30px;
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .section-title { 
@@ -102,6 +123,7 @@
 
 .blue-insight { background: #f8fbff; border-color: #e0f0ff; color: #1d4ed8; }
 .green-insight { background: #f9fffb; border-color: #dcfce7; color: #059669; }
+.purple-insight { background: #faf9ff; border-color: #f3e8ff; color: #7c3aed; }
 
 .insight-icon {
   width: 42px;

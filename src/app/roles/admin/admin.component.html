@@ -17,7 +17,7 @@
             </button>
 
             <div class="profile-dropdown" *ngIf="isDropdownOpen">
-                <div class="dropdown-item">
+                <div class="dropdown-item" (click)="openProfile()">
                     <span class="item-icon">👤</span> My Profile
                 </div>
                 <div class="dropdown-item logout" (click)="onLogout()">
@@ -29,61 +29,76 @@
 </nav>
 
 <div class="admin-wrapper">
+    <div class="pill-nav">
+        <button [routerLink]="'users'" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            <span class="nav-icon">👥</span> User Management
+        </button>
+        <button [routerLink]="'reports'" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            <span class="nav-icon">📊</span> Organization Analytics
+        </button>
+        <button [routerLink]="'system'" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            <span class="nav-icon">⚙️</span> System Configuration
+        </button>
+        <button [routerLink]="'approvals'" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            <span class="nav-icon">📋</span> Registration Approvals
+        </button>
+    </div>
+
     <div class="summary-grid">
+        <!-- Total Employees Card -->
         <div class="stat-card">
             <div class="stat-info">
-                <span>Total Users</span>
-                <h2>6</h2>
+                <div>
+                    <span>Total Employees</span>
+                    <h2>{{ showingActiveInactive && selectedFilter === 'active' ? activeEmployees : showingActiveInactive && selectedFilter === 'inactive' ? inactiveEmployees : totalEmployees }}</h2>
+                </div>
             </div>
             <div class="stat-icon icon-blue">👥</div>
         </div>
 
+        <!-- Total Managers Card -->
         <div class="stat-card">
             <div class="stat-info">
-                <span>Active Users</span>
-                <h2>6</h2>
+                <div>
+                    <span>Total Managers</span>
+                    <h2>{{ showingActiveInactive && selectedFilter === 'active' ? activeManagers : showingActiveInactive && selectedFilter === 'inactive' ? inactiveManagers : totalManagers }}</h2>
+                </div>
             </div>
             <div class="stat-icon icon-green">👤</div>
         </div>
 
-        <div class="stat-card">
+        <!-- Active Users Card (Clickable) -->
+        <div class="stat-card clickable" 
+             [class.active]="selectedFilter === 'active'"
+             (click)="selectFilter('active')">
             <div class="stat-info">
-                <span>Total Hours Logged</span>
-                <h2>39</h2>
+                <div>
+                    <span>Active Users</span>
+                    <h2>{{ totalActiveUsers }}</h2>
+                </div>
             </div>
-            <div class="stat-icon icon-purple">📊</div>
+            <div class="stat-icon icon-purple">✓</div>
         </div>
 
-        <div class="stat-card">
+        <!-- Inactive Users Card (Clickable) -->
+        <div class="stat-card clickable" 
+             [class.active]="selectedFilter === 'inactive'"
+             (click)="selectFilter('inactive')">
             <div class="stat-info">
-                <span>Total Tasks</span>
-                <h2>5</h2>
+                <div>
+                    <span>Inactive Users</span>
+                    <h2>{{ totalInactiveUsers }}</h2>
+                </div>
             </div>
-            <div class="stat-icon icon-yellow">📈</div>
+            <div class="stat-icon icon-red">✗</div>
         </div>
     </div>
 
-    <div class="pill-nav">
-        <button (click)="activeTab = 'users'" [class.active]="activeTab === 'users'">
-            <span class="nav-icon">👥</span> User Management
-        </button>
-        <button (click)="activeTab = 'organization'" [class.active]="activeTab === 'organization'">
-            <span class="nav-icon">📊</span> Organization Analytics
-        </button>
-        <button (click)="activeTab = 'system'" [class.active]="activeTab === 'system'">
-            <span class="nav-icon">⚙️</span> System Configuration
-        </button>
-    </div>
-
-    <div class="tab-content" [ngSwitch]="activeTab">
+    <div class="tab-content">
         <div class="content-card">
-            <app-manageusers *ngSwitchCase="'users'"></app-manageusers>
-            <app-system-config *ngSwitchCase="'system'"></app-system-config>
-            <app-generatereports *ngSwitchCase="'organization'"></app-generatereports>
-
-            <div *ngSwitchDefault class="empty-state">
-                <p>Please select a tab to view management tools.</p>
-            </div>
+            <router-outlet></router-outlet>
         </div>
     </div>
+
+    <app-profile-modal #profileModal></app-profile-modal>
 </div>

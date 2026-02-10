@@ -1,74 +1,62 @@
-<nav class="navbar dashboard-header">
-    <div class="logo">
-        <img src="/assets/logo.png" alt="Logo">
-        <span class="logo-text">TimeTrack</span>
+<div class="dashboard-content">
+    <div class="welcome-section">
+        <h1>Welcome, {{ employeeName }}! 👋</h1>
+        <p class="subtitle">Here's your productivity overview for today</p>
     </div>
 
-    <div class="nav-actions">
-        <div class="notification-container">
-            <button class="nav-icon-btn" (click)="toggleNotifications()">
-                <span class="bell-icon">🔔</span>
-                <span class="notification-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
-            </button>
-
-            <div class="notification-dropdown" *ngIf="showNotifications">
-                <div class="dropdown-header">Notifications</div>
-                <div class="notification-list">
-                    <div class="notification-item unread">
-                        <strong>New Task Assigned</strong>
-                        <p>Complete the login module by EOD.</p>
-                        <span class="time">2 mins ago</span>
-                    </div>
-                    <div class="notification-item">
-                        <strong>Log Approved</strong>
-                        <p>Your hours for Dec 14 were approved.</p>
-                        <span class="time">1 hour ago</span>
-                    </div>
-                </div>
-                <div class="dropdown-footer">View All Notifications</div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-header">
+                <span class="stat-label">Today's Hours</span>
+                <span class="stat-icon">🕐</span>
             </div>
+            <div class="stat-value">{{ totalHoursToday.toFixed(1) }}h</div>
+            <div class="stat-footer">Target: 8 hours</div>
         </div>
 
-        <div class="user-info">
-            <span class="employee-name">{{ employeeName }}</span>
-            <span class="role-badge">{{ userRole }}</span>
+        <div class="stat-card">
+            <div class="stat-header">
+                <span class="stat-label">This Week</span>
+                <span class="stat-icon">📅</span>
+            </div>
+            <div class="stat-value">{{ totalHoursWeek.toFixed(1) }}h</div>
+            <div class="stat-footer">Target: 40 hours</div>
         </div>
 
-        <div class="profile-container">
-            <button class="profile-circle" (click)="toggleDropdown()">
-                {{ employeeName.charAt(0) }}
-            </button>
-
-            <div class="profile-dropdown" *ngIf="showDropdown">
-                <div class="dropdown-item">
-                    <span class="item-icon">👤</span> My Profile
-                </div>
-                <div class="dropdown-item logout" (click)="logout()">
-                    <span class="item-icon">→</span> Logout
-                </div>
+        <div class="stat-card">
+            <div class="stat-header">
+                <span class="stat-label">Tasks Assigned</span>
+                <span class="stat-icon">📋</span>
             </div>
+            <div class="stat-value">{{ completedTasks + inProgressTasks + pendingTasks }}</div>
+            <div class="stat-footer">{{ completedTasks }} completed</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <span class="stat-label">Completion Rate</span>
+                <span class="stat-icon">🎯</span>
+            </div>
+            <div class="stat-value">{{ taskCompletionRate }}%</div>
+            <div class="stat-footer">In Progress: {{ inProgressTasks }}</div>
         </div>
     </div>
-</nav>
 
-<div class="dashboard-wrapper">
-    <div class="container">
-        <div class="dashboard-tabs">
-            <button class="tab-btn" [class.active]="activeTab === 'time-logging'" (click)="setActiveTab('time-logging')">
-                <span class="tab-icon">🕒</span> Time Logging
-            </button>
-            <button class="tab-btn" [class.active]="activeTab === 'my-tasks'" (click)="setActiveTab('my-tasks')">
-                <span class="tab-icon">📋</span> My Tasks
-            </button>
-            <button class="tab-btn" [class.active]="activeTab === 'productivity'" (click)="setActiveTab('productivity')">
-                <span class="tab-icon">📈</span> Productivity
-            </button>
-        </div>
-
-        <div class="tab-content">
-            <app-log-hours *ngIf="activeTab === 'time-logging'"></app-log-hours>
-            <app-tasksassigned *ngIf="activeTab === 'my-tasks'"></app-tasksassigned>
-            <app-personalreports *ngIf="activeTab === 'productivity'"></app-personalreports>
+    <div class="quick-actions">
+        <h3>Quick Actions</h3>
+        <div class="action-buttons">
+            <a routerLink="../loghours" class="action-btn blue">
+                <span class="btn-icon">⏱️</span>
+                <span class="btn-text">Log Hours</span>
+            </a>
+            <a routerLink="../tasks" class="action-btn green">
+                <span class="btn-icon">✅</span>
+                <span class="btn-text">View Tasks</span>
+            </a>
+            <a routerLink="../reports" class="action-btn purple">
+                <span class="btn-icon">📊</span>
+                <span class="btn-text">View Analytics</span>
+            </a>
         </div>
     </div>
 </div>

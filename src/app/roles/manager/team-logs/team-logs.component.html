@@ -74,22 +74,47 @@
               <th>Employee</th>
               <th>Date</th>
               <th>Start Time</th>
-              <th>End Time</th>
+              <th>End Time / Elapsed</th>
               <th>Break (min)</th>
               <th>Total Hours</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let log of filteredLogs">
-              <td class="fw-medium text-dark">{{log.employee}}</td>
-              <td>{{log.date}}</td>
-              <td>{{log.startTime}}</td>
-              <td>{{log.endTime}}</td>
-              <td>{{log.break}}</td>
-              <td class="fw-bold">{{log.totalHours.toFixed(2)}} hrs</td>
+            <tr *ngFor="let log of filteredLogs" [ngClass]="{'table-active': log.isLive}">
+              <td class="fw-medium text-dark">{{ log.employee }}</td>
+              <td><span class="badge bg-light text-dark">{{ log.date }}</span></td>
+              <td>
+                <span class="time-badge">{{ log.startTime }}</span>
+              </td>
+              <td>
+                <span *ngIf="log.endTime; else liveTime" class="time-badge">{{ log.endTime }}</span>
+                <ng-template #liveTime>
+                  <span class="badge bg-success-subtle text-success">{{ getElapsedTime(log.startTime) }}</span>
+                </ng-template>
+              </td>
+              <td>{{ log.break }} min</td>
+              <td class="fw-bold">
+                <span class="hours-badge">{{ formatHours(log.currentHours || log.totalHours) }} hrs</span>
+                <span *ngIf="log.isLive" class="badge bg-danger ms-2 live-indicator">
+                  <span class="pulse"></span> LIVE
+                </span>
+              </td>
+              <td>
+                <span [ngClass]="{
+                  'badge bg-success-subtle text-success': log.status === 'In Progress',
+                  'badge bg-primary-subtle text-primary': log.status === 'Approved',
+                  'badge bg-warning-subtle text-warning': log.status === 'Pending',
+                  'badge bg-danger-subtle text-danger': log.status === 'Rejected'
+                }">
+                  {{ log.status }}
+                </span>
+              </td>
             </tr>
             <tr *ngIf="filteredLogs.length === 0">
-              <td colspan="6" class="py-5 text-center text-muted border-0">No time logs found for the selected filters
+              <td colspan="7" class="py-5 text-center text-muted border-0">
+                <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                No time logs found for the selected filters
               </td>
             </tr>
           </tbody>
