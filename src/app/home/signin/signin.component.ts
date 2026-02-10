@@ -73,7 +73,7 @@ export class SigninComponent {
         error: (err: any) => {
           console.error('Login failed:', err);
           const message = err.error?.message || err.error || 'Invalid email or password.';
-          this.notificationService.error(message, 4000);
+          this.notificationService.error(message, 4000);//sample error message from backend: "Invalid email or password."
         }
       });
     }
