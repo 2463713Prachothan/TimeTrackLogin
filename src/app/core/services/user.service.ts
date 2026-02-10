@@ -27,61 +27,7 @@ export class UserService {
     private platformId = inject(PLATFORM_ID);
     private apiService = inject(ApiService);
 
-    private initialUsers: User[] = [
-        {
-            id: '1',
-            email: 'akash@gmail.com',
-            fullName: 'Akash Kumar',
-            role: 'Employee',
-            department: 'Java Angular',
-            phone: '9876543210',
-            joinDate: '2023-01-15',
-            status: 'Active'
-        },
-        {
-            id: '2',
-            email: 'chandana@gmail.com',
-            fullName: 'Chandana Sharma',
-            role: 'Employee',
-            department: 'Dot-net Angular',
-            phone: '9876543211',
-            joinDate: '2023-03-10',
-            status: 'Active'
-        },
-        {
-            id: '3',
-            email: 'prachothan@gmail.com',
-            fullName: 'Prachothan Reddy',
-            role: 'Employee',
-            department: 'Multi cloud',
-            phone: '9876543212',
-            joinDate: '2023-02-20',
-            status: 'Active'
-        },
-        {
-            id: '4',
-            email: 'umesh@gmail.com',
-            fullName: 'Umesh Singh',
-            role: 'Manager',
-            department: 'Java React',
-            phone: '9876543213',
-            joinDate: '2022-06-15',
-            status: 'Active',
-            assignedEmployees: ['1', '2', '3', '5']  // Assigned all employees for testing
-        },
-        {
-            id: '5',
-            email: 'gopi@gmail.com',
-            fullName: 'Gopi Krishna',
-            role: 'Employee',
-            department: 'Dot-net Angular',
-            phone: '9876543214',
-            joinDate: '2023-04-01',
-            status: 'Active'
-        }
-    ];
-
-    private usersSubject = new BehaviorSubject<User[]>(this.initialUsers);
+    private usersSubject = new BehaviorSubject<User[]>([]);
     users$ = this.usersSubject.asObservable();
 
     // Track current user changes
@@ -98,10 +44,8 @@ export class UserService {
         this.apiService.getUsers().subscribe({
             next: (users: any[]) => {
                 if (users && users.length > 0) {
-                    // Merge API data with initialUsers to preserve assignedEmployees if missing
-                    const mergedUsers = this.mergeWithInitialUsers(users);
-                    this.usersSubject.next(mergedUsers);
-                    this.saveUsersToStorage(mergedUsers);
+                    this.usersSubject.next(users);
+                    this.saveUsersToStorage(users);
                 } else {
                     // Fallback to stored users
                     this.loadUsersFromStorage();
@@ -111,23 +55,6 @@ export class UserService {
                 // API failed, use stored data
                 this.loadUsersFromStorage();
             }
-        });
-    }
-
-    /**
-     * Merge API users with initial users to preserve assignedEmployees and other fields
-     */
-    private mergeWithInitialUsers(apiUsers: User[]): User[] {
-        return apiUsers.map(apiUser => {
-            const initialUser = this.initialUsers.find(u => u.id === apiUser.id);
-            if (initialUser && !apiUser.assignedEmployees && initialUser.assignedEmployees) {
-                // If API user missing assignedEmployees but initial user has it, use initial
-                return {
-                    ...apiUser,
-                    assignedEmployees: initialUser.assignedEmployees
-                };
-            }
-            return apiUser;
         });
     }
 
@@ -298,7 +225,7 @@ export class UserService {
     }
 
     /**
-     * Load users from localStorage if they exist, otherwise use initial data
+     * Load users from localStorage if they exist
      */
     private loadUsersFromStorage() {
         if (isPlatformBrowser(this.platformId)) {
@@ -310,26 +237,23 @@ export class UserService {
                     users = this.migrateUsersToFullName(users);
                     // Deduplicate users by email (keep first occurrence)
                     users = this.deduplicateUsers(users);
-                    // Merge with initial users to preserve assignedEmployees
-                    users = this.mergeWithInitialUsers(users);
                     this.usersSubject.next(users);
                     console.log('✅ UserService.loadUsersFromStorage - Loaded', users.length, 'users from localStorage:', users.map((u: User) => ({ fullName: u.fullName, email: u.email, hasPassword: !!u.password })));
                     // Save migrated data back to storage
                     this.saveUsersToStorage(users);
                 } catch (e) {
                     console.error('Error loading users from storage', e);
-                    // Fallback to initial users
-                    this.usersSubject.next(this.initialUsers);
+                    // Start with empty array
+                    this.usersSubject.next([]);
                 }
             } else {
-                // No saved data, use initial users
-                console.log('ℹ️ UserService.loadUsersFromStorage - No saved users, using initial users');
-                this.usersSubject.next(this.initialUsers);
-                this.saveUsersToStorage(this.initialUsers);
+                // No saved data, start with empty array
+                console.log('ℹ️ UserService.loadUsersFromStorage - No saved users, starting fresh');
+                this.usersSubject.next([]);
             }
         } else {
-            // Server-side rendering, use initial data
-            this.usersSubject.next(this.initialUsers);
+            // Server-side rendering, start with empty array
+            this.usersSubject.next([]);
         }
     }
 

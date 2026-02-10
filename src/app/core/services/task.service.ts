@@ -40,22 +40,6 @@ export interface TaskSubmission {
 export class TaskService {
     private apiService = inject(ApiService);
 
-    private initialTasks: Task[] = [
-        {
-            id: '1',
-            taskId: 'TASK-001',
-            title: 'Test Task',
-            description: 'This is a test task',
-            assignedTo: 'Akash Kumar',
-            priority: 'High',
-            hours: 8,
-            status: 'Pending',
-            dueDate: '2026-02-15',
-            createdDate: new Date(),
-            assignedDate: new Date()
-        }
-    ];
-
     private tasksSubject = new BehaviorSubject<Task[]>([]);
     tasks$ = this.tasksSubject.asObservable();
 
@@ -104,7 +88,7 @@ export class TaskService {
     }
 
     /**
-     * Load tasks from API or fallback to localStorage/initialTasks
+     * Load tasks from API or fallback to localStorage
      */
     private loadTasks(): void {
         // Try to load from localStorage first for better UX
@@ -112,9 +96,6 @@ export class TaskService {
         if (storedTasks.length > 0) {
             console.log('Loaded tasks from localStorage:', storedTasks.length);
             this.tasksSubject.next(storedTasks);
-        } else if (this.initialTasks.length > 0) {
-            console.log('Loading initial tasks:', this.initialTasks.length);
-            this.tasksSubject.next(this.initialTasks);
         } else {
             // Start with empty array
             console.log('No tasks found, starting with empty array');
