@@ -75,8 +75,8 @@ export class SignupComponent {
       };
 
       // Register user via API
-      this.authService.register(userData).subscribe({
-        next: (response) => {
+      this.authService.registerAsync(userData).subscribe({
+        next: (response: any) => {
 
           console.log('Registration successful:', response);
           // If the person just registering is a Manager, update the navbar name
@@ -90,7 +90,7 @@ export class SignupComponent {
           // Navigate to signin
           this.router.navigate(['/signin']);
         },
-        error: (err) => {
+        error: (err: any) => {
           console.error('Registration failed:', err);
           // Parse ASP.NET Core validation errors
           if (err.error?.errors) {

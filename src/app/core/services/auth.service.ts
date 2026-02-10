@@ -1,6 +1,8 @@
 import { Injectable, signal, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { Observable } from 'rxjs';
 import { RegistrationService } from './registration.service';
 
 @Injectable({
@@ -9,7 +11,10 @@ import { RegistrationService } from './registration.service';
 export class AuthService {
   private router = inject(Router);
   private platformId = inject(PLATFORM_ID);
+  private http = inject(HttpClient);
   private registrationService = inject(RegistrationService);
+
+  private readonly API_URL = 'https://localhost:7172/api/Auth';
 
   // 1. Hardcoded Admin Data (No registration needed)
   private readonly ADMIN_USER = {
@@ -38,6 +43,28 @@ export class AuthService {
   }
 
   /**
+   * Login via API. Returns an Observable with the server response.
+   */
+  loginAsync(email: string, password: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/login`, { email, password });
+  }
+
+  /**
+   * Sets the current user after a successful login response.
+   */
+  setCurrentUser(user: any) {
+    this.currentUser.set(user);
+    this.saveToStorage(user);
+  }
+
+  /**
+   * Registers a new user via API. Returns an Observable.
+   */
+  registerAsync(userData: any): Observable<any> {
+    return this.http.post(`${this.API_URL}/register`, userData);
+  }
+
+  /**
    * Main Login Logic: Checks Admin first, then LocalStorage users.
    */
   login(email: string, password: string): boolean {
@@ -55,11 +82,11 @@ export class AuthService {
 
     // B. Check Registered Users in localStorage
     const usersJson = localStorage.getItem('users');
-    
+
     if (usersJson) {
       const users: any[] = JSON.parse(usersJson);
       console.log('🔍 AuthService.login - Checking', users.length, 'users for email:', emailLower);
-      
+
       const foundUser = users.find(u => {
         const emailMatch = u.email.toLowerCase() === emailLower;
         const passwordMatch = u.password === password;
@@ -68,7 +95,7 @@ export class AuthService {
         }
         return emailMatch && passwordMatch;
       });
-      
+
       if (foundUser) {
         // Construct fullName from available data
         let fullName = foundUser.fullName;
@@ -78,7 +105,7 @@ export class AuthService {
           const lastName = foundUser.lastName || '';
           fullName = `${firstName} ${lastName}`.trim() || foundUser.email;
         }
-        
+
         const userToSet = {
           ...foundUser,
           fullName: fullName,
@@ -97,10 +124,6 @@ export class AuthService {
     return false;
   }
 
-
-
-    // B. Check Registered Users in localStorage
-   
   /**
    * Registers a new user as pending approval.
    * Does NOT allow Admin registration.
@@ -109,7 +132,7 @@ export class AuthService {
     if (isPlatformBrowser(this.platformId)) {
       // Add to pending registrations for admin approval
       this.registrationService.addPendingRegistration(userData);
-      
+
       // Show message and redirect to signin
       alert('Your registration has been submitted for approval. Please wait for admin to approve your account.');
       this.router.navigate(['/signin']);
@@ -127,7 +150,7 @@ export class AuthService {
   navigateToDashboard(role: string) {
     if (!role) return;
     const r = role.toLowerCase();
-    
+
     if (r === 'admin') {
       this.router.navigate(['/admin/users']);
     } else if (r === 'employee') {
@@ -142,7 +165,7 @@ export class AuthService {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem('timerSession');
     }
-    
+
     this.currentUser.set(null);
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem('user_session');
@@ -155,4 +178,3 @@ export class AuthService {
     return this.currentUser() !== null;
   }
 }
-    

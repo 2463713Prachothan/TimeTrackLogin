@@ -40,7 +40,7 @@ export class SigninComponent {
       const selectedRole = this.signinForm.value.role;
       const enteredPassword = this.signinForm.value.password;
 
-      this.authService.login(email, enteredPassword).subscribe({
+      this.authService.loginAsync(email, enteredPassword).subscribe({
         next: (response: any) => {
           console.log('Login response:', response);
           // API returns { success, message, data: { userId, name, email, role, department, token, tokenExpiration } }
@@ -70,7 +70,7 @@ export class SigninComponent {
           this.notificationService.success(`Welcome, ${displayName}!`);
           this.authService.navigateToDashboard(user.role);
         },
-        error: (err) => {
+        error: (err: any) => {
           console.error('Login failed:', err);
           const message = err.error?.message || err.error || 'Invalid email or password.';
           this.notificationService.error(message, 4000);
