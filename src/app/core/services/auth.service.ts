@@ -16,15 +16,6 @@ export class AuthService {
 
   private readonly API_URL = 'https://localhost:7172/api/Auth';
 
-  // 1. Hardcoded Admin Data (No registration needed)
-  private readonly ADMIN_USER = {
-    fullName: 'Administrator',
-    email: 'admin@gmail.com',
-    password: 'AdminPassword@123',
-    role: 'Admin',
-    department: null // Admin has no department
-  };
-
   /**
    * currentUser signal holds the logged-in user's data.
    * Initialized as null.
@@ -62,66 +53,6 @@ export class AuthService {
    */
   registerAsync(userData: any): Observable<any> {
     return this.http.post(`${this.API_URL}/register`, userData);
-  }
-
-  /**
-   * Main Login Logic: Checks Admin first, then LocalStorage users.
-   */
-  login(email: string, password: string): boolean {
-    if (!isPlatformBrowser(this.platformId)) return false;
-
-    const emailLower = email.toLowerCase();
-
-    // A. Check Hardcoded Admin
-    if (emailLower === this.ADMIN_USER.email && password === this.ADMIN_USER.password) {
-      this.currentUser.set({ ...this.ADMIN_USER, id: 'admin' });
-      this.saveToStorage({ ...this.ADMIN_USER, id: 'admin' });
-      console.log('✅ AuthService.login - Admin login successful');
-      return true;
-    }
-
-    // B. Check Registered Users in localStorage
-    const usersJson = localStorage.getItem('users');
-
-    if (usersJson) {
-      const users: any[] = JSON.parse(usersJson);
-      console.log('🔍 AuthService.login - Checking', users.length, 'users for email:', emailLower);
-
-      const foundUser = users.find(u => {
-        const emailMatch = u.email.toLowerCase() === emailLower;
-        const passwordMatch = u.password === password;
-        if (emailMatch) {
-          console.log(`   Found user "${u.fullName}" with email ${u.email} - Password match: ${passwordMatch}`);
-        }
-        return emailMatch && passwordMatch;
-      });
-
-      if (foundUser) {
-        // Construct fullName from available data
-        let fullName = foundUser.fullName;
-        if (!fullName) {
-          // Fallback: combine firstName and lastName if they exist
-          const firstName = foundUser.firstName || '';
-          const lastName = foundUser.lastName || '';
-          fullName = `${firstName} ${lastName}`.trim() || foundUser.email;
-        }
-
-        const userToSet = {
-          ...foundUser,
-          fullName: fullName,
-          id: foundUser.id // Ensure ID is included
-        };
-        this.currentUser.set(userToSet);
-        this.saveToStorage(userToSet);
-        console.log('✅ AuthService.login - User login successful:', { fullName: fullName, email: foundUser.email });
-        return true;
-      } else {
-        console.log('❌ AuthService.login - No matching user found or password incorrect');
-      }
-    } else {
-      console.warn('⚠️ AuthService.login - No users found in localStorage');
-    }
-    return false;
   }
 
   /**
