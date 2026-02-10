@@ -5,7 +5,7 @@ import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ManagerDataService } from '../../core/services/manager-data.service';
-
+ 
 @Component({
   selector: 'app-signup',
   standalone: true,
@@ -22,10 +22,10 @@ export class SignupComponent {
   signupForm: FormGroup;
   // This must be false for the password to be hidden (dotted) by default
   showPassword = false;
-
+ 
   // Roles for the dropdown
   roles: string[] = ['Employee', 'Manager'];
-
+ 
   // Departments for the dropdown
   departments: string[] = [
     'Dot-net Angular',
@@ -47,22 +47,22 @@ export class SignupComponent {
       confirmPassword: ['', [Validators.required]]
     }, { validators: this.passwordMatchValidator });
   }
-
+ 
   // Custom validator to ensure password and confirmPassword match
   passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
     const password = control.get('password')?.value;
     const confirmPassword = control.get('confirmPassword')?.value;
     return password === confirmPassword ? null : { passwordMismatch: true };
   }
-
+ 
   // Helper getter for easy access to form controls in the HTML template
   get f() { return this.signupForm.controls; }
-
+ 
   // Toggles the showPassword boolean when the eye icon is clicked
   togglePassword() {
     this.showPassword = !this.showPassword;
   }
-
+ 
   // Handles form submission
   onSubmit() {
     if (this.signupForm.valid) {
@@ -73,20 +73,20 @@ export class SignupComponent {
         department: this.signupForm.value.department,
         password: this.signupForm.value.password
       };
-
+ 
       // Register user via API
       this.authService.registerAsync(userData).subscribe({
         next: (response: any) => {
-
+ 
           console.log('Registration successful:', response);
           // If the person just registering is a Manager, update the navbar name
           if (userData.role === 'Manager') {
             this.managerDataService.setUser(userData.name, userData.role);
           }
-
+ 
           // Show soft notification
           this.notificationService.success(`Account created successfully for ${userData.name}!`);
-
+ 
           // Navigate to signin
           this.router.navigate(['/signin']);
         },
@@ -113,3 +113,5 @@ export class SignupComponent {
     }
   }
 }
+ 
+ 
