@@ -55,8 +55,8 @@ export class SigninComponent {
           // Set the user in the auth service
           this.authService.setCurrentUser(user);
 
-          // 1. First, check if the role matches
-          if (selectedRole !== user.role) {
+          // 1. First, check if the role matches (case-insensitive)
+          if (selectedRole.toLowerCase() !== user.role?.toLowerCase()) {
             this.notificationService.error(`Access Denied: You are registered as ${user.role}, not ${selectedRole}.`, 5000);
             setTimeout(() => {
               this.authService.logout();
