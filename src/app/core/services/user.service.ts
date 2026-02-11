@@ -42,10 +42,37 @@ export class UserService {
      */
     private loadUsers(): void {
         this.apiService.getUsers().subscribe({
-            next: (users: any[]) => {
+            next: (response: any) => {
+                // Handle different response formats from backend
+                let users: any[] = [];
+                
+                if (Array.isArray(response)) {
+                    users = response;
+                } else if (response && Array.isArray(response.$values)) {
+                    // Handle .NET serialization format
+                    users = response.$values;
+                } else if (response && Array.isArray(response.data)) {
+                    users = response.data;
+                } else if (response && Array.isArray(response.result)) {
+                    users = response.result;
+                }
+                
+                console.log('✅ UserService - Loaded users from API:', users.length);
+                
                 if (users && users.length > 0) {
-                    this.usersSubject.next(users);
-                    this.saveUsersToStorage(users);
+                    // Map backend user format to frontend format
+                    const mappedUsers: User[] = users.map((u: any) => ({
+                        id: u.userId?.toString() || u.id?.toString() || `user_${Date.now()}`,
+                        email: u.email,
+                        fullName: u.name || u.fullName || u.email,
+                        role: u.role as 'Employee' | 'Manager' | 'Admin',
+                        department: u.department,
+                        status: (u.isActive === false ? 'Inactive' : 'Active') as 'Active' | 'Inactive',
+                        phone: u.phone,
+                        joinDate: u.joinDate || u.createdAt
+                    }));
+                    this.usersSubject.next(mappedUsers);
+                    this.saveUsersToStorage(mappedUsers);
                 } else {
                     // Fallback to stored users
                     this.loadUsersFromStorage();
@@ -56,6 +83,14 @@ export class UserService {
                 this.loadUsersFromStorage();
             }
         });
+    }
+
+    /**
+     * Refresh users from API (public method to trigger refresh)
+     */
+    refreshUsers(): void {
+        console.log('🔄 UserService - Refreshing users from API...');
+        this.loadUsers();
     }
 
     /**
@@ -177,16 +212,40 @@ export class UserService {
 
     /**
      * Deactivate a user (set status to Inactive)
+     * Backend endpoint: PATCH /api/User/{userId}/deactivate
      */
     deactivateUser(id: string) {
-        this.updateUser(id, { status: 'Inactive' });
+        this.apiService.deactivateUser(id).subscribe({
+            next: () => {
+                console.log('✅ UserService - User deactivated:', id);
+                // Update local state
+                this.updateUser(id, { status: 'Inactive' });
+            },
+            error: (err) => {
+                console.error('❌ UserService - Error deactivating user:', err);
+                // Fallback: update locally anyway
+                this.updateUser(id, { status: 'Inactive' });
+            }
+        });
     }
 
     /**
      * Activate a user (set status to Active)
+     * Backend endpoint: PATCH /api/User/{userId}/activate
      */
     activateUser(id: string) {
-        this.updateUser(id, { status: 'Active' });
+        this.apiService.activateUser(id).subscribe({
+            next: () => {
+                console.log('✅ UserService - User activated:', id);
+                // Update local state
+                this.updateUser(id, { status: 'Active' });
+            },
+            error: (err) => {
+                console.error('❌ UserService - Error activating user:', err);
+                // Fallback: update locally anyway
+                this.updateUser(id, { status: 'Active' });
+            }
+        });
     }
 
     /**
@@ -237,6 +296,18 @@ export class UserService {
                     users = this.migrateUsersToFullName(users);
                     // Deduplicate users by email (keep first occurrence)
                     users = this.deduplicateUsers(users);
+                    // Filter out old dummy data emails
+                    const dummyEmails = [
+                        'akash@gmail.com',
+                        'chandana@gmail.com',
+                        'prachothan@gmail.com',
+                        'gopi@gmail.com',
+                        'umesh@gmail.com',
+                        'john.doe@example.com',
+                        'jane.doe@example.com',
+                        'test@test.com'
+                    ];
+                    users = users.filter((u: User) => !dummyEmails.includes(u.email?.toLowerCase()));
                     this.usersSubject.next(users);
                     console.log('✅ UserService.loadUsersFromStorage - Loaded', users.length, 'users from localStorage:', users.map((u: User) => ({ fullName: u.fullName, email: u.email, hasPassword: !!u.password })));
                     // Save migrated data back to storage

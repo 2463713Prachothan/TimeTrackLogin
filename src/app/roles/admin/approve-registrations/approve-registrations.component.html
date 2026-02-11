@@ -1,5 +1,15 @@
 <div class="approval-container">
   
+    <!-- Loading indicator -->
+    <div *ngIf="isLoading" class="loading-message">
+        <p>Loading registrations...</p>
+    </div>
+
+    <!-- Error message -->
+    <div *ngIf="errorMessage" class="error-message">
+        <p>{{ errorMessage }}</p>
+        <button (click)="loadRegistrations()" class="btn btn-retry">Retry</button>
+    </div>
 
     <div class="tabs">
         <button 
@@ -26,7 +36,7 @@
         <div class="registration-card" *ngFor="let reg of filteredRegistrations" [class.status-pending]="reg.status === 'Pending'" [class.status-approved]="reg.status === 'Approved'" [class.status-rejected]="reg.status === 'Rejected'">
             <div class="card-header">
                 <div class="user-info">
-                    <h3>{{ reg.fullName }}</h3>
+                    <h3>{{ reg.name || reg.fullName }}</h3>
                     <p class="email">{{ reg.email }}</p>
                 </div>
                 <span class="status-badge" [class]="'status-' + reg.status.toLowerCase()">
@@ -47,13 +57,13 @@
                     <span class="label">Applied Date:</span>
                     <span class="value">{{ reg.appliedDate }}</span>
                 </div>
-                <div class="info-row" *ngIf="reg.approvedDate">
+                <div class="info-row" *ngIf="reg.processedDate">
                     <span class="label">{{ reg.status === 'Approved' ? 'Approved' : 'Rejected' }} Date:</span>
-                    <span class="value">{{ reg.approvedDate }}</span>
+                    <span class="value">{{ reg.processedDate }}</span>
                 </div>
-                <div class="info-row" *ngIf="reg.approvedBy">
-                    <span class="label">{{ reg.status === 'Approved' ? 'Approved' : 'Rejected' }} By:</span>
-                    <span class="value">{{ reg.approvedBy }}</span>
+                <div class="info-row" *ngIf="reg.rejectionReason">
+                    <span class="label">Rejection Reason:</span>
+                    <span class="value">{{ reg.rejectionReason }}</span>
                 </div>
             </div>
 

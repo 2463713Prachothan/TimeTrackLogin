@@ -45,14 +45,17 @@ export class AdminComponent implements OnInit {
 
   loadUserStatistics() {
     this.userService.getUsers().subscribe(users => {
+      // Filter out null/undefined users from backend response
+      const validUsers = users.filter(u => u != null && u.role != null);
+      
       // Calculate employee statistics
-      const employees = users.filter(u => u.role === 'Employee');
+      const employees = validUsers.filter(u => u.role === 'Employee');
       this.totalEmployees = employees.length;
       this.activeEmployees = employees.filter(u => u.status === 'Active').length;
       this.inactiveEmployees = employees.filter(u => u.status === 'Inactive').length;
       
       // Calculate manager statistics
-      const managers = users.filter(u => u.role === 'Manager');
+      const managers = validUsers.filter(u => u.role === 'Manager');
       this.totalManagers = managers.length;
       this.activeManagers = managers.filter(u => u.status === 'Active').length;
       this.inactiveManagers = managers.filter(u => u.status === 'Inactive').length;

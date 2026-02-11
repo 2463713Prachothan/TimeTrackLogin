@@ -2,9 +2,8 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { ManagerDataService } from '../../core/services/manager-data.service';
+import { RegistrationService } from '../../core/services/registration.service';
  
 @Component({
   selector: 'app-signup',
@@ -16,9 +15,8 @@ import { ManagerDataService } from '../../core/services/manager-data.service';
 export class SignupComponent {
   private fb = inject(FormBuilder);
   private router = inject(Router);
-  private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
-  private managerDataService = inject(ManagerDataService);
+  private registrationService = inject(RegistrationService);
   signupForm: FormGroup;
   // This must be false for the password to be hidden (dotted) by default
   showPassword = false;
@@ -68,30 +66,28 @@ export class SignupComponent {
     if (this.signupForm.valid) {
       const userData: any = {
         name: this.signupForm.value.fullName,
+        fullName: this.signupForm.value.fullName,
         email: this.signupForm.value.email.toLowerCase(),
         role: this.signupForm.value.role,
         department: this.signupForm.value.department,
         password: this.signupForm.value.password
       };
  
-      // Register user via API
-      this.authService.registerAsync(userData).subscribe({
+      // Submit registration for admin approval (not direct registration)
+      this.registrationService.addPendingRegistration(userData).subscribe({
         next: (response: any) => {
+          console.log('Registration submitted for approval:', response);
  
-          console.log('Registration successful:', response);
-          // If the person just registering is a Manager, update the navbar name
-          if (userData.role === 'Manager') {
-            this.managerDataService.setUser(userData.name, userData.role);
-          }
- 
-          // Show soft notification
-          this.notificationService.success(`Account created successfully for ${userData.name}!`);
+          // Show notification that registration is pending approval
+          this.notificationService.success(
+            `Registration submitted for ${userData.name}! Please wait for admin approval before signing in.`
+          );
  
           // Navigate to signin
           this.router.navigate(['/signin']);
         },
         error: (err: any) => {
-          console.error('Registration failed:', err);
+          console.error('Registration submission failed:', err);
           // Parse ASP.NET Core validation errors
           if (err.error?.errors) {
             const validationErrors = err.error.errors;
@@ -103,7 +99,7 @@ export class SignupComponent {
               .join(' | ');
             this.notificationService.error(messages);
           } else {
-            const message = err.error?.title || err.error?.message || 'Registration failed. Please try again.';
+            const message = err.error?.title || err.error?.message || 'Registration submission failed. Please try again.';
             this.notificationService.error(message);
           }
         }
