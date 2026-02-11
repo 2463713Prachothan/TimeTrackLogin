@@ -55,8 +55,11 @@ export class ManageusersComponent implements OnInit {
 
   loadUsers() {
     this.userService.getUsers().subscribe((users: any[]) => {
+      // Filter out null/undefined users from backend response
+      const validUsers = users.filter(u => u != null && u.id != null);
+      
       // Transform users from UserService format to display format
-      this.allUsers = users.map(u => ({
+      this.allUsers = validUsers.map(u => ({
         id: u.id,
         email: u.email,
         fullName: u.fullName || u.email,
