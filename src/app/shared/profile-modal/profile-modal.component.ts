@@ -30,6 +30,10 @@ export class ProfileModalComponent implements OnInit {
   loadProfileData() {
     const user = this.authService.currentUser();
     if (user) {
+      // Ensure fullName is set from either fullName or name field
+      if (!user.fullName && user.name) {
+        user.fullName = user.name;
+      }
       this.currentUser = user;
       
       // If user is an employee, get their manager's name

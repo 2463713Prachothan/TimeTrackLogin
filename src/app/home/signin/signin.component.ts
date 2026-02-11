@@ -45,7 +45,12 @@ export class SigninComponent {
         next: (response: any) => {
           console.log('Login response:', response);
           // API returns { success, message, data: { userId, name, email, role, department, token, tokenExpiration } }
-          const user = response.data || response;
+          let user = response.data || response;
+
+          // Normalize user data - ensure fullName is set from either fullName or name
+          if (!user.fullName && user.name) {
+            user.fullName = user.name;
+          }
 
           // Set the user in the auth service
           this.authService.setCurrentUser(user);

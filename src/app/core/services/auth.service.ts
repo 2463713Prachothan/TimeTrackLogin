@@ -13,9 +13,16 @@ export class AuthService {
   private platformId = inject(PLATFORM_ID);
   private http = inject(HttpClient);
   private registrationService = inject(RegistrationService);
+<<<<<<< HEAD
+
+  // Use relative URL - requests will be proxied to backend via proxy.conf.json
+  private readonly API_URL = '/api/Auth';
+
+=======
  
   private readonly API_URL = 'https://localhost:7172/api/auth';
  
+>>>>>>> 1af088ab299065b5f5681f328570eb6e6841bd3e
   /**
    * currentUser signal holds the logged-in user's data.
    * Initialized as null.
