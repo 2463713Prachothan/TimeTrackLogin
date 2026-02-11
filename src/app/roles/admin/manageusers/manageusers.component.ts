@@ -50,11 +50,8 @@ export class ManageusersComponent implements OnInit {
   constructor(private userService: UserService) {}
 
   ngOnInit() {
-    this.loadUsers();
-  }
-
-  loadUsers() {
-    this.userService.getUsers().subscribe((users: any[]) => {
+    // Subscribe to user changes - this will automatically update when users are refreshed
+    this.userService.users$.subscribe((users: any[]) => {
       // Filter out null/undefined users from backend response
       const validUsers = users.filter(u => u != null && u.id != null);
       
@@ -63,7 +60,7 @@ export class ManageusersComponent implements OnInit {
         id: u.id,
         email: u.email,
         fullName: u.fullName || u.email,
-        role: u.role ? String(u.role).trim() : 'Employee', // Ensure role is trimmed string
+        role: u.role ? String(u.role).trim() : 'Employee',
         department: u.department || 'Development',
         status: u.status || 'Active',
         type: 'System',
@@ -73,16 +70,17 @@ export class ManageusersComponent implements OnInit {
         assignedEmployees: u.assignedEmployees || []
       }));
       
-      // Log all users with their roles for debugging
-      console.log('Loaded Users:', this.allUsers.map(u => ({ 
-        id: u.id, 
-        fullName: u.fullName, 
-        role: u.role,
-        roleType: typeof u.role
-      })));
-      
+      console.log('👥 ManageUsers - Updated users:', this.allUsers.length);
       this.applySearch();
     });
+    
+    // Initial refresh to get latest users from API
+    this.userService.refreshUsers();
+  }
+
+  loadUsers() {
+    // This method can now just trigger a refresh
+    this.userService.refreshUsers();
   }
 
   // --- STAT GETTERS (Fixes NG5002 Error) ---
@@ -144,71 +142,87 @@ export class ManageusersComponent implements OnInit {
       return;
     }
 
-    const updateData: any = {
-      fullName: this.selectedUser.fullName,
-      role: this.selectedUser.role,
-      department: this.selectedUser.department
-    };
+    const originalUser = this.allUsers.find(u => u.id === this.selectedUser!.id);
+    const oldRole = originalUser?.role || '';
+    const newRole = this.selectedUser.role;
+    const roleChanged = oldRole !== newRole;
 
-    // Handle Employee role
-    if (this.selectedUser.role === 'Employee') {
-      const oldManagerId = this.allUsers.find(u => u.id === this.selectedUser!.id)?.managerId;
+    console.log('💾 Saving user changes:', {
+      userId: this.selectedUser.id,
+      oldRole,
+      newRole,
+      roleChanged,
+      managerId: this.selectedUser.managerId,
+      assignedEmployees: this.selectedUser.assignedEmployees
+    });
+
+    // Handle role change: Employee -> Manager (Upgrade)
+    if (roleChanged && oldRole === 'Employee' && newRole === 'Manager') {
+      console.log('🔼 Upgrading Employee to Manager');
+      this.userService.upgradeToManager(this.selectedUser.id);
+      // Also update basic info
+      this.userService.updateUser(this.selectedUser.id, {
+        fullName: this.selectedUser.fullName,
+        department: this.selectedUser.department
+      });
+    }
+    // Handle role change: Manager -> Employee (Downgrade)
+    else if (roleChanged && oldRole === 'Manager' && newRole === 'Employee') {
+      console.log('🔽 Downgrading Manager to Employee');
+      this.userService.downgradeToEmployee(this.selectedUser.id);
+      // Also update basic info and assign manager if selected
+      if (this.selectedUser.managerId) {
+        this.userService.assignManagerToEmployee(this.selectedUser.id, this.selectedUser.managerId, '');
+      }
+      this.userService.updateUser(this.selectedUser.id, {
+        fullName: this.selectedUser.fullName,
+        department: this.selectedUser.department
+      });
+    }
+    // Handle Employee role (no role change or already Employee)
+    else if (newRole === 'Employee') {
+      const oldManagerId = originalUser?.managerId || '';
       const newManagerId = this.selectedUser.managerId || '';
 
-      updateData.managerId = newManagerId;
-      updateData.assignedEmployees = [];
-
-      // If manager changed, update both old and new manager's lists
+      // Use UserService to handle the manager-employee relationship
       if (oldManagerId !== newManagerId) {
-        // Remove from old manager
-        if (oldManagerId) {
-          const oldManager = this.allUsers.find(u => u.id === oldManagerId);
-          if (oldManager && oldManager.assignedEmployees) {
-            const updatedList = oldManager.assignedEmployees.filter(id => id !== this.selectedUser!.id);
-            this.userService.updateUser(oldManagerId, { assignedEmployees: updatedList });
-          }
-        }
-        // Add to new manager
-        if (newManagerId) {
-          const newManager = this.allUsers.find(u => u.id === newManagerId);
-          if (newManager) {
-            const updatedList = [...(newManager.assignedEmployees || [])];
-            if (!updatedList.includes(this.selectedUser.id)) {
-              updatedList.push(this.selectedUser.id);
-            }
-            this.userService.updateUser(newManagerId, { assignedEmployees: updatedList });
-          }
-        }
+        console.log('🔗 Reassigning manager:', oldManagerId, '->', newManagerId);
+        this.userService.assignManagerToEmployee(this.selectedUser.id, newManagerId, oldManagerId);
       }
+      // Also update basic user data
+      this.userService.updateUser(this.selectedUser.id, {
+        fullName: this.selectedUser.fullName,
+        department: this.selectedUser.department,
+        managerId: newManagerId
+      });
     }
-
-    // Handle Manager role
-    if (this.selectedUser.role === 'Manager') {
-      const originalUser = this.allUsers.find(u => u.id === this.selectedUser!.id);
+    // Handle Manager role (no role change or already Manager)
+    else if (newRole === 'Manager') {
       const oldAssignedEmployees = originalUser?.assignedEmployees || [];
       const newAssignedEmployees = this.selectedUser.assignedEmployees || [];
 
-      updateData.managerId = '';
-      updateData.assignedEmployees = newAssignedEmployees;
-
-      // Update newly assigned employees
-      newAssignedEmployees.forEach(employeeId => {
-        const employee = this.allUsers.find(u => u.id === employeeId);
-        if (employee && employee.managerId !== this.selectedUser!.id) {
-          this.userService.updateUser(employeeId, { managerId: this.selectedUser!.id });
-        }
+      // Use UserService to handle the manager-employee relationships
+      console.log('👥 Updating assigned employees:', oldAssignedEmployees, '->', newAssignedEmployees);
+      this.userService.assignEmployeesToManager(
+        this.selectedUser.id, 
+        newAssignedEmployees, 
+        oldAssignedEmployees
+      );
+      
+      // Also update basic user data
+      this.userService.updateUser(this.selectedUser.id, {
+        fullName: this.selectedUser.fullName,
+        department: this.selectedUser.department
       });
-
-      // Remove employees no longer assigned
-      oldAssignedEmployees.forEach(employeeId => {
-        if (!newAssignedEmployees.includes(employeeId)) {
-          this.userService.updateUser(employeeId, { managerId: '' });
-        }
+    } else {
+      // Other roles - just update basic data
+      this.userService.updateUser(this.selectedUser.id, {
+        fullName: this.selectedUser.fullName,
+        role: this.selectedUser.role as 'Employee' | 'Manager' | 'Admin',
+        department: this.selectedUser.department
       });
     }
 
-    this.userService.updateUser(this.selectedUser.id, updateData);
-    this.loadUsers();
     this.closeEditModal();
   }
 
@@ -284,8 +298,25 @@ export class ManageusersComponent implements OnInit {
 
   // --- MANAGER ASSIGNMENT HELPERS ---
   getManagerName(managerId?: string): string {
-    if (!managerId) return '';
+    if (!managerId) {
+      console.log('👤 getManagerName - No managerId provided');
+      return '';
+    }
+    console.log('👤 getManagerName - Looking for manager with ID:', managerId);
+    console.log('👤 getManagerName - Available users:', this.allUsers.map(u => ({ id: u.id, fullName: u.fullName })));
     const manager = this.allUsers.find(u => u.id === managerId);
+    console.log('👤 getManagerName - Found manager:', manager?.fullName || 'NOT FOUND');
     return manager ? manager.fullName : '';
+  }
+
+  getAssignedEmployeeNames(employeeIds?: string[]): string {
+    if (!employeeIds || employeeIds.length === 0) return '';
+    return employeeIds
+      .map(id => {
+        const employee = this.allUsers.find(u => u.id === id);
+        return employee ? employee.fullName : '';
+      })
+      .filter(name => name)
+      .join(', ');
   }
 }

@@ -1,109 +1,148 @@
 import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RegistrationService, PendingRegistration } from '../../../core/services/registration.service';
+import { NotificationService } from '../../../core/services/notification.service';
+import { UserService } from '../../../core/services/user.service';
 
 @Component({
   selector: 'app-approve-registrations',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './approve-registrations.component.html',
   styleUrls: ['./approve-registrations.component.css']
 })
 export class ApproveRegistrationsComponent implements OnInit {
   private platformId = inject(PLATFORM_ID);
-  pendingRegistrations: PendingRegistration[] = [];
+  private registrationService = inject(RegistrationService);
+  private notificationService = inject(NotificationService);
+  private userService = inject(UserService);
+
+  allRegistrations: PendingRegistration[] = [];
   activeTab: 'pending' | 'approved' | 'rejected' = 'pending';
   isLoading = false;
   errorMessage = '';
 
-  constructor(private registrationService: RegistrationService) {}
+  // Reject modal
+  showRejectModal = false;
+  selectedRegistration: PendingRegistration | null = null;
+  rejectionReason = '';
 
   ngOnInit() {
-    // Only load in browser
     if (isPlatformBrowser(this.platformId)) {
-      this.loadRegistrations();
+      this.loadAllRegistrations();
     }
   }
 
-  loadRegistrations() {
+  loadAllRegistrations() {
     this.isLoading = true;
     this.errorMessage = '';
-    console.log('📡 ApproveRegistrationsComponent - Loading registrations...');
-    
-    this.registrationService.getPendingRegistrations().subscribe({
-      next: (registrations) => {
+
+    this.registrationService.getAllRegistrations().subscribe({
+      next: (registrations: PendingRegistration[]) => {
         this.isLoading = false;
-        console.log('✅ ApproveRegistrationsComponent - Received registrations:', registrations);
-        // Backend /pending endpoint returns only pending items
-        // Map them with status 'Pending' if not already set
-        this.pendingRegistrations = registrations.map(r => ({
-          ...r,
-          status: r.status || 'Pending'
-        }));
-        console.log('✅ ApproveRegistrationsComponent - Mapped registrations:', this.pendingRegistrations);
+        this.allRegistrations = registrations;
+        console.log('✅ Loaded registrations:', registrations);
       },
-      error: (err) => {
+      error: (err: any) => {
         this.isLoading = false;
-        this.errorMessage = 'Failed to load registrations. Check if backend is running.';
-        console.error('❌ ApproveRegistrationsComponent - Error loading:', err);
+        this.errorMessage = 'Failed to load registrations.';
+        console.error('❌ Error:', err);
       }
     });
   }
 
   get filteredRegistrations(): PendingRegistration[] {
-    console.log('🔍 Filtering for tab:', this.activeTab, 'Total:', this.pendingRegistrations.length);
-    if (this.activeTab === 'pending') {
-      // For pending tab, show all (since backend /pending returns only pending)
-      // or filter by status if available
-      const filtered = this.pendingRegistrations.filter(r => 
-        !r.status || r.status.toLowerCase() === 'pending'
-      );
-      console.log('🔍 Pending filtered:', filtered.length);
-      return filtered;
-    } else if (this.activeTab === 'approved') {
-      return this.pendingRegistrations.filter(r => r.status?.toLowerCase() === 'approved');
-    } else {
-      return this.pendingRegistrations.filter(r => r.status?.toLowerCase() === 'rejected');
-    }
-  }
-
-  approveRegistration(registration: PendingRegistration) {
-    const displayName = registration.name || registration.fullName;
-    const regId = registration.registrationId?.toString() || registration.id?.toString() || '';
-    if (confirm(`Approve registration for ${displayName}?`)) {
-      // Pass the full registration data so the service can add the user to localStorage
-      this.registrationService.approveRegistration(regId, 'Admin', registration).subscribe(() => {
-        this.loadRegistrations();
-      });
-    }
-  }
-
-  rejectRegistration(registration: PendingRegistration) {
-    const displayName = registration.name || registration.fullName;
-    const regId = registration.registrationId?.toString() || registration.id?.toString() || '';
-    if (confirm(`Reject registration for ${displayName}?`)) {
-      this.registrationService.rejectRegistration(regId).subscribe(() => {
-        this.loadRegistrations();
-      });
-    }
-  }
-
-  deleteRegistration(registration: PendingRegistration) {
-    const regId = registration.registrationId?.toString() || registration.id?.toString() || '';
-    if (confirm(`Delete this registration?`)) {
-      this.registrationService.deleteRegistration(regId);
-    }
+    return this.allRegistrations.filter(r =>
+      r.status?.toLowerCase() === this.activeTab
+    );
   }
 
   getPendingCount(): number {
-    return this.pendingRegistrations.filter(r => r.status === 'Pending').length;
+    return this.allRegistrations.filter(r => r.status?.toLowerCase() === 'pending').length;
   }
 
   getApprovedCount(): number {
-    return this.pendingRegistrations.filter(r => r.status === 'Approved').length;
+    return this.allRegistrations.filter(r => r.status?.toLowerCase() === 'approved').length;
   }
 
   getRejectedCount(): number {
-    return this.pendingRegistrations.filter(r => r.status === 'Rejected').length;
+    return this.allRegistrations.filter(r => r.status?.toLowerCase() === 'rejected').length;
+  }
+
+  setActiveTab(tab: 'pending' | 'approved' | 'rejected') {
+    this.activeTab = tab;
+  }
+
+  approveRegistration(registration: PendingRegistration) {
+    if (confirm(`Approve registration for ${registration.name}?`)) {
+      this.registrationService.approveRegistration(registration.registrationId).subscribe({
+        next: () => {
+          this.notificationService.success(`${registration.name} approved successfully!`);
+          this.loadAllRegistrations();
+          // Refresh users list so the new user appears in Manage Users
+          // Add a small delay to ensure backend has completed creating the user
+          setTimeout(() => {
+            console.log('🔄 Refreshing users after approval...');
+            this.userService.refreshUsers();
+          }, 500);
+        },
+        error: (err: any) => {
+          this.notificationService.error(err.error?.message || 'Failed to approve');
+        }
+      });
+    }
+  }
+
+  openRejectModal(registration: PendingRegistration) {
+    this.selectedRegistration = registration;
+    this.rejectionReason = '';
+    this.showRejectModal = true;
+  }
+
+  closeRejectModal() {
+    this.showRejectModal = false;
+    this.selectedRegistration = null;
+    this.rejectionReason = '';
+  }
+
+  confirmReject() {
+    if (!this.selectedRegistration) return;
+
+    this.registrationService.rejectRegistration(
+      this.selectedRegistration.registrationId,
+      this.rejectionReason
+    ).subscribe({
+      next: () => {
+        this.notificationService.success(`${this.selectedRegistration?.name} rejected.`);
+        this.closeRejectModal();
+        this.loadAllRegistrations();
+      },
+      error: (err: any) => {
+        this.notificationService.error(err.error?.message || 'Failed to reject');
+      }
+    });
+  }
+
+  deleteRegistration(registration: PendingRegistration) {
+    if (confirm(`Delete registration for ${registration.name}?`)) {
+      this.registrationService.deleteRegistration(registration.registrationId).subscribe({
+        next: () => {
+          this.notificationService.success('Deleted successfully');
+          this.loadAllRegistrations();
+        },
+        error: () => {
+          this.notificationService.error('Failed to delete');
+        }
+      });
+    }
+  }
+
+  formatDate(dateString: string | undefined): string {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
   }
 }

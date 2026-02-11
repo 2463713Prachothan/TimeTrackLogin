@@ -13,13 +13,13 @@ export class ApiService {
   private platformId = inject(PLATFORM_ID);
 
   // Use relative URLs - requests will be proxied via proxy.conf.json
+  // The proxy handles the SSL certificate issue with the self-signed backend cert
   private apiUrl = '/api';
   
-  // For endpoints that don't exist yet in backend, use mock/localStorage data
-  // Set to false when backend endpoints are ready
-  private useMockForTasks = true;    // Tasks endpoint not ready
-  private useMockForTimeLogs = true; // Time logs endpoint not ready
-  private useMockForUsers = false;   // Users endpoint ready: /api/User/all, /api/User/profile, etc.
+  // All endpoints use real backend API - no mock data
+  private useMockForTasks = false;
+  private useMockForTimeLogs = false;
+  private useMockForUsers = false;
 
   /**
    * Get HTTP headers with authorization token
@@ -55,18 +55,23 @@ export class ApiService {
    */
   getUsers(): Observable<any[]> {
     if (this.useMockForUsers) {
-      return of([]); // Return empty - will be populated by service
+      return of([]); // Return empty - will be populated by service from localStorage
     }
     
-    // Only fetch in browser
+    // Only fetch in browser (SSR has certificate issues with self-signed certs)
     if (!isPlatformBrowser(this.platformId)) {
+      console.log('⚠️ ApiService - Skipping getUsers in SSR');
       return of([]);
     }
     
+    console.log('📡 ApiService - Fetching users from:', `${this.apiUrl}/User/all`);
+    
     return this.http.get<any>(`${this.apiUrl}/User/all`, { headers: this.getHeaders() })
       .pipe(
+        tap((response: any) => {
+          console.log('📥 ApiService - Users raw response:', JSON.stringify(response));
+        }),
         map((response: any) => {
-          console.log('✅ ApiService - Users raw response:', response);
           
           // Handle different response formats from backend
           let users: any[] = [];
@@ -80,9 +85,9 @@ export class ApiService {
             users = response.result;
           }
           
-          // Filter out null/undefined users
-          users = users.filter(u => u != null && u.id != null);
-          console.log('✅ ApiService - Parsed users:', users.length);
+          // Filter out null/undefined users - check both id and userId
+          users = users.filter(u => u != null && (u.id != null || u.userId != null));
+          console.log('✅ ApiService - Parsed users:', users.length, users);
           return users;
         }),
         catchError(err => {
@@ -91,7 +96,6 @@ export class ApiService {
         })
       );
   }
-
   /**
    * Get current user profile
    * Backend endpoint: GET /api/User/profile
@@ -219,13 +223,21 @@ export class ApiService {
   /**
    * Update user
    * Backend endpoint: PUT /api/User/:id
+   * Always calls API - no mock data
    */
   updateUser(id: string, user: any): Observable<any> {
-    if (this.useMockForUsers) {
-      return of(user);
-    }
+    console.log('📡 ApiService - Calling PUT /api/User/' + id, user);
     return this.http.put<any>(`${this.apiUrl}/User/${id}`, user, { headers: this.getHeaders() })
-      .pipe(catchError(err => this.handleError(err)));
+      .pipe(
+        map((response: any) => {
+          console.log('✅ ApiService - User update response:', response);
+          return response.data || response;
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error updating user:', err);
+          return this.handleError(err);
+        })
+      );
   }
 
   /**
