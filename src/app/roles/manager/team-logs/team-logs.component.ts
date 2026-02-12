@@ -1,12 +1,13 @@
 import { Component, OnInit, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TimeLogService } from '../../../core/services/time-log.service';
 import { UserService } from '../../../core/services/user.service';
-import { TimeLogService, TimeLog } from '../../../core/services/time-log.service';
+import { TeamTimeLog, TeamMember } from '../../../core/models/time-log.model';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
-interface TimeLogDisplay extends TimeLog {
+interface TimeLogDisplay extends TeamTimeLog {
   displayHours?: string; // Formatted display hours
   elapsedTime?: string; // Time elapsed since start
 }
@@ -19,20 +20,23 @@ interface TimeLogDisplay extends TimeLog {
   styleUrls: ['./team-logs.component.css']
 })
 export class TeamLogsComponent implements OnInit, OnDestroy {
-  private userService = inject(UserService);
   private timeLogService = inject(TimeLogService);
+  private userService = inject(UserService);
   private destroy$ = new Subject<void>();
 
   readonly today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   readonly currentWeekDates = this.getCurrentWeekDates();
 
-  allLogs: TimeLog[] = [];
+  allLogs: TeamTimeLog[] = [];
   uniqueMembers: string[] = [];
-  filteredLogs: TimeLog[] = [];
-  assignedEmployeeNames: Set<string> = new Set();
+  filteredLogs: TeamTimeLog[] = [];
+  teamMembers: TeamMember[] = [];
 
+  // Filter variables
   selectedMember: string = 'All Team Members';
+  selectedMemberId: string = 'All';
   selectedTimeFrame: string = 'Today';
+  selectedPeriod: string = 'Today';
 
   // Generate current week date strings
   private getCurrentWeekDates(): string[] {
@@ -50,33 +54,43 @@ export class TeamLogsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    // Get current manager info from session
-    const currentManagerId = this.getCurrentManagerId();
-
-    // Step 1: Load assigned employees list and setup filter
-    this.userService.getUsers()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((users: any[]) => {
-        // Get the current manager's record
-        const currentManager = users.find(u => u.id === currentManagerId);
-
-        // Get employees assigned to this manager
-        let assignedEmployeeIds: string[] = [];
-        if (currentManager && currentManager.assignedEmployees) {
-          assignedEmployeeIds = currentManager.assignedEmployees;
-        }
-
-        // Get assigned employee names and populate dropdown
-        const assignedEmployees = users.filter(u => assignedEmployeeIds.includes(u.id));
-        this.assignedEmployeeNames = new Set(assignedEmployees.map(emp => emp.fullName));
-        this.uniqueMembers = assignedEmployees.map(emp => emp.fullName);
-
-        // NOW subscribe to logs AFTER we have the employee names
-        this.subscribeToLogs();
-      });
+    this.fetchTeamLogs();
+    this.fetchTeamMembers();
 
     // Start real-time refresh every second
     this.startRealtimeRefresh();
+  }
+
+  /**
+   * Fetch team members from UserService
+   */
+  private fetchTeamMembers(): void {
+    const managerId = this.getCurrentManagerId();
+    if (!managerId) {
+      this.teamMembers = [];
+      return;
+    }
+
+    this.userService.getTeamMembers(managerId.toString())
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(users => {
+        // Map users to TeamMember with calculated hours
+        this.teamMembers = users.map(user => {
+          const employeeLogs = this.allLogs.filter(log =>
+            log.employeeName?.toLowerCase() === user.fullName?.toLowerCase()
+          );
+          const totalHours = employeeLogs.reduce((sum, log) => sum + (log.totalHours || 0), 0);
+
+          return {
+            id: user.id || '',
+            name: user.fullName,
+            email: user.email,
+            totalHours: totalHours,
+            department: user.department,
+            status: user.status
+          };
+        });
+      });
   }
 
   /**
@@ -90,24 +104,35 @@ export class TeamLogsComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Subscribe to time logs and filter by assigned employees
-   * This is called AFTER assignedEmployeeNames is populated
-   */
-  private subscribeToLogs(): void {
-    this.timeLogService.getLogs()
+  private fetchTeamLogs(): void {
+    const managerId = this.getCurrentManagerId();
+    if (!managerId) {
+      this.allLogs = [];
+      this.filteredLogs = [];
+      return;
+    }
+
+    this.timeLogService.getTeamTimeLogs(managerId)
       .pipe(takeUntil(this.destroy$))
-      .subscribe((data: any[]) => {
-        // Filter logs to show only assigned employees
-        const filteredByEmployee = data.filter((log: any) => 
-          this.assignedEmployeeNames.has(log.employee)
-        );
-        
-        this.allLogs = filteredByEmployee;
-        
-        // Update dashboard with new filtered logs
+      .subscribe((logs: TeamTimeLog[]) => {
+        this.allLogs = logs || [];
+        this.uniqueMembers = Array.from(new Set(this.allLogs.map(l => l.employeeName)));
         this.updateDashboard();
+        this.updateTeamMemberHours();
       });
+  }
+
+  /**
+   * Update team member hours based on current logs
+   */
+  private updateTeamMemberHours(): void {
+    this.teamMembers = this.teamMembers.map(member => {
+      const employeeLogs = this.allLogs.filter(log =>
+        log.employeeName?.toLowerCase() === member.name?.toLowerCase()
+      );
+      const totalHours = employeeLogs.reduce((sum, log) => sum + (log.totalHours || 0), 0);
+      return { ...member, totalHours };
+    });
   }
 
   ngOnDestroy() {
@@ -119,36 +144,64 @@ export class TeamLogsComponent implements OnInit, OnDestroy {
   /**
    * Get current manager ID from session
    */
-  private getCurrentManagerId(): string {
+  private getCurrentManagerId(): number | null {
     if (typeof window !== 'undefined' && window.localStorage) {
       const saved = localStorage.getItem('user_session');
       if (saved) {
         const user = JSON.parse(saved);
-        return user.id || '';
+        const parsed = Number(user.userId ?? user.id);
+        return Number.isNaN(parsed) ? null : parsed;
       }
     }
-    return '';
+    return null;
   }
 
-  // Filter logs based on selected criteria
-  updateDashboard() {
+  private formatLogDate(dateValue: string): string {
+    const d = new Date(dateValue);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  /**
+   * Filter logs based on selected criteria
+   * Called when dropdown values change
+   */
+  filterLogs() {
+    // Sync alias variables
+    this.selectedPeriod = this.selectedTimeFrame;
+    this.selectedMemberId = this.selectedMember === 'All Team Members' ? 'All' : this.selectedMember;
+    
     let temp = [...this.allLogs];
 
     // Filter by member
     if (this.selectedMember !== 'All Team Members') {
-      temp = temp.filter(log => log.employee === this.selectedMember);
+      temp = temp.filter(log => log.employeeName === this.selectedMember);
     }
 
     // Filter by timeframe
     if (this.selectedTimeFrame === 'Today') {
-      this.filteredLogs = temp.filter(log => log.date === this.today);
+      this.filteredLogs = temp.filter(log => this.formatLogDate(log.date) === this.today);
     } else if (this.selectedTimeFrame === 'This Week') {
-      this.filteredLogs = temp.filter(log => this.currentWeekDates.includes(log.date));
+      this.filteredLogs = temp.filter(log => this.currentWeekDates.includes(this.formatLogDate(log.date)));
     } else if (this.selectedTimeFrame === 'All Time') {
       this.filteredLogs = temp;
     } else {
       this.filteredLogs = [];
     }
+  }
+
+  // Alias for backward compatibility
+  updateDashboard() {
+    this.filterLogs();
+  }
+
+  /**
+   * Get filtered team members based on selected member dropdown
+   */
+  get displayedMembers(): TeamMember[] {
+    if (this.selectedMember === 'All Team Members') {
+      return this.teamMembers;
+    }
+    return this.teamMembers.filter(m => m.name === this.selectedMember);
   }
 
   /**
@@ -175,13 +228,29 @@ export class TeamLogsComponent implements OnInit, OnDestroy {
     return hours ? hours.toFixed(2) : '0.00';
   }
 
+  formatBreakMinutes(value: string | undefined): string {
+    if (!value) {
+      return '0';
+    }
+
+    const parts = value.split(':').map(Number);
+    if (parts.length < 2 || parts.some(part => Number.isNaN(part))) {
+      return '0';
+    }
+
+    const hours = parts[0] || 0;
+    const minutes = parts[1] || 0;
+    const totalMinutes = hours * 60 + minutes;
+    return totalMinutes.toString();
+  }
+
   // Calculate summary statistics for filtered logs
   get summaryStats() {
     const data = this.filteredLogs;
     if (data.length === 0) return { total: '0.0', avg: '0.0', entries: 0 };
 
-    const totalHours = data.reduce((sum, log) => sum + (log.currentHours || log.totalHours || 0), 0);
-    const uniqueDays = new Set(data.map(l => l.date)).size;
+    const totalHours = data.reduce((sum, log) => sum + (log.totalHours || 0), 0);
+    const uniqueDays = new Set(data.map(l => this.formatLogDate(l.date))).size;
 
     return {
       total: totalHours.toFixed(1),
@@ -192,20 +261,20 @@ export class TeamLogsComponent implements OnInit, OnDestroy {
 
   // Get individual member statistics
   getMemberStats(name: string) {
-    const memberLogs = this.allLogs.filter(l => l.employee === name);
-    let timeframeLogs: TimeLog[] = [];
+    const memberLogs = this.allLogs.filter(l => l.employeeName === name);
+    let timeframeLogs: TeamTimeLog[] = [];
 
     if (this.selectedTimeFrame === 'Today') {
-      timeframeLogs = memberLogs.filter(l => l.date === this.today);
+      timeframeLogs = memberLogs.filter(l => this.formatLogDate(l.date) === this.today);
     } else if (this.selectedTimeFrame === 'This Week') {
-      timeframeLogs = memberLogs.filter(l => this.currentWeekDates.includes(l.date));
+      timeframeLogs = memberLogs.filter(l => this.currentWeekDates.includes(this.formatLogDate(l.date)));
     } else if (this.selectedTimeFrame === 'All Time') {
       timeframeLogs = memberLogs;
     }
 
     return {
       hours: timeframeLogs.reduce((s, l) => s + l.totalHours, 0).toFixed(1),
-      days: new Set(timeframeLogs.map(l => l.date)).size
+      days: new Set(timeframeLogs.map(l => this.formatLogDate(l.date))).size
     };
   }
 } 

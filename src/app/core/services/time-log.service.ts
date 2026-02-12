@@ -1,7 +1,9 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable, interval } from 'rxjs';
-import { tap, switchMap, map } from 'rxjs/operators';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { BehaviorSubject, Observable, interval, of } from 'rxjs';
+import { tap, switchMap, map, catchError } from 'rxjs/operators';
 import { ApiService } from './api.service';
+import { ApiResponse, TeamTimeLog, DashboardStats } from '../models/time-log.model';
 
 export interface TimeLog {
     id?: string;
@@ -24,6 +26,8 @@ export interface TimeLog {
 })
 export class TimeLogService {
     private apiService = inject(ApiService);
+    private http = inject(HttpClient);
+    private baseUrl = '/api';
 
     private initialLogs: TimeLog[] = [];
 
@@ -55,6 +59,10 @@ export class TimeLogService {
         const currentTimeStr = now.toTimeString().slice(0, 5); // HH:MM format
         
         return logs.map(log => {
+            if (!log || !log.isLive || log.status !== 'In Progress') {
+                return log;
+            }
+
             if (log.isLive && log.status === 'In Progress') {
                 const hours = this.calculateHours(log.startTime, currentTimeStr, log.break);
                 return {
@@ -135,6 +143,78 @@ export class TimeLogService {
     }
 
     /**
+     * Get team time logs for a manager
+     */
+    getTeamTimeLogs(managerId: number): Observable<TeamTimeLog[]> {
+        return this.http
+            .get<ApiResponse<TeamTimeLog[]>>(`${this.baseUrl}/TimeLog/team/${managerId}`, {
+                headers: this.getAuthHeaders()
+            })
+            .pipe(map(response => response?.data || []));
+    }
+
+    /**
+     * Get dashboard stats for manager (team members + hours today)
+     */
+    getManagerDashboardStats(managerId: number): Observable<{ teamMembersCount: number; teamHoursToday: number } | null> {
+        return this.http
+            .get<ApiResponse<{ teamMembersCount: number; teamHoursToday: number }>>(`${this.baseUrl}/TimeLog/team/${managerId}/stats`, {
+                headers: this.getAuthHeaders()
+            })
+            .pipe(
+                map(response => response?.data ?? null),
+                catchError(() => of(null))
+            );
+    }
+
+    /**
+     * Get dashboard stats for manager from User API
+     */
+    getDashboardStats(managerId: number): Observable<DashboardStats | null> {
+        return this.http
+            .get<ApiResponse<DashboardStats>>(`${this.baseUrl}/User/manager-dashboard/${managerId}`, {
+                headers: this.getAuthHeaders()
+            })
+            .pipe(
+                map(response => response?.data ?? null),
+                catchError(() => of(null))
+            );
+    }
+
+    /**
+     * Get manager stats (alias for getDashboardStats)
+     */
+    getManagerStats(id: number): Observable<DashboardStats | null> {
+        return this.http
+            .get<ApiResponse<DashboardStats>>(`${this.baseUrl}/User/manager-dashboard/${id}`, {
+                headers: this.getAuthHeaders()
+            })
+            .pipe(
+                map(response => response?.data ?? null),
+                catchError(() => of(null))
+            );
+    }
+
+    getTeamMembersCount(managerId: number): Observable<number> {
+        return this.getTeamTimeLogs(managerId).pipe(
+            map(logs => new Set(logs.map(log => log.employeeName).filter(Boolean)).size)
+        );
+    }
+
+    getTeamHoursToday(managerId: number, today: Date = new Date()): Observable<number> {
+        const todayKey = today.toDateString();
+        return this.getTeamTimeLogs(managerId).pipe(
+            map(logs => logs.reduce((sum, log) => {
+                const logDate = new Date(log.date);
+                if (Number.isNaN(logDate.getTime())) {
+                    return sum;
+                }
+                return logDate.toDateString() === todayKey ? sum + (log.totalHours || 0) : sum;
+            }, 0))
+        );
+    }
+
+    /**
      * Get time logs for a specific employee
      */
     getLogsByEmployee(employee: string): TimeLog[] {
@@ -153,6 +233,21 @@ export class TimeLogService {
      */
     getLogsByStatus(status: string): TimeLog[] {
         return this.logsSubject.value.filter(log => log.status === status);
+    }
+
+    private getAuthHeaders(): HttpHeaders {
+        let headers = new HttpHeaders({
+            'Content-Type': 'application/json'
+        });
+
+        if (typeof window !== 'undefined' && window.localStorage) {
+            const token = localStorage.getItem('token');
+            if (token) {
+                headers = headers.set('Authorization', `Bearer ${token}`);
+            }
+        }
+
+        return headers;
     }
 
     /**

@@ -1,7 +1,7 @@
 import { Injectable, inject, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { tap, map } from 'rxjs/operators';
 import { ApiService } from './api.service';
 
 export interface User {
@@ -107,6 +107,17 @@ export class UserService {
      */
     getUsers(): Observable<User[]> {
         return this.users$;
+    }
+
+    /**
+     * Get team members (employees) assigned to a specific manager
+     */
+    getTeamMembers(managerId: string): Observable<User[]> {
+        return this.users$.pipe(
+            map(users => users.filter(user => 
+                user.role === 'Employee' && user.managerId === managerId
+            ))
+        );
     }
 
     /**
