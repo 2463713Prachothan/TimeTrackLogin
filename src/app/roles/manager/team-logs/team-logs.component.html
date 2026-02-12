@@ -31,12 +31,12 @@
       <h5 class="fw-bold mb-0">Team Time Logs</h5>
       <div class="d-flex gap-2">
         <select class="form-select form-select-sm w-auto fw-medium border-subtle shadow-none"
-          [(ngModel)]="selectedMember" (change)="updateDashboard()">
+          [(ngModel)]="selectedMember" (change)="filterLogs()">
           <option>All Team Members</option>
           <option *ngFor="let m of uniqueMembers" [value]="m">{{m}}</option>
         </select>
-        <select class="form-select form-select-sm w-auto  fw-medium border-subtle shadow-none"
-          [(ngModel)]="selectedTimeFrame" (change)="updateDashboard()">
+        <select class="form-select form-select-sm w-auto fw-medium border-subtle shadow-none"
+          [(ngModel)]="selectedTimeFrame" (change)="filterLogs()">
           <option value="Today">Today</option>
           <option value="This Week">This Week</option>
           <option value="All Time">All Time</option>
@@ -45,21 +45,22 @@
     </div>
 
     <div class="row g-3 mb-4">
-      <div class="col-md-4"
-        *ngFor="let name of (selectedMember === 'All Team Members' ? uniqueMembers : [selectedMember])">
+      <div class="col-md-4" *ngFor="let member of displayedMembers">
         <div class="member-info-card p-3 shadow-sm border border-light-subtle rounded-3">
           <div class="d-flex justify-content-between align-items-start mb-3">
             <div>
-              <h6 class="fw-bold mb-0">{{name}}</h6>
-              <small class="text-muted">{{name.toLowerCase().replace(' ', '.')}}&#64;company.com</small>
+              <h6 class="fw-bold mb-0">{{ member.name }}</h6>
+              <small class="text-muted">{{ member.email }}</small>
             </div>
-            <div class="profile-icon">{{name.charAt(0)}}</div>
+            <div class="profile-icon">{{ member.name.charAt(0) }}</div>
           </div>
           <div class="d-flex justify-content-between small mb-1">
-            <span class="text-muted">Total Hours:</span><span class="fw-bold">{{getMemberStats(name).hours}} hrs</span>
+            <span class="text-muted">Total Hours:</span>
+            <span class="fw-bold">{{ getMemberStats(member.name).hours }} hrs</span>
           </div>
           <div class="d-flex justify-content-between small">
-            <span class="text-muted">Days Logged:</span><span class="fw-bold">{{getMemberStats(name).days}}</span>
+            <span class="text-muted">Days Logged:</span>
+            <span class="fw-bold">{{ getMemberStats(member.name).days }}</span>
           </div>
         </div>
       </div>
@@ -71,50 +72,39 @@
         <table class="table align-middle custom-logs-table">
           <thead>
             <tr>
-              <th>Employee</th>
-              <th>Date</th>
-              <th>Start Time</th>
-              <th>End Time / Elapsed</th>
-              <th>Break (min)</th>
-              <th>Total Hours</th>
-              <th>Status</th>
+              <th class="col-employee">Employee</th>
+              <th class="col-date">Date</th>
+              <th class="col-time">Start Time</th>
+              <th class="col-time">End Time</th>
+              <th class="col-time">Break (min)</th>
+              <th class="col-time">Total Hours</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let log of filteredLogs" [ngClass]="{'table-active': log.isLive}">
-              <td class="fw-medium text-dark">{{ log.employee }}</td>
-              <td><span class="badge bg-light text-dark">{{ log.date }}</span></td>
+            <tr *ngFor="let log of filteredLogs" [ngClass]="{'table-active': !log.endTime}">
+              <td class="fw-medium text-dark col-employee">{{ log.employeeName }}</td>
+              <td class="col-date">{{ log.date | date:'MMM dd' }}</td>
               <td>
-                <span class="time-badge">{{ log.startTime }}</span>
+                <span class="time-badge">{{ log.startTime.slice(0, 5) }}</span>
               </td>
               <td>
-                <span *ngIf="log.endTime; else liveTime" class="time-badge">{{ log.endTime }}</span>
+                <span *ngIf="log.endTime; else liveTime" class="time-badge">{{ log.endTime.slice(0, 5) }}</span>
                 <ng-template #liveTime>
                   <span class="badge bg-success-subtle text-success">{{ getElapsedTime(log.startTime) }}</span>
                 </ng-template>
               </td>
-              <td>{{ log.break }} min</td>
+              <td>{{ formatBreakMinutes(log.breakDuration) }}</td>
               <td class="fw-bold">
-                <span class="hours-badge">{{ formatHours(log.currentHours || log.totalHours) }} hrs</span>
-                <span *ngIf="log.isLive" class="badge bg-danger ms-2 live-indicator">
+                <span class="hours-badge">{{ log.totalHours | number:'1.2-2' }} hrs</span>
+                <span *ngIf="!log.endTime" class="badge bg-danger ms-2 live-indicator">
                   <span class="pulse"></span> LIVE
-                </span>
-              </td>
-              <td>
-                <span [ngClass]="{
-                  'badge bg-success-subtle text-success': log.status === 'In Progress',
-                  'badge bg-primary-subtle text-primary': log.status === 'Approved',
-                  'badge bg-warning-subtle text-warning': log.status === 'Pending',
-                  'badge bg-danger-subtle text-danger': log.status === 'Rejected'
-                }">
-                  {{ log.status }}
                 </span>
               </td>
             </tr>
             <tr *ngIf="filteredLogs.length === 0">
-              <td colspan="7" class="py-5 text-center text-muted border-0">
-                <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-                No time logs found for the selected filters
+              <td colspan="6" class="py-5 text-center text-muted border-0">
+                <i class="bi bi-inbox fa-3x mb-3 d-block" style="font-size: 2.5rem;"></i>
+                No logs found for this period
               </td>
             </tr>
           </tbody>
