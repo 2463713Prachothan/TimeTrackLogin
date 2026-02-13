@@ -5,6 +5,7 @@ import { TaskService, Task, TaskSubmission } from '../../../core/services/task.s
 import { TaskSubmissionService } from '../../../core/services/task-submission.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { ApiService } from '../../../core/services/api.service';
 import { Subject, takeUntil } from 'rxjs';
 
 interface TaskDisplay {
@@ -37,9 +38,12 @@ export class TasksComponent implements OnInit, OnDestroy {
   private taskSubmissionService = inject(TaskSubmissionService);
   private notificationService = inject(NotificationService);
   private authService = inject(AuthService);
+  private apiService = inject(ApiService);
   private destroy$ = new Subject<void>();
 
   activeTab: string = 'My Tasks';
+  isLoadingTasks = false;
+  assignedTasks: any[] = [];
   stats = [
     { label: 'Pending', value: '0 tasks', icon: 'fa-regular fa-circle', class: 'icon-gray' },
     { label: 'In Progress', value: '0 tasks', icon: 'fa-regular fa-clock', class: 'icon-blue' },
@@ -76,7 +80,7 @@ export class TasksComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Load tasks from TaskService and transform them for display
+   * Load tasks from API using /api/Task/my-tasks endpoint
    */
   private loadTasks() {
     const currentUser = this.authService.currentUser();
@@ -85,66 +89,60 @@ export class TasksComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const userFullName = currentUser.fullName;
-    console.log('✅ Employee.loadTasks - Current User:', {
-      fullName: currentUser.fullName,
-      email: currentUser.email,
-      role: currentUser.role,
-      id: currentUser.id
-    });
+    this.isLoadingTasks = true;
+    console.log('✅ Employee.loadTasks - Fetching tasks from API for user:', currentUser.fullName);
 
-    this.taskService.getTasks().pipe(takeUntil(this.destroy$)).subscribe(
-      (tasks: Task[]) => {
-        console.log(`✅ Employee.loadTasks - Received ${tasks.length} total tasks from TaskService`);
+    // Use taskService.getMyTasks() which calls /api/Task/my-tasks
+    this.taskService.getMyTasks().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (tasks: any[]) => {
+        console.log(`✅ Employee.loadTasks - Received ${tasks.length} tasks from API`);
         
-        // Log detailed info for each task
-        tasks.forEach((task, index) => {
-          const matches = task.assignedTo?.toLowerCase() === userFullName?.toLowerCase();
-          console.log(`   Task ${index}: "${task.title}"`, {
-            id: task.id,
-            taskId: task.taskId,
-            assignedTo: `"${task.assignedTo}"`,
-            assignedToLower: `"${task.assignedTo?.toLowerCase()}"`,
-            userFullName: `"${userFullName}"`,
-            userLower: `"${userFullName?.toLowerCase()}"`,
-            matches: matches ? '✅ MATCH' : '❌ NO MATCH',
-            status: task.status
-          });
-        });
+        // Store raw tasks from API
+        this.assignedTasks = tasks;
         
-        // Filter tasks assigned to current employee
-        const assignedTasks = tasks.filter(
-          task => task.assignedTo?.toLowerCase() === userFullName?.toLowerCase()
-        );
-
-        console.log(`📊 Employee.loadTasks - Found ${assignedTasks.length} task(s) assigned to "${userFullName}"`);
-
-        // Transform service data to display format
-        this.taskList = assignedTasks.map(task => ({
+        // Transform to display format
+        this.taskList = tasks.map(task => ({
           id: task.id,
-          taskId: task.taskId,
+          taskId: task.taskId || task.displayTaskId,
           name: task.title,
-          description: task.description,
-          status: task.status,
-          currentHours: this.getProgressHours(task.status, task.hours),
-          totalHours: task.hours,
+          description: task.description || '',
+          status: task.status || 'Pending',
+          currentHours: this.getProgressHours(task.status, task.estimatedHours || task.hours || 0),
+          totalHours: task.estimatedHours || task.hours || 0,
           progress: this.getProgressPercentage(task.status),
           icon: this.getStatusIcon(task.status),
           statusClass: this.getStatusClass(task.status),
           iconClass: this.getIconClass(task.status),
-          priority: task.priority,
+          priority: task.priority || 'Medium',
           dueDate: task.dueDate,
-          assignedDate: task.assignedDate
+          assignedDate: task.createdDate
         }));
 
-        // Update statistics (for assigned tasks only)
-        this.updateStats(assignedTasks);
+        // Update statistics
+        this.updateStatsFromAssignedTasks();
+        this.isLoadingTasks = false;
       },
-      (error) => {
-        console.error('Error loading tasks:', error);
+      error: (err) => {
+        console.error('❌ Employee.loadTasks - Error loading tasks:', err);
         this.notificationService.error('Failed to load tasks');
+        this.isLoadingTasks = false;
       }
-    );
+    });
+  }
+
+  /**
+   * Update statistics based on assigned tasks
+   */
+  private updateStatsFromAssignedTasks() {
+    const pendingCount = this.assignedTasks.filter(t => t.status === 'Pending').length;
+    const inProgressCount = this.assignedTasks.filter(t => t.status === 'In Progress').length;
+    const completedCount = this.assignedTasks.filter(t => t.status === 'Completed').length;
+
+    this.stats = [
+      { label: 'Pending', value: `${pendingCount} tasks`, icon: 'fa-regular fa-circle', class: 'icon-gray' },
+      { label: 'In Progress', value: `${inProgressCount} tasks`, icon: 'fa-regular fa-clock', class: 'icon-blue' },
+      { label: 'Completed', value: `${completedCount} tasks`, icon: 'fa-regular fa-circle-check', class: 'icon-green' }
+    ];
   }
 
   /**
@@ -170,6 +168,29 @@ export class TasksComponent implements OnInit, OnDestroy {
       priority: task.priority as 'Low' | 'Medium' | 'High'
     };
     this.showSubmissionModal = true;
+  }
+
+  /**
+   * Open submission modal from raw task object (from API)
+   */
+  openSubmissionModalFromTask(task: any) {
+    // Convert raw API task to TaskDisplay format
+    const taskDisplay: TaskDisplay = {
+      id: task.id,
+      taskId: task.displayTaskId || task.taskId,
+      name: task.title,
+      description: task.description || '',
+      status: task.status || 'Pending',
+      currentHours: this.getProgressHours(task.status, task.estimatedHours || 0),
+      totalHours: task.estimatedHours || task.hours || 0,
+      progress: this.getProgressPercentage(task.status),
+      icon: this.getStatusIcon(task.status),
+      statusClass: this.getStatusClass(task.status),
+      iconClass: this.getIconClass(task.status),
+      priority: task.priority || 'Medium',
+      dueDate: task.dueDate
+    };
+    this.openSubmissionModal(taskDisplay);
   }
 
   /**
@@ -262,9 +283,9 @@ export class TasksComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get progress percentage based on status
+   * Get progress percentage based on status (public for template)
    */
-  private getProgressPercentage(status: string): number {
+  getProgressPercentage(status: string): number {
     if (status === 'Completed') return 100;
     if (status === 'In Progress') return 80;
     return 0;

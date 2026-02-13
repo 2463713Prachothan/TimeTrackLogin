@@ -118,6 +118,42 @@ export class ApiService {
   }
 
   /**
+   * Get team members for the current manager
+   * Backend endpoint: GET /api/User/my-team
+   */
+  getMyTeam(): Observable<any[]> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return of([]);
+    }
+    
+    console.log('📡 ApiService - Fetching my team from:', `${this.apiUrl}/User/my-team`);
+    
+    return this.http.get<any>(`${this.apiUrl}/User/my-team`, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('📥 ApiService - My team raw response:', response);
+        }),
+        map((response: any) => {
+          // Handle different response formats
+          let members: any[] = [];
+          if (Array.isArray(response)) {
+            members = response;
+          } else if (response && Array.isArray(response.$values)) {
+            members = response.$values;
+          } else if (response && Array.isArray(response.data)) {
+            members = response.data;
+          }
+          console.log('✅ ApiService - Parsed team members:', members);
+          return members;
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error fetching my team:', err);
+          return of([]);
+        })
+      );
+  }
+
+  /**
    * Get users by department
    * Backend endpoint: GET /api/User/department/{department}
    */
@@ -361,6 +397,83 @@ export class ApiService {
     }
     return this.http.get<any[]>(`${this.apiUrl}/Task?assignedTo=${userId}`, { headers: this.getHeaders() })
       .pipe(catchError(err => this.handleError(err)));
+  }
+
+  /**
+   * Get tasks created by the current manager
+   * Backend endpoint: GET /api/Task/created-by-me
+   */
+  getTasksCreatedByMe(): Observable<any[]> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return of([]);
+    }
+    return this.http.get<any[]>(`${this.apiUrl}/Task/created-by-me`, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('✅ ApiService - Tasks created by me:', response);
+        }),
+        map((response: any) => {
+          // Handle different response formats
+          let tasks: any[] = [];
+          if (Array.isArray(response)) {
+            tasks = response;
+          } else if (response && Array.isArray(response.$values)) {
+            tasks = response.$values;
+          } else if (response && Array.isArray(response.data)) {
+            tasks = response.data;
+          }
+          // Convert date strings to Date objects
+          return tasks.map(task => ({
+            ...task,
+            dueDate: task.dueDate ? new Date(task.dueDate) : null,
+            createdDate: task.createdDate ? new Date(task.createdDate) : null
+          }));
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error fetching tasks created by me:', err);
+          return of([]);
+        })
+      );
+  }
+
+  /**
+   * Get tasks assigned to the current user (employee)
+   * Backend endpoint: GET /api/Task/my-tasks
+   */
+  getMyTasks(): Observable<any[]> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return of([]);
+    }
+    
+    console.log('📡 ApiService - Fetching my tasks from:', `${this.apiUrl}/Task/my-tasks`);
+    
+    return this.http.get<any>(`${this.apiUrl}/Task/my-tasks`, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('📥 ApiService - My tasks raw response:', response);
+        }),
+        map((response: any) => {
+          // Handle different response formats
+          let tasks: any[] = [];
+          if (Array.isArray(response)) {
+            tasks = response;
+          } else if (response && Array.isArray(response.$values)) {
+            tasks = response.$values;
+          } else if (response && Array.isArray(response.data)) {
+            tasks = response.data;
+          }
+          // Convert date strings to Date objects
+          return tasks.map(task => ({
+            ...task,
+            dueDate: task.dueDate ? new Date(task.dueDate) : null,
+            createdDate: task.createdDate ? new Date(task.createdDate) : null
+          }));
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error fetching my tasks:', err);
+          return of([]);
+        })
+      );
   }
 
   /**
