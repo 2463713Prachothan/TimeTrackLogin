@@ -97,8 +97,8 @@
               <p class="small text-muted mb-1">{{ task.description }}</p>
               <small class="text-muted">
                 <strong>Assigned to:</strong>
-                <span class="badge bg-info-subtle text-info me-1">{{ task.assignedTo }}</span>
-                • Est. {{ task.hours }} hours
+                <span class="badge bg-info-subtle text-info me-1">{{ task.assignedToUserName }}</span>
+                • Est. {{ task.estimatedHours }} hours
                 @if (task.dueDate) {
                 • Due: {{ task.dueDate | date: 'MMM dd, yyyy' }}
                 }
@@ -109,7 +109,7 @@
             <button class="btn btn-outline-primary btn-sm border-0" (click)="openEditModal(task)">
               <i class="bi bi-pencil"></i>
             </button>
-            <button class="btn btn-outline-danger btn-sm border-0" (click)="deleteTask(task)">
+            <button class="btn btn-outline-danger btn-sm border-0" (click)="onDeleteTask(task.taskId)">
               <i class="bi bi-trash3"></i>
             </button>
           </div>
@@ -222,9 +222,7 @@
           <label class="form-label small text-muted">Assign To</label>
           <select class="form-select rounded-3" [(ngModel)]="newTask.assignedTo">
             <option value="">Select Team Member</option>
-            @for (member of teamMembers; track member) {
-            <option [value]="member">{{ member }}</option>
-            }
+            <option *ngFor="let member of teamMembers" [value]="member.userId">{{ member.name }}</option>
           </select>
         </div>
         <div class="row">
@@ -249,8 +247,15 @@
         </div>
       </div>
       <div class="modal-footer border-0 pt-0">
-        <button class="btn btn-light px-4" (click)="showModal = false">Cancel</button>
-        <button class="btn btn-primary px-4 fw-bold" (click)="addTask()">Create Task</button>
+        <button class="btn btn-light px-4" (click)="showModal = false" [disabled]="isSubmitting">Cancel</button>
+        <button class="btn btn-primary px-4 fw-bold" (click)="addTask()" [disabled]="isSubmitting">
+          @if (isSubmitting) {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            Creating...
+          } @else {
+            Create Task
+          }
+        </button>
       </div>
     </div>
   </div>
@@ -278,9 +283,7 @@
           <label class="form-label small text-muted">Assign To</label>
           <select class="form-select rounded-3" [(ngModel)]="editTask.assignedTo">
             <option value="">Select Team Member</option>
-            @for (member of teamMembers; track member) {
-            <option [value]="member">{{ member }}</option>
-            }
+            <option *ngFor="let member of teamMembers" [value]="member.userId">{{ member.name }}</option>
           </select>
         </div>
         <div class="row">
@@ -313,8 +316,15 @@
         </div>
       </div>
       <div class="modal-footer border-0 pt-0">
-        <button class="btn btn-light px-4" (click)="closeEditModal()">Cancel</button>
-        <button class="btn btn-primary px-4 fw-bold" (click)="saveEditTask()">Save Changes</button>
+        <button class="btn btn-light px-4" (click)="closeEditModal()" [disabled]="isSubmitting">Cancel</button>
+        <button class="btn btn-primary px-4 fw-bold" (click)="saveEditTask()" [disabled]="isSubmitting">
+          @if (isSubmitting) {
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            Saving...
+          } @else {
+            Save Changes
+          }
+        </button>
       </div>
     </div>
   </div>

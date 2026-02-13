@@ -137,6 +137,15 @@ export class TaskService {
     }
 
     /**
+     * Get tasks assigned to the current user (employee)
+     * Calls GET /api/Task/my-tasks
+     */
+    getMyTasks(): Observable<any[]> {
+        console.log('📡 TaskService.getMyTasks - Fetching tasks assigned to current user');
+        return this.apiService.getMyTasks();
+    }
+
+    /**
      * Get task by ID
      */
     getTaskById(id: string): Task | undefined {
@@ -261,6 +270,42 @@ export class TaskService {
     updateTaskStatus(id: string, status: 'Pending' | 'In Progress' | 'Completed') {
         console.log('TaskService.updateTaskStatus - Updating task', id, 'to status:', status);
         this.updateTask(id, { status });
+    }
+
+    /**
+     * Update a task by numeric ID (returns Observable)
+     * Calls PUT /api/Task/{id}
+     */
+    updateTaskById(id: any, taskData: any): Observable<any> {
+        // Guard against undefined/null
+        if (id === undefined || id === null) {
+            console.error('TaskService.updateTaskById - ID is undefined or null');
+            return new Observable(observer => {
+                observer.error({ error: { message: 'Task ID is missing' } });
+            });
+        }
+        
+        const taskId = String(id);
+        console.log('TaskService.updateTaskById - Updating task', taskId, 'with data:', taskData);
+        return this.apiService.updateTask(taskId, taskData);
+    }
+
+    /**
+     * Delete a task by numeric ID (returns Observable)
+     * Calls DELETE /api/Task/{id}
+     */
+    deleteTaskById(id: any): Observable<any> {
+        // Guard against undefined/null
+        if (id === undefined || id === null) {
+            console.error('TaskService.deleteTaskById - ID is undefined or null');
+            return new Observable(observer => {
+                observer.error({ error: { message: 'Task ID is missing' } });
+            });
+        }
+        
+        const taskId = String(id);
+        console.log('TaskService.deleteTaskById - Deleting task', taskId);
+        return this.apiService.deleteTask(taskId);
     }
 
     /**
