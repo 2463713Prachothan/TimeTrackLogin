@@ -112,10 +112,19 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
 
     // Subscribe to task submissions
     this.submissionService.getSubmissions().pipe(takeUntil(this.destroy$)).subscribe((submissions: TaskSubmission[]) => {
+      console.log('📝 Manager - All submissions from service:', submissions);
+      const teamMemberNames = this.teamMembers.map(m => m.name);
+      console.log('👥 Manager - Team member names:', teamMemberNames);
+      this.taskSubmissions = this.submissionService.getTeamSubmissions(teamMemberNames);
+      console.log('✅ Manager - Filtered team submissions:', this.taskSubmissions);
+    });
+    
+    // Periodically refresh submissions to ensure we get latest updates
+    setInterval(() => {
+      console.log('🔄 Manager - Refreshing submissions...');
       const teamMemberNames = this.teamMembers.map(m => m.name);
       this.taskSubmissions = this.submissionService.getTeamSubmissions(teamMemberNames);
-      console.log('Submissions updated:', this.taskSubmissions);
-    });
+    }, 5000); // Refresh every 5 seconds
   }
 
   ngOnDestroy() {
@@ -157,6 +166,17 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
    */
   refreshTasks(): void {
     this.loadTasksFromApi();
+  }
+
+  /**
+   * Refresh submissions list from service
+   */
+  refreshSubmissions(): void {
+    console.log('🔄 Manager.refreshSubmissions - Refreshing submissions list');
+    const teamMemberNames = this.teamMembers.map(m => m.name);
+    this.taskSubmissions = this.submissionService.getTeamSubmissions(teamMemberNames);
+    console.log('✅ Manager.refreshSubmissions - Updated submissions:', this.taskSubmissions);
+    this.notificationService.success('Submissions refreshed');
   }
 
   /**
@@ -439,68 +459,97 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
     }
 
     const submissionId = this.selectedSubmission.id;
+    const taskTitle = this.selectedSubmission.taskTitle;
 
     switch (this.approvalForm.status) {
       case 'Approved':
-        console.log('Manager approving submission:', submissionId);
-        this.submissionService.approveSubmission(
-          submissionId,
-          this.currentManagerName,
-          this.approvalForm.comments
-        );
-        this.notificationService.success('Task approved');
+        console.log('📋 Manager approving submission:', submissionId);
+        this.approveTaskCompletion(this.selectedSubmission);
+        this.notificationService.success(`✅ Task "${taskTitle}" has been approved!`);
         break;
-
+        
       case 'Rejected':
+        console.log('❌ Manager rejecting submission:', submissionId);
         this.submissionService.rejectSubmission(
           submissionId,
           this.currentManagerName,
           this.approvalForm.comments
         );
-        this.notificationService.success('Task rejected');
+        this.notificationService.success(`❌ Task "${taskTitle}" has been rejected.`);
         break;
-
+        
       case 'Need Changes':
+        console.log('⚠️ Manager requesting changes on submission:', submissionId);
         this.submissionService.needsChanges(
           submissionId,
           this.currentManagerName,
           this.approvalForm.comments
         );
-        this.notificationService.success('Requested changes from employee');
+        this.notificationService.success(`⚠️ Requested changes for task "${taskTitle}".`);
         break;
     }
 
-    // Force reload tasks to ensure updated status is reflected
-    console.log('🔄 Refreshing tasks after submission processing');
-    // Add a small delay to allow the task update to complete
-    setTimeout(() => {
-      this.dataService.refreshTasks();
-      this.closeApprovalModal();
-    }, 500);
+    this.closeApprovalModal();
+    this.loadTasksFromApi();
   }
 
   /**
-   * Reassign task to different date
+   * Approve task completion (manager action)
+   * Updates task to mark as approved and increments completed count
    */
-  reassignTaskDate() {
-    if (!this.selectedSubmission || !this.selectedSubmission.id) {
-      this.notificationService.error('Invalid submission');
+  approveTaskCompletion(submission: TaskSubmission) {
+    if (!submission.taskId) {
+      this.notificationService.error('Invalid task ID');
       return;
     }
 
-    if (!this.approvalForm.reassignDate) {
-      this.notificationService.error('Please select a new date');
-      return;
-    }
+    this.isSubmitting = true;
+    const taskId = submission.taskId;
+    const approvalComments = this.approvalForm.comments;
 
-    this.submissionService.reassignTask(
-      this.selectedSubmission.id,
-      this.currentManagerName,
-      this.approvalForm.reassignDate,
-      this.approvalForm.comments
-    );
-    this.notificationService.success('Task reassigned to new date');
-    this.closeApprovalModal();
+    console.log('📋 Manager.approveTaskCompletion - Approving task:', taskId, 'Comments:', approvalComments);
+
+    // Prepare update payload with Completed status
+    const updatePayload = {
+      status: 'Completed',
+      approvalComments: approvalComments
+    };
+
+    this.taskService.updateTaskById(taskId, updatePayload)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: any) => {
+          console.log('✅ Manager.approveTaskCompletion - Task approved:', response);
+          
+          // Update local tasks list immediately
+          const taskIndex = this.tasks.findIndex(t => t.id === taskId || t.taskId === taskId);
+          if (taskIndex !== -1) {
+            this.tasks[taskIndex].status = 'Completed';
+            console.log('✅ Manager - Task status updated to Completed in local list');
+          }
+          
+          // Approve submission in service
+          this.submissionService.approveSubmission(
+            submission.id!,
+            this.currentManagerName,
+            approvalComments
+          );
+          
+          // Reload tasks from API to ensure sync
+          setTimeout(() => {
+            this.loadTasksFromApi();
+          }, 500);
+          
+          this.notificationService.success('✅ Task completion approved! Completed count updated.');
+          this.isSubmitting = false;
+        },
+        error: (err: any) => {
+          console.error('❌ Manager.approveTaskCompletion - Error approving task:', err);
+          const message = err.error?.message || err.error || 'Failed to approve task';
+          this.notificationService.error(message);
+          this.isSubmitting = false;
+        }
+      });
   }
 
   /**
@@ -561,18 +610,36 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get pending tasks
-   */
-  get pendingTasks() {
-    return this.tasks.filter(t => t.status === 'Pending');
-  }
-
-  /**
    * Get pending submissions count
    */
   getPendingSubmissionsCount(): number {
     return this.taskSubmissions.filter(s => s.approvalStatus === 'Pending').length;
   }
+
+  /**
+   * Reassign task to different date
+   */
+  reassignTaskDate() {
+    if (!this.selectedSubmission || !this.selectedSubmission.id) {
+      this.notificationService.error('Invalid submission');
+      return;
+    }
+
+    if (!this.approvalForm.reassignDate) {
+      this.notificationService.error('Please select a new date');
+      return;
+    }
+
+    this.submissionService.reassignTask(
+      this.selectedSubmission.id,
+      this.currentManagerName,
+      this.approvalForm.reassignDate,
+      this.approvalForm.comments
+    );
+    this.notificationService.success('Task reassigned to new date');
+    this.closeApprovalModal();
+  }
+
   /**
    * Reset form to default values
    */

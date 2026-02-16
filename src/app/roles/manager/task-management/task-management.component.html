@@ -131,9 +131,14 @@
   <div class="card border-0 shadow-sm p-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h5 class="fw-bold mb-0">Task Submissions</h5>
-      <span class="badge bg-danger" *ngIf="getPendingSubmissionsCount() > 0">
-        {{ getPendingSubmissionsCount() }} Pending
-      </span>
+      <div class="d-flex gap-2 align-items-center">
+        <button class="btn btn-sm btn-outline-secondary" (click)="refreshSubmissions()">
+          <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+        <span class="badge bg-danger" *ngIf="getPendingSubmissionsCount() > 0">
+          {{ getPendingSubmissionsCount() }} Pending
+        </span>
+      </div>
     </div>
 
     @if (taskSubmissions.length > 0) {

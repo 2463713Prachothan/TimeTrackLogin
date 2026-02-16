@@ -30,9 +30,27 @@ export class ApiService {
     });
 
     if (isPlatformBrowser(this.platformId)) {
-      const token = localStorage.getItem('token');
+      // Try multiple token storage locations
+      let token = localStorage.getItem('token');
+      
+      // Fallback: check if token is in user_session
+      if (!token) {
+        try {
+          const userSession = localStorage.getItem('user_session');
+          if (userSession) {
+            const user = JSON.parse(userSession);
+            token = user.token || user.accessToken || user.jwtToken;
+          }
+        } catch (e) {
+          console.error('Error parsing user session:', e);
+        }
+      }
+
       if (token) {
+        console.log('✅ ApiService.getHeaders - Token found, adding Authorization header');
         headers = headers.set('Authorization', `Bearer ${token}`);
+      } else {
+        console.warn('⚠️ ApiService.getHeaders - No token found in localStorage');
       }
     }
 
@@ -512,9 +530,143 @@ export class ApiService {
       .pipe(catchError(err => this.handleError(err)));
   }
 
+  /**
+   * Start a task (change status to 'In Progress')
+   * Backend endpoint: PUT /api/Task/:id with status update
+   */
+  startTask(id: string): Observable<any> {
+    if (this.useMockForTasks) {
+      return of({ success: true, status: 'In Progress' });
+    }
+    const payload = { status: 'In Progress' };
+    const url = `${this.apiUrl}/Task/${id}`;
+    
+    console.log('📡 ApiService.startTask - Making PUT request to:', url);
+    console.log('📤 Payload:', payload);
+    console.log('🔐 Headers:', this.getHeaders());
+    
+    return this.http.put<any>(url, payload, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('✅ ApiService - Task started:', response);
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error starting task:', err);
+          console.error('Status:', err.status, 'Message:', err.message);
+          return this.handleError(err);
+        })
+      );
+  }
+
+  /**
+   * Complete a task (change status to 'Completed')
+   * Backend endpoint: PUT /api/Task/:id with status update
+   */
+  completeTask(id: string, hoursSpent: number = 0, comments: string = ''): Observable<any> {
+    if (this.useMockForTasks) {
+      return of({ success: true, status: 'Completed' });
+    }
+    const payload = { 
+      status: 'Completed',
+      hoursSpent, 
+      comments 
+    };
+    const url = `${this.apiUrl}/Task/${id}`;
+    
+    console.log('📡 ApiService.completeTask - Making PUT request to:', url);
+    console.log('📤 Payload:', payload);
+    console.log('🔐 Headers:', this.getHeaders());
+    
+    return this.http.put<any>(url, payload, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('✅ ApiService - Task completed:', response);
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error completing task:', err);
+          console.error('Status:', err.status, 'Message:', err.message);
+          return this.handleError(err);
+        })
+      );
+  }
+
+  /**
+   * Approve a task completion (manager action)
+   * Backend endpoint: PUT /api/Task/:id with approved status
+   */
+  approveTaskCompletion(id: string, approvalComments: string = ''): Observable<any> {
+    if (this.useMockForTasks) {
+      return of({ success: true, status: 'Approved' });
+    }
+    const payload = { 
+      status: 'Approved',
+      approvalComments 
+    };
+    return this.http.put<any>(`${this.apiUrl}/Task/${id}`, payload, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('✅ ApiService - Task approved:', response);
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error approving task:', err);
+          return this.handleError(err);
+        })
+      );
+  }
+
   // ==================== REGISTRATION ENDPOINTS ====================
   // Note: Registration endpoints are now handled directly by RegistrationService
   // using /api/Registration endpoints
+
+  // ==================== CONFIGURATION ====================
+
+  /**
+   * Get productivity data for current employee
+   */
+  getProductivity(): Observable<any> {
+    const url = `${this.apiUrl}/Productivity`;
+    console.log('📡 ApiService.getProductivity - Making GET request to:', url);
+    
+    return this.http.get<any>(url, { headers: this.getHeaders() }).pipe(
+      tap(response => {
+        console.log('✅ ApiService.getProductivity - Response received:', response);
+      }),
+      catchError(err => {
+        console.error('❌ ApiService.getProductivity - Error fetching productivity data:', err);
+        console.error('Error details:', {
+          status: err.status,
+          statusText: err.statusText,
+          message: err.message,
+          url: err.url
+        });
+        throw err;
+      })
+    );
+  }
+
+  /**
+   * Get productivity data for specific employee by ID
+   */
+  getEmployeeProductivity(employeeId: string): Observable<any> {
+    const url = `${this.apiUrl}/Productivity/${employeeId}`;
+    console.log('📡 ApiService.getEmployeeProductivity - Making GET request to:', url);
+    
+    return this.http.get<any>(url, { headers: this.getHeaders() }).pipe(
+      tap(response => {
+        console.log('✅ ApiService.getEmployeeProductivity - Response received:', response);
+      }),
+      catchError(err => {
+        console.error('❌ ApiService.getEmployeeProductivity - Error fetching productivity data:', err);
+        console.error('Error details:', {
+          status: err.status,
+          statusText: err.statusText,
+          message: err.message,
+          url: err.url
+        });
+        throw err;
+      })
+    );
+  }
 
   // ==================== CONFIGURATION ====================
 
