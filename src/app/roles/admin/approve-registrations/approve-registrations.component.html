@@ -1,88 +1,77 @@
-<div class="approval-container">
-  
-    <!-- Loading indicator -->
-    <div *ngIf="isLoading" class="loading-message">
-        <p>Loading registrations...</p>
+<div class="registrations-container">
+  <h2>Registration Requests</h2>
+
+  <!-- Error Message -->
+  <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button [class.active]="activeTab === 'pending'" (click)="setActiveTab('pending')">
+      Pending <span class="badge pending">{{ getPendingCount() }}</span>
+    </button>
+    <button [class.active]="activeTab === 'approved'" (click)="setActiveTab('approved')">
+      Approved <span class="badge approved">{{ getApprovedCount() }}</span>
+    </button>
+    <button [class.active]="activeTab === 'rejected'" (click)="setActiveTab('rejected')">
+      Rejected <span class="badge rejected">{{ getRejectedCount() }}</span>
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading">Loading registrations...</div>
+
+  <!-- Empty State -->
+  <div *ngIf="!isLoading && filteredRegistrations.length === 0" class="empty-state">
+    No {{ activeTab }} registrations found.
+  </div>
+
+  <!-- Table -->
+  <table *ngIf="!isLoading && filteredRegistrations.length > 0" class="registrations-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Department</th>
+        <th>Applied Date</th>
+        <th *ngIf="activeTab !== 'pending'">Processed Date</th>
+        <th *ngIf="activeTab === 'rejected'">Rejection Reason</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let reg of filteredRegistrations">
+        <td>{{ reg.name }}</td>
+        <td>{{ reg.email }}</td>
+        <td><span class="role-badge" [class.manager]="reg.role === 'Manager'">{{ reg.role }}</span></td>
+        <td>{{ reg.department }}</td>
+        <td>{{ formatDate(reg.appliedDate) }}</td>
+        <td *ngIf="activeTab !== 'pending'">{{ formatDate(reg.processedDate) }}</td>
+        <td *ngIf="activeTab === 'rejected'" class="rejection-reason">{{ reg.rejectionReason || '-' }}</td>
+        <td class="actions">
+          <ng-container *ngIf="activeTab === 'pending'">
+            <button class="btn-approve" (click)="approveRegistration(reg)">✓ Approve</button>
+            <button class="btn-reject" (click)="openRejectModal(reg)">✗ Reject</button>
+          </ng-container>
+          <ng-container *ngIf="activeTab !== 'pending'">
+            <button class="btn-delete" (click)="deleteRegistration(reg)">🗑 Delete</button>
+          </ng-container>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Reject Modal -->
+  <div *ngIf="showRejectModal" class="modal-overlay" (click)="closeRejectModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Reject Registration</h3>
+      <p>Rejecting: <strong>{{ selectedRegistration?.name }}</strong></p>
+      <label>Rejection Reason (Optional):</label>
+      <textarea [(ngModel)]="rejectionReason" placeholder="Enter reason..." rows="3"></textarea>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="closeRejectModal()">Cancel</button>
+        <button class="btn-confirm-reject" (click)="confirmReject()">Confirm Reject</button>
+      </div>
     </div>
-
-    <!-- Error message -->
-    <div *ngIf="errorMessage" class="error-message">
-        <p>{{ errorMessage }}</p>
-        <button (click)="loadRegistrations()" class="btn btn-retry">Retry</button>
-    </div>
-
-    <div class="tabs">
-        <button 
-            [class.active]="activeTab === 'pending'"
-            (click)="activeTab = 'pending'"
-            class="tab-btn">
-            Pending ({{ getPendingCount() }})
-        </button>
-        <button 
-            [class.active]="activeTab === 'approved'"
-            (click)="activeTab = 'approved'"
-            class="tab-btn">
-            Approved ({{ getApprovedCount() }})
-        </button>
-        <button 
-            [class.active]="activeTab === 'rejected'"
-            (click)="activeTab = 'rejected'"
-            class="tab-btn">
-            Rejected ({{ getRejectedCount() }})
-        </button>
-    </div>
-
-    <div class="registrations-list" *ngIf="filteredRegistrations.length > 0; else noData">
-        <div class="registration-card" *ngFor="let reg of filteredRegistrations" [class.status-pending]="reg.status === 'Pending'" [class.status-approved]="reg.status === 'Approved'" [class.status-rejected]="reg.status === 'Rejected'">
-            <div class="card-header">
-                <div class="user-info">
-                    <h3>{{ reg.name || reg.fullName }}</h3>
-                    <p class="email">{{ reg.email }}</p>
-                </div>
-                <span class="status-badge" [class]="'status-' + reg.status.toLowerCase()">
-                    {{ reg.status }}
-                </span>
-            </div>
-
-            <div class="card-body">
-                <div class="info-row">
-                    <span class="label">Role:</span>
-                    <span class="value">{{ reg.role }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Department:</span>
-                    <span class="value">{{ reg.department }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Applied Date:</span>
-                    <span class="value">{{ reg.appliedDate }}</span>
-                </div>
-                <div class="info-row" *ngIf="reg.processedDate">
-                    <span class="label">{{ reg.status === 'Approved' ? 'Approved' : 'Rejected' }} Date:</span>
-                    <span class="value">{{ reg.processedDate }}</span>
-                </div>
-                <div class="info-row" *ngIf="reg.rejectionReason">
-                    <span class="label">Rejection Reason:</span>
-                    <span class="value">{{ reg.rejectionReason }}</span>
-                </div>
-            </div>
-
-            <div class="card-actions" *ngIf="reg.status === 'Pending'">
-                <button class="btn btn-approve" (click)="approveRegistration(reg)">✓ Approve</button>
-                <button class="btn btn-reject" (click)="rejectRegistration(reg)">✕ Reject</button>
-            </div>
-
-            <div class="card-actions" *ngIf="reg.status !== 'Pending'">
-                <button class="btn btn-delete" (click)="deleteRegistration(reg)">🗑️ Delete</button>
-            </div>
-        </div>
-    </div>
-
-    <ng-template #noData>
-        <div class="no-data">
-            <p *ngIf="activeTab === 'pending'">No pending registrations</p>
-            <p *ngIf="activeTab === 'approved'">No approved registrations</p>
-            <p *ngIf="activeTab === 'rejected'">No rejected registrations</p>
-        </div>
-    </ng-template>
+  </div>
 </div>

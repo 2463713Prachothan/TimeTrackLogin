@@ -34,6 +34,7 @@
                     <th>Email</th>
                     <th>Role</th>
                     <th>Department</th>
+                    <th>Manager</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -48,6 +49,13 @@
                         </span>
                     </td>
                     <td>{{user.department}}</td>
+                    <td>
+                        <span *ngIf="user.role === 'Employee' && user.managerId" class="manager-name">
+                            {{ getManagerName(user.managerId) }}
+                        </span>
+                        <span *ngIf="user.role === 'Manager'" class="manager-badge">--</span>
+                        <span *ngIf="user.role === 'Employee' && !user.managerId" class="no-manager">Not Assigned</span>
+                    </td>
                     <td>
                         <span class="badge-status"
                             [ngClass]="getDisplayStatus(user) === 'Active' ? 'status-active' : 'status-inactive'">
@@ -106,6 +114,10 @@
             <div class="manager-assignment" *ngIf="selectedUser && selectedUser.role === 'Employee'">
                 <hr>
                 <h4>Manager Assignment</h4>
+                <div class="current-manager" *ngIf="selectedUser.managerId">
+                    <label>Current Manager:</label>
+                    <span class="manager-name-display">{{ getManagerName(selectedUser.managerId) }}</span>
+                </div>
                 <div class="form-group">
                     <label>Assign Manager</label>
                     <select name="manager" [(ngModel)]="selectedUser.managerId">

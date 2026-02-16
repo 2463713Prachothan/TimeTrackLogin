@@ -34,55 +34,88 @@
     <div class="user-management-section">
         <h3 class="title">My Tasks</h3>
 
-        <div class="task-list">
-            @for (task of taskList; track task.id || task.name) {
-            <div class="task-item">
+        <!-- Loading State -->
+        @if (isLoadingTasks) {
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-2">Loading tasks...</p>
+        </div>
+        }
+
+        <!-- Task List using *ngFor -->
+        <div class="task-list" *ngIf="!isLoadingTasks">
+            <div class="task-item" *ngFor="let task of assignedTasks">
                 <div class="task-header">
                     <div class="task-info">
                         <span class="task-name">
-                            <i [class]="task.icon + ' ' + task.iconClass"></i> 
-                            {{ task.name }}
+                            <i [ngClass]="{
+                                'fa-regular fa-circle-check icon-green': task.status === 'Completed',
+                                'fa-regular fa-clock icon-blue': task.status === 'In Progress',
+                                'fa-solid fa-play icon-gray': task.status === 'Pending'
+                            }"></i> 
+                            {{ task.title }}
                         </span>
-                        <span class="task-id">#{{ task.taskId }}</span>
+                        <span class="task-id">#{{ task.displayTaskId || task.taskId }}</span>
                     </div>
                     <div class="task-meta">
-                        <span [class]="'badge ' + task.statusClass">{{ task.status }}</span>
-                        <span [class]="'badge ' + getPriorityClass(task.priority)">
-                            {{ task.priority }}
-                        </span>
+                        <!-- Status badge with conditional CSS class -->
+                        <span class="badge" [ngClass]="{
+                            'bg-success': task.status === 'Completed',
+                            'bg-warning text-dark': task.status === 'In Progress',
+                            'bg-secondary': task.status === 'Pending'
+                        }">{{ task.status }}</span>
+                        <!-- Priority badge -->
+                        <span class="badge" [ngClass]="{
+                            'bg-danger': task.priority === 'High',
+                            'bg-warning text-dark': task.priority === 'Medium',
+                            'bg-success': task.priority === 'Low'
+                        }">{{ task.priority }}</span>
                     </div>
                 </div>
                 <div class="task-description">
                     {{ task.description }}
                 </div>
                 <div class="task-details">
-                    <span><i class="fas fa-hourglass"></i> {{ task.totalHours }} hours</span>
-                    @if (task.dueDate) {
-                    <span><i class="fas fa-calendar"></i> {{ task.dueDate | date: 'MMM dd, yyyy' }}</span>
-                    }
+                    <span><i class="fas fa-hourglass"></i> {{ task.estimatedHours || 0 }} hours</span>
+                    <span *ngIf="task.dueDate"><i class="fas fa-calendar"></i> {{ task.dueDate | date: 'MMM dd, yyyy' }}</span>
                 </div>
                 <div class="progress-container">
                     <div class="progress-info">
                         <span>Progress</span>
                     </div>
                     <div class="progress-bar-bg">
-                        <div class="progress-fill" [style.width.%]="task.progress"></div>
+                        <div class="progress-fill" [style.width.%]="getProgressPercentage(task.status)"></div>
                     </div>
                 </div>
-                <button 
-                    class="btn-submit-task"
-                    (click)="openSubmissionModal(task)"
-                    [disabled]="task.status === 'Completed'">
-                    <i class="fas fa-check-circle"></i> Submit Completion
-                </button>
+                <div class="task-actions">
+                    <!-- Start Button (only for Pending tasks) -->
+                    <button 
+                        class="btn-start-task"
+                        (click)="onStartTask(task)"
+                        [disabled]="task.status !== 'Pending'"
+                        [title]="task.status !== 'Pending' ? 'Task already started or completed' : 'Click to start this task'">
+                        <i class="fas fa-play-circle"></i> Start
+                    </button>
+                    
+                    <!-- Complete Button (only for In Progress tasks) -->
+                    <button 
+                        class="btn-complete-task"
+                        (click)="openCompletionModalFromTask(task)"
+                        [disabled]="task.status !== 'In Progress'"
+                        [title]="task.status !== 'In Progress' ? 'Task must be started first' : 'Click to mark as completed'">
+                        <i class="fas fa-check-circle"></i> Completed
+                    </button>
+                </div>
             </div>
-            }
-            @if (taskList.length === 0) {
-            <div class="no-tasks-message">
-                <i class="fas fa-inbox"></i>
-                <p>No tasks assigned to you</p>
+
+            <!-- Empty State -->
+            <div class="no-tasks-message" *ngIf="assignedTasks.length === 0">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <p>No tasks assigned yet!</p>
+                <small class="text-muted">Tasks assigned to you will appear here.</small>
             </div>
-            }
         </div>
     </div>
     }
@@ -145,12 +178,12 @@
     </div>
     }
 
-    <!-- Task Submission Modal -->
+    <!-- Task Completion Modal -->
     @if (showSubmissionModal && selectedTask) {
     <div class="modal-overlay" (click)="closeModal()">
         <div class="modal-content" (click)="$event.stopPropagation()">
             <div class="modal-header">
-                <h2>Submit Task Completion</h2>
+                <h2>Mark Task as Completed</h2>
                 <button class="modal-close" (click)="closeModal()">
                     <i class="fas fa-times"></i>
                 </button>
@@ -179,21 +212,8 @@
                     </div>
                 </div>
 
-                <!-- Submission Form -->
+                <!-- Task Completion Form -->
                 <form class="submission-form">
-                    <div class="form-group">
-                        <label for="completionStatus">Completion Status</label>
-                        <select 
-                            id="completionStatus"
-                            [(ngModel)]="submissionForm.completionStatus"
-                            name="completionStatus"
-                            class="form-control">
-                            <option value="Not Started">Not Started</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Completed">Completed</option>
-                        </select>
-                    </div>
-
                     <div class="form-group">
                         <label for="hoursSpent">Hours Spent</label>
                         <input 
@@ -204,39 +224,26 @@
                             class="form-control"
                             min="0"
                             step="0.5"
-                            placeholder="Enter hours spent">
+                            placeholder="Enter hours spent on this task">
                     </div>
 
                     <div class="form-group">
-                        <label for="priority">Priority</label>
-                        <select 
-                            id="priority"
-                            [(ngModel)]="submissionForm.priority"
-                            name="priority"
-                            class="form-control">
-                            <option value="Low">Low</option>
-                            <option value="Medium">Medium</option>
-                            <option value="High">High</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="comments">Comments</label>
+                        <label for="comments">Completion Comments (Optional)</label>
                         <textarea 
                             id="comments"
                             [(ngModel)]="submissionForm.comments"
                             name="comments"
                             class="form-control"
                             rows="4"
-                            placeholder="Add any comments about the task completion..."></textarea>
+                            placeholder="Add any comments about task completion..."></textarea>
                     </div>
                 </form>
             </div>
 
             <div class="modal-footer">
                 <button class="btn btn-secondary" (click)="closeModal()">Cancel</button>
-                <button class="btn btn-primary" (click)="submitTaskCompletion()">
-                    <i class="fas fa-paper-plane"></i> Submit
+                <button class="btn btn-primary" (click)="onCompleteTask()">
+                    <i class="fas fa-check"></i> Mark Completed
                 </button>
             </div>
         </div>

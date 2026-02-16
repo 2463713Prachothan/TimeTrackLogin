@@ -1,5 +1,6 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { ApiService } from './api.service';
 
 export interface Task {
@@ -137,6 +138,15 @@ export class TaskService {
     }
 
     /**
+     * Get tasks assigned to the current user (employee)
+     * Calls GET /api/Task/my-tasks
+     */
+    getMyTasks(): Observable<any[]> {
+        console.log('📡 TaskService.getMyTasks - Fetching tasks assigned to current user');
+        return this.apiService.getMyTasks();
+    }
+
+    /**
      * Get task by ID
      */
     getTaskById(id: string): Task | undefined {
@@ -264,9 +274,134 @@ export class TaskService {
     }
 
     /**
+     * Update a task by numeric ID (returns Observable)
+     * Calls PUT /api/Task/{id}
+     */
+    updateTaskById(id: any, taskData: any): Observable<any> {
+        // Guard against undefined/null
+        if (id === undefined || id === null) {
+            console.error('TaskService.updateTaskById - ID is undefined or null');
+            return new Observable(observer => {
+                observer.error({ error: { message: 'Task ID is missing' } });
+            });
+        }
+        
+        const taskId = String(id);
+        console.log('TaskService.updateTaskById - Updating task', taskId, 'with data:', taskData);
+        return this.apiService.updateTask(taskId, taskData);
+    }
+
+    /**
+     * Delete a task by numeric ID (returns Observable)
+     * Calls DELETE /api/Task/{id}
+     */
+    deleteTaskById(id: any): Observable<any> {
+        // Guard against undefined/null
+        if (id === undefined || id === null) {
+            console.error('TaskService.deleteTaskById - ID is undefined or null');
+            return new Observable(observer => {
+                observer.error({ error: { message: 'Task ID is missing' } });
+            });
+        }
+        
+        const taskId = String(id);
+        console.log('TaskService.deleteTaskById - Deleting task', taskId);
+        return this.apiService.deleteTask(taskId);
+    }
+
+    /**
      * Get tasks count by status
      */
     getTaskCountByStatus(status: string): number {
         return this.tasksSubject.value.filter(task => task.status === status).length;
+    }
+
+    /**
+     * Start a task (change status to 'In Progress')
+     * Calls PATCH /api/Task/{id}/start
+     */
+    startTask(id: any): Observable<any> {
+        if (id === undefined || id === null) {
+            console.error('TaskService.startTask - ID is undefined or null');
+            return new Observable(observer => {
+                observer.error({ error: { message: 'Task ID is missing' } });
+            });
+        }
+        
+        const taskId = String(id);
+        console.log('📡 TaskService.startTask - Starting task', taskId);
+        return this.apiService.startTask(taskId).pipe(
+            tap((response: any) => {
+                console.log('✅ TaskService.startTask - Response:', response);
+                // Update local state
+                this.updateTaskStatus(taskId, 'In Progress');
+            })
+        );
+    }
+
+    /**
+     * Complete a task (change status to 'Completed')
+     * Calls PATCH /api/Task/{id}/complete
+     */
+    completeTask(id: any, hoursSpent: number = 0, comments: string = ''): Observable<any> {
+        if (id === undefined || id === null) {
+            console.error('TaskService.completeTask - ID is undefined or null');
+            return new Observable(observer => {
+                observer.error({ error: { message: 'Task ID is missing' } });
+            });
+        }
+        
+        const taskId = String(id);
+        console.log('📡 TaskService.completeTask - Completing task', taskId, 'with hours:', hoursSpent);
+        return this.apiService.completeTask(taskId, hoursSpent, comments).pipe(
+            tap((response: any) => {
+                console.log('✅ TaskService.completeTask - Response:', response);
+                // Update local state
+                this.updateTaskStatus(taskId, 'Completed');
+            })
+        );
+    }
+
+    /**
+     * Approve task completion (manager action)
+     * Calls PATCH /api/Task/{id}/approve
+     */
+    approveTaskCompletion(id: any, approvalComments: string = ''): Observable<any> {
+        if (id === undefined || id === null) {
+            console.error('TaskService.approveTaskCompletion - ID is undefined or null');
+            return new Observable(observer => {
+                observer.error({ error: { message: 'Task ID is missing' } });
+            });
+        }
+        
+        const taskId = String(id);
+        console.log('📡 TaskService.approveTaskCompletion - Approving task', taskId);
+        return this.apiService.approveTaskCompletion(taskId, approvalComments);
+    }
+
+    /**
+     * Get productivity data for current employee
+     * Calls GET /api/Productivity
+     */
+    getProductivity(): Observable<any> {
+        console.log('📡 TaskService.getProductivity - Fetching productivity data');
+        return this.apiService.getProductivity().pipe(
+            tap((response: any) => {
+                console.log('✅ TaskService.getProductivity - Response:', response);
+            })
+        );
+    }
+
+    /**
+     * Get productivity data for specific employee by ID
+     * Calls GET /api/Productivity/{employeeId}
+     */
+    getEmployeeProductivity(employeeId: string): Observable<any> {
+        console.log('📡 TaskService.getEmployeeProductivity - Fetching productivity data for employee:', employeeId);
+        return this.apiService.getEmployeeProductivity(employeeId).pipe(
+            tap((response: any) => {
+                console.log('✅ TaskService.getEmployeeProductivity - Response:', response);
+            })
+        );
     }
 }

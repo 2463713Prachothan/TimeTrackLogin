@@ -1,7 +1,7 @@
 import { Injectable, inject, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { tap, map } from 'rxjs/operators';
 import { ApiService } from './api.service';
 
 export interface User {
@@ -57,23 +57,32 @@ export class UserService {
                     users = response.result;
                 }
                 
-                console.log('✅ UserService - Loaded users from API:', users.length);
+                console.log('✅ UserService - Loaded users from API:', users.length, users);
                 
                 if (users && users.length > 0) {
                     // Map backend user format to frontend format
                     const mappedUsers: User[] = users.map((u: any) => ({
-                        id: u.userId?.toString() || u.id?.toString() || `user_${Date.now()}`,
+                        id: u.userId?.toString() || u.id?.toString(),
                         email: u.email,
                         fullName: u.name || u.fullName || u.email,
                         role: u.role as 'Employee' | 'Manager' | 'Admin',
                         department: u.department,
-                        status: (u.isActive === false ? 'Inactive' : 'Active') as 'Active' | 'Inactive',
+                        status: u.status || 'Active',
                         phone: u.phone,
-                        joinDate: u.joinDate || u.createdAt
+                        joinDate: u.joinDate || u.createdAt,
+                        managerId: u.managerId?.toString() || '',
+                        assignedEmployees: u.assignedEmployeeIds?.map((id: number) => id.toString()) || []
                     }));
+                    console.log('✅ UserService - Mapped users with relationships:', mappedUsers.map(u => ({
+                        id: u.id,
+                        fullName: u.fullName,
+                        managerId: u.managerId,
+                        assignedEmployees: u.assignedEmployees
+                    })));
                     this.usersSubject.next(mappedUsers);
                     this.saveUsersToStorage(mappedUsers);
                 } else {
+                    console.log('⚠️ UserService - No users from API, falling back to localStorage');
                     // Fallback to stored users
                     this.loadUsersFromStorage();
                 }
@@ -98,6 +107,17 @@ export class UserService {
      */
     getUsers(): Observable<User[]> {
         return this.users$;
+    }
+
+    /**
+     * Get team members (employees) assigned to a specific manager
+     */
+    getTeamMembers(managerId: string): Observable<User[]> {
+        return this.users$.pipe(
+            map(users => users.filter(user => 
+                user.role === 'Employee' && user.managerId === managerId
+            ))
+        );
     }
 
     /**
@@ -173,31 +193,136 @@ export class UserService {
 
     /**
      * Update an existing user (updates via API)
+     * Maps frontend fields to backend DTO format
      */
     updateUser(id: string, updatedUser: Partial<User>) {
-        const currentUsers = this.usersSubject.value;
-        const index = currentUsers.findIndex(user => user.id === id);
-        if (index !== -1) {
-            const updated = { ...currentUsers[index], ...updatedUser };
-            
-            // Call API to update user
-            this.apiService.updateUser(id, updated).subscribe({
-                next: (result) => {
-                    currentUsers[index] = result;
-                    this.usersSubject.next([...currentUsers]);
-                    this.saveUsersToStorage(currentUsers);
-                    this.currentUserChanged.set(currentUsers[index]);
-                },
-                error: (err) => {
-                    console.error('Error updating user:', err);
-                    // Fallback: update locally anyway
-                    currentUsers[index] = updated;
-                    this.usersSubject.next([...currentUsers]);
-                    this.saveUsersToStorage(currentUsers);
-                    this.currentUserChanged.set(currentUsers[index]);
-                }
-            });
+        const updateDto = {
+            fullName: updatedUser.fullName,
+            role: updatedUser.role,
+            department: updatedUser.department,
+            status: updatedUser.status,
+            managerId: updatedUser.managerId ? parseInt(updatedUser.managerId, 10) : 0,
+            assignedEmployeeIds: updatedUser.assignedEmployees?.map(id => parseInt(id, 10)) || []
+        };
+
+        console.log('📡 UserService - Sending update to API:', id, updateDto);
+
+        this.apiService.updateUser(id, updateDto).subscribe({
+            next: () => {
+                console.log('✅ User updated');
+                this.refreshUsers();
+            },
+            error: (err) => console.error('❌ Update failed:', err)
+        });
+    }
+
+    /**
+     * Assign a manager to an employee and update both sides of the relationship
+     */
+    assignManagerToEmployee(employeeId: string, managerId: string, oldManagerId?: string) {
+        console.log('🔗 UserService - Assigning manager', managerId, 'to employee', employeeId);
+        
+        // Update employee's managerId
+        this.updateUser(employeeId, { managerId: managerId || '' });
+        
+        // Remove employee from old manager's list
+        if (oldManagerId && oldManagerId !== managerId) {
+            const oldManager = this.getUserById(oldManagerId);
+            if (oldManager && oldManager.assignedEmployees) {
+                const updatedList = oldManager.assignedEmployees.filter(id => id !== employeeId);
+                this.updateUser(oldManagerId, { assignedEmployees: updatedList });
+            }
         }
+        
+        // Add employee to new manager's list
+        if (managerId) {
+            const newManager = this.getUserById(managerId);
+            if (newManager) {
+                const currentList = newManager.assignedEmployees || [];
+                if (!currentList.includes(employeeId)) {
+                    this.updateUser(managerId, { assignedEmployees: [...currentList, employeeId] });
+                }
+            }
+        }
+    }
+
+    /**
+     * Assign employees to a manager and update all relationships
+     */
+    assignEmployeesToManager(managerId: string, newEmployeeIds: string[], oldEmployeeIds: string[]) {
+        console.log('🔗 UserService - Assigning employees to manager', managerId);
+        
+        // Update manager's assignedEmployees
+        this.updateUser(managerId, { assignedEmployees: newEmployeeIds });
+        
+        // Update newly assigned employees
+        newEmployeeIds.forEach(employeeId => {
+            const employee = this.getUserById(employeeId);
+            if (employee && employee.managerId !== managerId) {
+                this.updateUser(employeeId, { managerId: managerId });
+            }
+        });
+        
+        // Remove manager from employees no longer assigned
+        oldEmployeeIds.forEach(employeeId => {
+            if (!newEmployeeIds.includes(employeeId)) {
+                this.updateUser(employeeId, { managerId: '' });
+            }
+        });
+    }
+
+    /**
+     * Upgrade Employee to Manager
+     * - Clears their ManagerId (managers don't have managers)
+     * - They can now have employees assigned to them
+     */
+    upgradeToManager(userId: string) {
+        console.log('🔼 UserService - Upgrading user to Manager:', userId);
+        const user = this.getUserById(userId);
+        if (!user) return;
+
+        const oldManagerId = user.managerId;
+
+        // Update user role and clear managerId
+        this.updateUser(userId, {
+            role: 'Manager',
+            managerId: '',
+            assignedEmployees: []
+        });
+
+        // Remove from old manager's assigned employees list
+        if (oldManagerId) {
+            const oldManager = this.getUserById(oldManagerId);
+            if (oldManager && oldManager.assignedEmployees) {
+                const updatedList = oldManager.assignedEmployees.filter(id => id !== userId);
+                this.updateUser(oldManagerId, { assignedEmployees: updatedList });
+            }
+        }
+    }
+
+    /**
+     * Downgrade Manager to Employee
+     * - Unassigns all their employees (clears employees' managerId)
+     * - They can now have a manager assigned to them
+     */
+    downgradeToEmployee(userId: string) {
+        console.log('🔽 UserService - Downgrading user to Employee:', userId);
+        const user = this.getUserById(userId);
+        if (!user) return;
+
+        const assignedEmployees = user.assignedEmployees || [];
+
+        // Clear managerId from all assigned employees
+        assignedEmployees.forEach(employeeId => {
+            this.updateUser(employeeId, { managerId: '' });
+        });
+
+        // Update user role and clear assignedEmployees
+        this.updateUser(userId, {
+            role: 'Employee',
+            assignedEmployees: [],
+            managerId: ''
+        });
     }
 
     /**

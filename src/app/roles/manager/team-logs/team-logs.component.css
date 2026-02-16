@@ -32,18 +32,18 @@
 
 .custom-logs-table {
   width: 100%;
-  /* This is the key: it forces even distribution */
+  border-collapse: collapse;
   table-layout: fixed; 
   margin-bottom: 0;
-  border-collapse: collapse;
 }
 
 .custom-logs-table thead th {
-  background-color: #f8f9fa;
+  background-color: #f5f5f5;
   color: #4b5563;
   font-weight: 600;
-  font-size: 0.82rem; /* Slightly smaller for better fit */
-  padding: 12px;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  font-size: var(--bs-body-font-size, 0.95rem);
+  padding: 14px 15px;
   text-align: center;
   border-bottom: 1px solid #edf2f7;
   /* Ensures each of the 6 columns takes exactly 16.66% */
@@ -54,8 +54,9 @@
 }
 
 .custom-logs-table tbody td {
-  padding: 14px 15px;
-  font-size: 0.85rem;
+  padding: 16px 15px;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  font-size: var(--bs-body-font-size, 0.95rem);
   color: #1f2937;
   border-bottom: 1px solid #f3f4f6;
   vertical-align: middle;
@@ -69,6 +70,18 @@
 .text-total-hours {
   font-weight: 700;
   color: #111827;
+}
+
+.col-employee {
+  text-align: left;
+}
+
+.col-date {
+  text-align: left;
+}
+
+.col-time {
+  text-align: center;
 }
 
 .custom-logs-table tbody tr:hover {
@@ -96,22 +109,22 @@
 
 .time-badge {
   display: inline-block;
-  background: #f3f4f6;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.85rem;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
   font-weight: 500;
   color: #374151;
 }
 
 .hours-badge {
   display: inline-block;
-  background: #dbeafe;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.85rem;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
   font-weight: 600;
-  color: #1e40af;
+  color: #000000;
 }
 
 .live-indicator {

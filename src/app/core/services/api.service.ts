@@ -13,13 +13,13 @@ export class ApiService {
   private platformId = inject(PLATFORM_ID);
 
   // Use relative URLs - requests will be proxied via proxy.conf.json
+  // The proxy handles the SSL certificate issue with the self-signed backend cert
   private apiUrl = '/api';
   
-  // For endpoints that don't exist yet in backend, use mock/localStorage data
-  // Set to false when backend endpoints are ready
-  private useMockForTasks = true;    // Tasks endpoint not ready
-  private useMockForTimeLogs = true; // Time logs endpoint not ready
-  private useMockForUsers = false;   // Users endpoint ready: /api/User/all, /api/User/profile, etc.
+  // All endpoints use real backend API - no mock data
+  private useMockForTasks = false;
+  private useMockForTimeLogs = false;
+  private useMockForUsers = false;
 
   /**
    * Get HTTP headers with authorization token
@@ -30,9 +30,27 @@ export class ApiService {
     });
 
     if (isPlatformBrowser(this.platformId)) {
-      const token = localStorage.getItem('token');
+      // Try multiple token storage locations
+      let token = localStorage.getItem('token');
+      
+      // Fallback: check if token is in user_session
+      if (!token) {
+        try {
+          const userSession = localStorage.getItem('user_session');
+          if (userSession) {
+            const user = JSON.parse(userSession);
+            token = user.token || user.accessToken || user.jwtToken;
+          }
+        } catch (e) {
+          console.error('Error parsing user session:', e);
+        }
+      }
+
       if (token) {
+        console.log('✅ ApiService.getHeaders - Token found, adding Authorization header');
         headers = headers.set('Authorization', `Bearer ${token}`);
+      } else {
+        console.warn('⚠️ ApiService.getHeaders - No token found in localStorage');
       }
     }
 
@@ -55,18 +73,23 @@ export class ApiService {
    */
   getUsers(): Observable<any[]> {
     if (this.useMockForUsers) {
-      return of([]); // Return empty - will be populated by service
+      return of([]); // Return empty - will be populated by service from localStorage
     }
     
-    // Only fetch in browser
+    // Only fetch in browser (SSR has certificate issues with self-signed certs)
     if (!isPlatformBrowser(this.platformId)) {
+      console.log('⚠️ ApiService - Skipping getUsers in SSR');
       return of([]);
     }
     
+    console.log('📡 ApiService - Fetching users from:', `${this.apiUrl}/User/all`);
+    
     return this.http.get<any>(`${this.apiUrl}/User/all`, { headers: this.getHeaders() })
       .pipe(
+        tap((response: any) => {
+          console.log('📥 ApiService - Users raw response:', JSON.stringify(response));
+        }),
         map((response: any) => {
-          console.log('✅ ApiService - Users raw response:', response);
           
           // Handle different response formats from backend
           let users: any[] = [];
@@ -80,9 +103,9 @@ export class ApiService {
             users = response.result;
           }
           
-          // Filter out null/undefined users
-          users = users.filter(u => u != null && u.id != null);
-          console.log('✅ ApiService - Parsed users:', users.length);
+          // Filter out null/undefined users - check both id and userId
+          users = users.filter(u => u != null && (u.id != null || u.userId != null));
+          console.log('✅ ApiService - Parsed users:', users.length, users);
           return users;
         }),
         catchError(err => {
@@ -91,7 +114,6 @@ export class ApiService {
         })
       );
   }
-
   /**
    * Get current user profile
    * Backend endpoint: GET /api/User/profile
@@ -109,6 +131,42 @@ export class ApiService {
         catchError(err => {
           console.error('❌ ApiService - Error fetching user profile:', err);
           return of(null);
+        })
+      );
+  }
+
+  /**
+   * Get team members for the current manager
+   * Backend endpoint: GET /api/User/my-team
+   */
+  getMyTeam(): Observable<any[]> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return of([]);
+    }
+    
+    console.log('📡 ApiService - Fetching my team from:', `${this.apiUrl}/User/my-team`);
+    
+    return this.http.get<any>(`${this.apiUrl}/User/my-team`, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('📥 ApiService - My team raw response:', response);
+        }),
+        map((response: any) => {
+          // Handle different response formats
+          let members: any[] = [];
+          if (Array.isArray(response)) {
+            members = response;
+          } else if (response && Array.isArray(response.$values)) {
+            members = response.$values;
+          } else if (response && Array.isArray(response.data)) {
+            members = response.data;
+          }
+          console.log('✅ ApiService - Parsed team members:', members);
+          return members;
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error fetching my team:', err);
+          return of([]);
         })
       );
   }
@@ -219,13 +277,21 @@ export class ApiService {
   /**
    * Update user
    * Backend endpoint: PUT /api/User/:id
+   * Always calls API - no mock data
    */
   updateUser(id: string, user: any): Observable<any> {
-    if (this.useMockForUsers) {
-      return of(user);
-    }
+    console.log('📡 ApiService - Calling PUT /api/User/' + id, user);
     return this.http.put<any>(`${this.apiUrl}/User/${id}`, user, { headers: this.getHeaders() })
-      .pipe(catchError(err => this.handleError(err)));
+      .pipe(
+        map((response: any) => {
+          console.log('✅ ApiService - User update response:', response);
+          return response.data || response;
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error updating user:', err);
+          return this.handleError(err);
+        })
+      );
   }
 
   /**
@@ -352,6 +418,83 @@ export class ApiService {
   }
 
   /**
+   * Get tasks created by the current manager
+   * Backend endpoint: GET /api/Task/created-by-me
+   */
+  getTasksCreatedByMe(): Observable<any[]> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return of([]);
+    }
+    return this.http.get<any[]>(`${this.apiUrl}/Task/created-by-me`, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('✅ ApiService - Tasks created by me:', response);
+        }),
+        map((response: any) => {
+          // Handle different response formats
+          let tasks: any[] = [];
+          if (Array.isArray(response)) {
+            tasks = response;
+          } else if (response && Array.isArray(response.$values)) {
+            tasks = response.$values;
+          } else if (response && Array.isArray(response.data)) {
+            tasks = response.data;
+          }
+          // Convert date strings to Date objects
+          return tasks.map(task => ({
+            ...task,
+            dueDate: task.dueDate ? new Date(task.dueDate) : null,
+            createdDate: task.createdDate ? new Date(task.createdDate) : null
+          }));
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error fetching tasks created by me:', err);
+          return of([]);
+        })
+      );
+  }
+
+  /**
+   * Get tasks assigned to the current user (employee)
+   * Backend endpoint: GET /api/Task/my-tasks
+   */
+  getMyTasks(): Observable<any[]> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return of([]);
+    }
+    
+    console.log('📡 ApiService - Fetching my tasks from:', `${this.apiUrl}/Task/my-tasks`);
+    
+    return this.http.get<any>(`${this.apiUrl}/Task/my-tasks`, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('📥 ApiService - My tasks raw response:', response);
+        }),
+        map((response: any) => {
+          // Handle different response formats
+          let tasks: any[] = [];
+          if (Array.isArray(response)) {
+            tasks = response;
+          } else if (response && Array.isArray(response.$values)) {
+            tasks = response.$values;
+          } else if (response && Array.isArray(response.data)) {
+            tasks = response.data;
+          }
+          // Convert date strings to Date objects
+          return tasks.map(task => ({
+            ...task,
+            dueDate: task.dueDate ? new Date(task.dueDate) : null,
+            createdDate: task.createdDate ? new Date(task.createdDate) : null
+          }));
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error fetching my tasks:', err);
+          return of([]);
+        })
+      );
+  }
+
+  /**
    * Create task
    * Backend endpoint: POST /api/Task
    */
@@ -387,9 +530,143 @@ export class ApiService {
       .pipe(catchError(err => this.handleError(err)));
   }
 
+  /**
+   * Start a task (change status to 'In Progress')
+   * Backend endpoint: PUT /api/Task/:id with status update
+   */
+  startTask(id: string): Observable<any> {
+    if (this.useMockForTasks) {
+      return of({ success: true, status: 'In Progress' });
+    }
+    const payload = { status: 'In Progress' };
+    const url = `${this.apiUrl}/Task/${id}`;
+    
+    console.log('📡 ApiService.startTask - Making PUT request to:', url);
+    console.log('📤 Payload:', payload);
+    console.log('🔐 Headers:', this.getHeaders());
+    
+    return this.http.put<any>(url, payload, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('✅ ApiService - Task started:', response);
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error starting task:', err);
+          console.error('Status:', err.status, 'Message:', err.message);
+          return this.handleError(err);
+        })
+      );
+  }
+
+  /**
+   * Complete a task (change status to 'Completed')
+   * Backend endpoint: PUT /api/Task/:id with status update
+   */
+  completeTask(id: string, hoursSpent: number = 0, comments: string = ''): Observable<any> {
+    if (this.useMockForTasks) {
+      return of({ success: true, status: 'Completed' });
+    }
+    const payload = { 
+      status: 'Completed',
+      hoursSpent, 
+      comments 
+    };
+    const url = `${this.apiUrl}/Task/${id}`;
+    
+    console.log('📡 ApiService.completeTask - Making PUT request to:', url);
+    console.log('📤 Payload:', payload);
+    console.log('🔐 Headers:', this.getHeaders());
+    
+    return this.http.put<any>(url, payload, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('✅ ApiService - Task completed:', response);
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error completing task:', err);
+          console.error('Status:', err.status, 'Message:', err.message);
+          return this.handleError(err);
+        })
+      );
+  }
+
+  /**
+   * Approve a task completion (manager action)
+   * Backend endpoint: PUT /api/Task/:id with approved status
+   */
+  approveTaskCompletion(id: string, approvalComments: string = ''): Observable<any> {
+    if (this.useMockForTasks) {
+      return of({ success: true, status: 'Approved' });
+    }
+    const payload = { 
+      status: 'Approved',
+      approvalComments 
+    };
+    return this.http.put<any>(`${this.apiUrl}/Task/${id}`, payload, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('✅ ApiService - Task approved:', response);
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error approving task:', err);
+          return this.handleError(err);
+        })
+      );
+  }
+
   // ==================== REGISTRATION ENDPOINTS ====================
   // Note: Registration endpoints are now handled directly by RegistrationService
   // using /api/Registration endpoints
+
+  // ==================== CONFIGURATION ====================
+
+  /**
+   * Get productivity data for current employee
+   */
+  getProductivity(): Observable<any> {
+    const url = `${this.apiUrl}/Productivity`;
+    console.log('📡 ApiService.getProductivity - Making GET request to:', url);
+    
+    return this.http.get<any>(url, { headers: this.getHeaders() }).pipe(
+      tap(response => {
+        console.log('✅ ApiService.getProductivity - Response received:', response);
+      }),
+      catchError(err => {
+        console.error('❌ ApiService.getProductivity - Error fetching productivity data:', err);
+        console.error('Error details:', {
+          status: err.status,
+          statusText: err.statusText,
+          message: err.message,
+          url: err.url
+        });
+        throw err;
+      })
+    );
+  }
+
+  /**
+   * Get productivity data for specific employee by ID
+   */
+  getEmployeeProductivity(employeeId: string): Observable<any> {
+    const url = `${this.apiUrl}/Productivity/${employeeId}`;
+    console.log('📡 ApiService.getEmployeeProductivity - Making GET request to:', url);
+    
+    return this.http.get<any>(url, { headers: this.getHeaders() }).pipe(
+      tap(response => {
+        console.log('✅ ApiService.getEmployeeProductivity - Response received:', response);
+      }),
+      catchError(err => {
+        console.error('❌ ApiService.getEmployeeProductivity - Error fetching productivity data:', err);
+        console.error('Error details:', {
+          status: err.status,
+          statusText: err.statusText,
+          message: err.message,
+          url: err.url
+        });
+        throw err;
+      })
+    );
+  }
 
   // ==================== CONFIGURATION ====================
 

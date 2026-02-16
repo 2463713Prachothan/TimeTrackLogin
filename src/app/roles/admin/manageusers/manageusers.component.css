@@ -570,6 +570,43 @@
     font-style: italic;
 }
 
+/* Manager Name in Table */
+.manager-name {
+    color: #059669;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.no-manager {
+    color: #9ca3af;
+    font-style: italic;
+    font-size: 12px;
+}
+
+/* Current Manager Display in Modal */
+.current-manager {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.current-manager label {
+    color: #065f46;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.manager-name-display {
+    color: #059669;
+    font-weight: 600;
+    font-size: 14px;
+}
+
 /* Info Text */
 .info-text {
     font-size: 12px;

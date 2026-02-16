@@ -338,32 +338,60 @@
     font-size: 12px;
 }
 
-/* --- Submit Task Button --- */
-.btn-submit-task {
+/* --- Task Action Buttons --- */
+.task-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.btn-start-task,
+.btn-complete-task {
+    flex: 1;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    background: linear-gradient(135deg, #8cc63f 0%, #7ab82f 100%);
-    color: white;
     border: none;
-    padding: 10px 20px;
+    padding: 10px 16px;
     border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     font-size: 14px;
-    margin-top: 12px;
-    width: 100%;
-    justify-content: center;
 }
 
-.btn-submit-task:hover:not(:disabled) {
-    background: linear-gradient(135deg, #7ab82f 0%, #6aa81f 100%);
+/* Start Button */
+.btn-start-task {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.btn-start-task:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(140, 198, 63, 0.3);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
-.btn-submit-task:disabled {
+.btn-start-task:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Complete Button */
+.btn-complete-task {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.btn-complete-task:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-complete-task:disabled {
     background: #cbd5e1;
     cursor: not-allowed;
     opacity: 0.6;

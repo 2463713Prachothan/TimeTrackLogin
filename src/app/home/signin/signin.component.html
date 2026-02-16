@@ -29,16 +29,6 @@
           Password is required.
         </small>
       </div>
-      <div class="form-group">
-        <label>Login As</label>
-        <select formControlName="role">
-          <option value="" disabled selected>Select your role</option>
-          <option *ngFor="let role of roles" [value]="role">{{ role }}</option>
-        </select>
-        <small class="error" *ngIf="f['role'].touched && f['role'].invalid">
-          Please select a role to continue.
-        </small>
-      </div>
  
       <button type="submit" class="submit-btn" [disabled]="signinForm.invalid">
         Login
