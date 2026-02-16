@@ -20,24 +20,19 @@ export class SigninComponent {
   private notificationService = inject(NotificationService);
   private managerDataService = inject(ManagerDataService);
  
-  roles: string[] = ['Employee', 'Manager', 'Admin'];
   signinForm: FormGroup;
- 
+
   constructor() {
     this.signinForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required]],
-      role: ['', [Validators.required]]
+      password: ['', [Validators.required]]
     });
-  }
- 
-  // Helper for HTML access
+  }  // Helper for HTML access
   get f() { return this.signinForm.controls; }
  
   onLogin() {
     if (this.signinForm.valid) {
       const email = this.signinForm.value.email.toLowerCase();
-      const selectedRole = this.signinForm.value.role;
       const enteredPassword = this.signinForm.value.password;
 
       // Call backend API for all users (including Admin)
@@ -54,15 +49,6 @@ export class SigninComponent {
 
           // Set the user in the auth service
           this.authService.setCurrentUser(user);
-
-          // 1. First, check if the role matches (case-insensitive)
-          if (selectedRole.toLowerCase() !== user.role?.toLowerCase()) {
-            this.notificationService.error(`Access Denied: You are registered as ${user.role}, not ${selectedRole}.`, 5000);
-            setTimeout(() => {
-              this.authService.logout();
-            }, 500);
-            return;
-          }
 
           // Get the actual user name
           const displayName = user.name || user.fullName || user.role;

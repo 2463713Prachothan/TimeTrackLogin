@@ -56,6 +56,93 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
       return;
     }
 
+    console.log('📊 PersonalreportsComponent.loadProductivityData - Starting to load productivity data for:', currentUser.fullName);
+
+    // First try to load from Productivity API
+    console.log('📊 PersonalreportsComponent - Fetching productivity from API');
+    this.taskService.getProductivity().subscribe({
+      next: (productivityData: any) => {
+        console.log('✅ PersonalreportsComponent - API productivity data loaded successfully:', productivityData);
+        
+        // Verify the response has actual data
+        if (productivityData && Object.keys(productivityData).length > 0) {
+          this.applyProductivityData(productivityData);
+        } else {
+          console.warn('⚠️ PersonalreportsComponent - API returned empty response, using fallback');
+          this.loadProductivityDataFallback(currentUser);
+        }
+      },
+      error: (err) => {
+        console.warn('⚠️ PersonalreportsComponent - Productivity API failed, falling back to local calculation:', err);
+        console.warn('Error details:', {
+          status: err.status,
+          message: err.message,
+          statusText: err.statusText
+        });
+        // Fallback to previous calculation method
+        this.loadProductivityDataFallback(currentUser);
+      }
+    });
+  }
+
+  /**
+   * Apply productivity data from API
+   */
+  private applyProductivityData(data: any) {
+    console.log('📊 PersonalreportsComponent.applyProductivityData - Raw API response:', data);
+    
+    this.totalHoursLogged = parseFloat(data.totalHoursLogged) || 0;
+    this.taskCompletionRate = parseInt(data.taskCompletionRate) || 0;
+    this.efficiencyScore = parseInt(data.efficiencyScore) || 0;
+    this.completedTasks = parseInt(data.completedTasks) || 0;
+    this.totalTasks = parseInt(data.totalTasks) || 0;
+    this.inProgressTasks = parseInt(data.inProgressTasks) || 0;
+    this.pendingTasks = parseInt(data.pendingTasks) || 0;
+    this.weeklyAverage = parseFloat(data.weeklyAverage) || 0;
+
+    console.log('📊 PersonalreportsComponent.applyProductivityData - Parsed values:', {
+      totalHoursLogged: this.totalHoursLogged,
+      taskCompletionRate: this.taskCompletionRate,
+      efficiencyScore: this.efficiencyScore,
+      completedTasks: this.completedTasks,
+      totalTasks: this.totalTasks,
+      inProgressTasks: this.inProgressTasks,
+      pendingTasks: this.pendingTasks,
+      weeklyAverage: this.weeklyAverage
+    });
+
+    // Parse chart data if available
+    if (data.dailyHours && Array.isArray(data.dailyHours)) {
+      this.lastSevenDaysHours = data.dailyHours.map((h: any) => parseFloat(h) || 0);
+      console.log('📊 Daily hours data:', this.lastSevenDaysHours);
+    }
+
+    if (data.taskDistribution) {
+      this.taskStatusData = {
+        completed: parseInt(data.taskDistribution.completed) || 0,
+        inProgress: parseInt(data.taskDistribution.inProgress) || 0,
+        pending: parseInt(data.taskDistribution.pending) || 0
+      };
+      console.log('📊 Task distribution:', this.taskStatusData);
+    }
+
+    // Generate labels for the last 7 days
+    const today = new Date();
+    this.lastSevenDaysLabels = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      this.lastSevenDaysLabels.push(dateStr);
+    }
+
+    console.log('📊 Productivity data fully applied and ready for display');
+  }
+
+  /**
+   * Fallback: Load productivity data using local calculation
+   */
+  private loadProductivityDataFallback(currentUser: any) {
     // Load time logs
     this.timeLogService.getLogs().subscribe((logs: any[]) => {
       // Filter logs for current employee
