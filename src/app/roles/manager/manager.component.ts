@@ -35,13 +35,12 @@ export class ManagerComponent implements OnInit {
     private authService: AuthService,
     private timeLogService: TimeLogService,
     private userService: UserService
-  ) { }
+  ) {}
 
   ngOnInit() {
-    // Subscribe to user data for navbar
+    // Navbar user info
     this.dataService.currentUser$.subscribe(userData => {
       const fullName = userData.fullName || userData.name || 'Manager';
-      
       this.user = {
         name: fullName,
         role: userData.role,
@@ -49,49 +48,49 @@ export class ManagerComponent implements OnInit {
       };
     });
 
-    // Calculate active tasks and completion rate
+    // Active tasks & completion rate (from data service)
     this.dataService.tasks$.subscribe(tasks => {
       const activeTasks = tasks.filter(t => t.status !== 'Completed').length;
       const completedTasks = tasks.filter(t => t.status === 'Completed').length;
       this.completionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
-      // Only use local activeTasks if API doesn't provide it
       if (this.activeTasks === 0) {
         this.activeTasks = activeTasks;
       }
     });
 
-    // Get dashboard stats from backend
-    const managerId = this.getCurrentManagerId();
+    // === MAIN: all manager calls use GUID string ===
+    const managerId = this.getCurrentManagerId(); // string | null
     if (managerId) {
-      // Fetch dashboard stats
+      // Dashboard stats (prefers API, falls back to derived)
       this.timeLogService.getManagerStats(managerId).subscribe(stats => {
         if (stats) {
-          this.teamCount = stats.teamCount ?? 0;
-          this.activeTasks = stats.activeTasks ?? this.activeTasks;
+          // adjust keys if your API returns different names
+          this.teamCount = (stats as any).teamCount ?? 0;
+          this.activeTasks = (stats as any).activeTasks ?? this.activeTasks;
         } else {
-          // Fallback: calculate from team logs
           this.timeLogService.getTeamMembersCount(managerId).subscribe(teamCount => {
             this.teamCount = teamCount;
           });
         }
       });
 
-      // Fetch team members list
-      this.loadTeamMembers(managerId.toString());
+      // Team members list (+ compute hours from team logs)
+      this.loadTeamMembers(managerId);
     }
   }
 
   /**
-   * Load team members and their hours from the API
+   * Load team members and compute their total hours from team time logs
    */
   private loadTeamMembers(managerId: string): void {
     this.userService.getTeamMembers(managerId).subscribe(users => {
-      // Get time logs to calculate hours per employee
-      this.timeLogService.getTeamTimeLogs(Number(managerId)).subscribe(logs => {
+      this.timeLogService.getTeamTimeLogs(managerId).subscribe(logs => {
         this.teamMembers = users.map(user => {
-          // Calculate total hours for this employee from time logs
-          const employeeLogs = logs.filter(log => 
-            log.employeeName?.toLowerCase() === user.fullName?.toLowerCase()
+          // If your TeamTimeLog includes employeeId, prefer ID match; else fallback to name
+          const employeeLogs = logs.filter(log =>
+            (log as any).employeeId && user.id
+              ? (log as any).employeeId === user.id
+              : (log.employeeName?.toLowerCase() === user.fullName?.toLowerCase())
           );
           const totalHours = employeeLogs.reduce((sum, log) => sum + (log.totalHours || 0), 0);
 
@@ -99,13 +98,12 @@ export class ManagerComponent implements OnInit {
             id: user.id || '',
             name: user.fullName,
             email: user.email,
-            totalHours: totalHours,
+            totalHours,
             department: user.department,
             status: user.status
           };
         });
-        
-        // Update team count based on actual members
+
         if (this.teamMembers.length > 0) {
           this.teamCount = this.teamMembers.length;
         }
@@ -113,16 +111,23 @@ export class ManagerComponent implements OnInit {
     });
   }
 
-  private getCurrentManagerId(): number | null {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const saved = localStorage.getItem('user_session');
-      if (saved) {
-        const user = JSON.parse(saved);
-        const parsed = Number(user.userId ?? user.id);
-        return Number.isNaN(parsed) ? null : parsed;
-      }
+  /**
+   * Read current manager ID as GUID string from session.
+   * NO number parsing. Returns null if missing.
+   */
+  private getCurrentManagerId(): string | null {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    const saved = localStorage.getItem('user_session');
+    if (!saved) return null;
+
+    try {
+      const user = JSON.parse(saved);
+      const id = user.userId ?? user.id;  // depending on how you store it
+      if (!id) return null;
+      return typeof id === 'string' ? id : String(id);
+    } catch {
+      return null;
     }
-    return null;
   }
 
   // Toggle user profile dropdown
@@ -137,20 +142,19 @@ export class ManagerComponent implements OnInit {
     this.isDropdownOpen = false;
   }
 
-  /**
-   * Open the profile modal
-   */
+  /** Open profile modal */
   openProfile() {
-    this.isDropdownOpen = false; // Close dropdown
+    this.isDropdownOpen = false;
     if (this.profileModal) {
       this.profileModal.openProfile();
     }
   }
 
-  // Navigate to different sections
+  /** Navigate to a section under /manager */
   navigateTo(section: string) {
     this.router.navigate(['/manager', section]);
   }
+
   onLogout() {
     this.dataService.clearUser();
     this.authService.logout();

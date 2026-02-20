@@ -1,545 +1,470 @@
-import { Injectable, inject, PLATFORM_ID, signal } from '@angular/core';
+// src/app/core/services/user.service.ts
+
+import { Injectable, Inject, inject, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { tap, map } from 'rxjs/operators';
+import { BehaviorSubject, Observable, forkJoin, of } from 'rxjs';
+import { map, switchMap, catchError, finalize } from 'rxjs/operators';
 import { ApiService } from './api.service';
 
 export interface User {
-    id?: string;
-    email: string;
-    password?: string;
-    fullName: string;
-    role: 'Employee' | 'Manager' | 'Admin';
-    department?: string;
-    phone?: string;
-    joinDate?: string;
-    status?: 'Active' | 'Inactive';
-    createdDate?: Date;
-    managerId?: string;  // For employees: their assigned manager
-    assignedEmployees?: string[];  // For managers: list of employee IDs
+  id?: string;                                      // GUID as string
+  email: string;
+  password?: string;
+  fullName: string;
+  role: 'Employee' | 'Manager' | 'Admin';
+  department?: string;
+  phone?: string;
+  joinDate?: string;
+  status?: 'Active' | 'Inactive';
+  createdDate?: Date;
+
+  // Relationships (GUID strings)
+  managerId?: string | null;                        // For employees
+  assignedEmployees?: string[];                     // For managers
 }
 
 @Injectable({
-    providedIn: 'root'
+  providedIn: 'root'
 })
 export class UserService {
+  private platformId = inject(PLATFORM_ID);
+  private apiService = inject(ApiService);
 
-    private platformId = inject(PLATFORM_ID);
-    private apiService = inject(ApiService);
+  private usersSubject = new BehaviorSubject<User[]>([]);
+  users$ = this.usersSubject.asObservable();
 
-    private usersSubject = new BehaviorSubject<User[]>([]);
-    users$ = this.usersSubject.asObservable();
+  // Track current user changes (if needed by UI)
+  currentUserChanged = signal<User | null>(null);
 
-    // Track current user changes
-    currentUserChanged = signal<User | null>(null);
+  constructor() {
+    this.loadUsers();
+  }
 
-    constructor() {
-        this.loadUsers();
-    }
+  // ---------------------------
+  // Data Loading & Refresh
+  // ---------------------------
 
-    /**
-     * Load users from API, with fallback to storage
-     */
-    private loadUsers(): void {
-        this.apiService.getUsers().subscribe({
-            next: (response: any) => {
-                // Handle different response formats from backend
-                let users: any[] = [];
-                
-                if (Array.isArray(response)) {
-                    users = response;
-                } else if (response && Array.isArray(response.$values)) {
-                    // Handle .NET serialization format
-                    users = response.$values;
-                } else if (response && Array.isArray(response.data)) {
-                    users = response.data;
-                } else if (response && Array.isArray(response.result)) {
-                    users = response.result;
-                }
-                
-                console.log('✅ UserService - Loaded users from API:', users.length, users);
-                
-                if (users && users.length > 0) {
-                    // Map backend user format to frontend format
-                    const mappedUsers: User[] = users.map((u: any) => ({
-                        id: u.userId?.toString() || u.id?.toString(),
-                        email: u.email,
-                        fullName: u.name || u.fullName || u.email,
-                        role: u.role as 'Employee' | 'Manager' | 'Admin',
-                        department: u.department,
-                        status: u.status || 'Active',
-                        phone: u.phone,
-                        joinDate: u.joinDate || u.createdAt,
-                        managerId: u.managerId?.toString() || '',
-                        assignedEmployees: u.assignedEmployeeIds?.map((id: number) => id.toString()) || []
-                    }));
-                    console.log('✅ UserService - Mapped users with relationships:', mappedUsers.map(u => ({
-                        id: u.id,
-                        fullName: u.fullName,
-                        managerId: u.managerId,
-                        assignedEmployees: u.assignedEmployees
-                    })));
-                    this.usersSubject.next(mappedUsers);
-                    this.saveUsersToStorage(mappedUsers);
-                } else {
-                    console.log('⚠️ UserService - No users from API, falling back to localStorage');
-                    // Fallback to stored users
-                    this.loadUsersFromStorage();
-                }
-            },
-            error: () => {
-                // API failed, use stored data
-                this.loadUsersFromStorage();
-            }
-        });
-    }
-
-    /**
-     * Refresh users from API (public method to trigger refresh)
-     */
-    refreshUsers(): void {
-        console.log('🔄 UserService - Refreshing users from API...');
-        this.loadUsers();
-    }
-
-    /**
-     * Get all users
-     */
-    getUsers(): Observable<User[]> {
-        return this.users$;
-    }
-
-    /**
-     * Get team members (employees) assigned to a specific manager
-     */
-    getTeamMembers(managerId: string): Observable<User[]> {
-        return this.users$.pipe(
-            map(users => users.filter(user => 
-                user.role === 'Employee' && user.managerId === managerId
-            ))
-        );
-    }
-
-    /**
-     * Get user by ID
-     */
-    getUserById(id: string): User | undefined {
-        return this.usersSubject.value.find(user => user.id === id);
-    }
-
-    /**
-     * Get user by email
-     */
-    getUserByEmail(email: string): User | undefined {
-        return this.usersSubject.value.find(user => user.email.toLowerCase() === email.toLowerCase());
-    }
-
-    /**
-     * Get users by role
-     */
-    getUsersByRole(role: string): User[] {
-        return this.usersSubject.value.filter(user => user.role === role);
-    }
-
-    /**
-     * Get users by department
-     */
-    getUsersByDepartment(department: string): User[] {
-        return this.usersSubject.value.filter(user => user.department === department);
-    }
-
-    /**
-     * Get active users
-     */
-    getActiveUsers(): User[] {
-        return this.usersSubject.value.filter(user => user.status === 'Active');
-    }
-
-    /**
-     * Add a new user (creates via API)
-     */
-    addUser(user: User) {
-        user.id = user.id || `user_${Date.now()}`;
-        user.createdDate = new Date();
-        user.status = user.status || 'Active';
-        const currentUsers = this.usersSubject.value;
-        
-        // Check if user with same email already exists
-        const emailLower = user.email.toLowerCase();
-        const existingUserIndex = currentUsers.findIndex(u => u.email.toLowerCase() === emailLower);
-        
-        if (existingUserIndex === -1) {
-            // Call API to create user
-            this.apiService.createUser(user).subscribe({
-                next: (newUser) => {
-                    const newUsers = [...currentUsers, newUser];
-                    this.usersSubject.next(newUsers);
-                    this.saveUsersToStorage(newUsers);
-                },
-                error: (err) => {
-                    console.error('Error creating user:', err);
-                    // Fallback: add to local storage anyway
-                    const newUsers = [...currentUsers, user];
-                    this.usersSubject.next(newUsers);
-                    this.saveUsersToStorage(newUsers);
-                }
-            });
-        } else {
-            // User already exists, update instead
-            console.warn(`User with email ${user.email} already exists. Updating existing user.`);
-            this.updateUser(currentUsers[existingUserIndex].id!, user);
+  private loadUsers(): void {
+    this.apiService.getUsers().subscribe({
+      next: (response: any) => {
+        // Normalize various possible backend response shapes
+        let users: any[] = [];
+        if (Array.isArray(response)) {
+          users = response;
+        } else if (response && Array.isArray(response.$values)) {
+          users = response.$values; // Some .NET serializers
+        } else if (response && Array.isArray(response.data)) {
+          users = response.data;
+        } else if (response && Array.isArray(response.result)) {
+          users = response.result;
         }
+
+        // Map backend model -> frontend model
+        const mapped: User[] = users.map((u: any) => ({
+          id: (u.userId ?? u.id)?.toString(),                       // GUID string
+          email: u.email,
+          fullName: u.name || u.fullName || u.email,
+          role: (u.role as 'Employee' | 'Manager' | 'Admin') ?? 'Employee',
+          department: u.department,
+          status: u.status || 'Active',
+          phone: u.phone,
+          joinDate: u.joinDate || u.createdAt,
+          managerId: u.managerId ? String(u.managerId) : null,
+          assignedEmployees: Array.isArray(u.assignedEmployeeIds)
+            ? u.assignedEmployeeIds.map((id: any) => String(id))
+            : []
+        }));
+
+        this.usersSubject.next(mapped);
+        this.saveUsersToStorage(mapped);
+        // console.log('✅ UserService - Loaded users:', mapped);
+      },
+      error: (err) => {
+        console.warn('⚠️ UserService - API failed, falling back to localStorage', err);
+        this.loadUsersFromStorage();
+      }
+    });
+  }
+
+  /** Public refresh trigger */
+  refreshUsers(): void {
+    // console.log('🔄 UserService - Refreshing users from API...');
+    this.loadUsers();
+  }
+
+  // ---------------------------
+  // Queries / Getters
+  // ---------------------------
+
+  getUsers(): Observable<User[]> {
+    return this.users$;
+  }
+
+  getTeamMembers(managerId: string): Observable<User[]> {
+    return this.users$.pipe(
+      map(users => users.filter(u => u.role === 'Employee' && u.managerId === managerId))
+    );
+  }
+
+  getUserById(id: string): User | undefined {
+    return this.usersSubject.value.find(u => u.id === id);
+  }
+
+  getUserByEmail(email: string): User | undefined {
+    const key = email.toLowerCase();
+    return this.usersSubject.value.find(u => u.email.toLowerCase() === key);
+  }
+
+  getUsersByRole(role: string): User[] {
+    return this.usersSubject.value.filter(u => u.role === role);
+  }
+
+  getUsersByDepartment(department: string): User[] {
+    return this.usersSubject.value.filter(u => u.department === department);
+  }
+
+  getActiveUsers(): User[] {
+    return this.usersSubject.value.filter(u => u.status === 'Active');
+  }
+
+  // ---------------------------
+  // Mutations (CRUD)
+  // ---------------------------
+
+  /** Create user via API (fallback to local if API fails) */
+  addUser(user: User) {
+    const current = this.usersSubject.value;
+
+    // Enforce simple local uniqueness by email
+    const emailKey = user.email.toLowerCase();
+    const existingIdx = current.findIndex(u => u.email.toLowerCase() === emailKey);
+
+    if (existingIdx !== -1) {
+      console.warn(`User with email ${user.email} already exists. Updating existing user.`);
+      this.updateUser(current[existingIdx].id!, user);
+      return;
     }
 
-    /**
-     * Update an existing user (updates via API)
-     * Maps frontend fields to backend DTO format
-     */
-    updateUser(id: string, updatedUser: Partial<User>) {
-        const updateDto = {
-            fullName: updatedUser.fullName,
-            role: updatedUser.role,
-            department: updatedUser.department,
-            status: updatedUser.status,
-            managerId: updatedUser.managerId ? parseInt(updatedUser.managerId, 10) : 0,
-            assignedEmployeeIds: updatedUser.assignedEmployees?.map(id => parseInt(id, 10)) || []
-        };
+    // Ensure defaults
+    user.status = user.status ?? 'Active';
+    user.createdDate = user.createdDate ?? new Date();
 
-        console.log('📡 UserService - Sending update to API:', id, updateDto);
-
-        this.apiService.updateUser(id, updateDto).subscribe({
-            next: () => {
-                console.log('✅ User updated');
-                this.refreshUsers();
-            },
-            error: (err) => console.error('❌ Update failed:', err)
-        });
-    }
-
-    /**
-     * Assign a manager to an employee and update both sides of the relationship
-     */
-    assignManagerToEmployee(employeeId: string, managerId: string, oldManagerId?: string) {
-        console.log('🔗 UserService - Assigning manager', managerId, 'to employee', employeeId);
-        
-        // Update employee's managerId
-        this.updateUser(employeeId, { managerId: managerId || '' });
-        
-        // Remove employee from old manager's list
-        if (oldManagerId && oldManagerId !== managerId) {
-            const oldManager = this.getUserById(oldManagerId);
-            if (oldManager && oldManager.assignedEmployees) {
-                const updatedList = oldManager.assignedEmployees.filter(id => id !== employeeId);
-                this.updateUser(oldManagerId, { assignedEmployees: updatedList });
-            }
-        }
-        
-        // Add employee to new manager's list
-        if (managerId) {
-            const newManager = this.getUserById(managerId);
-            if (newManager) {
-                const currentList = newManager.assignedEmployees || [];
-                if (!currentList.includes(employeeId)) {
-                    this.updateUser(managerId, { assignedEmployees: [...currentList, employeeId] });
-                }
-            }
-        }
-    }
-
-    /**
-     * Assign employees to a manager and update all relationships
-     */
-    assignEmployeesToManager(managerId: string, newEmployeeIds: string[], oldEmployeeIds: string[]) {
-        console.log('🔗 UserService - Assigning employees to manager', managerId);
-        
-        // Update manager's assignedEmployees
-        this.updateUser(managerId, { assignedEmployees: newEmployeeIds });
-        
-        // Update newly assigned employees
-        newEmployeeIds.forEach(employeeId => {
-            const employee = this.getUserById(employeeId);
-            if (employee && employee.managerId !== managerId) {
-                this.updateUser(employeeId, { managerId: managerId });
-            }
-        });
-        
-        // Remove manager from employees no longer assigned
-        oldEmployeeIds.forEach(employeeId => {
-            if (!newEmployeeIds.includes(employeeId)) {
-                this.updateUser(employeeId, { managerId: '' });
-            }
-        });
-    }
-
-    /**
-     * Upgrade Employee to Manager
-     * - Clears their ManagerId (managers don't have managers)
-     * - They can now have employees assigned to them
-     */
-    upgradeToManager(userId: string) {
-        console.log('🔼 UserService - Upgrading user to Manager:', userId);
-        const user = this.getUserById(userId);
-        if (!user) return;
-
-        const oldManagerId = user.managerId;
-
-        // Update user role and clear managerId
-        this.updateUser(userId, {
-            role: 'Manager',
-            managerId: '',
-            assignedEmployees: []
-        });
-
-        // Remove from old manager's assigned employees list
-        if (oldManagerId) {
-            const oldManager = this.getUserById(oldManagerId);
-            if (oldManager && oldManager.assignedEmployees) {
-                const updatedList = oldManager.assignedEmployees.filter(id => id !== userId);
-                this.updateUser(oldManagerId, { assignedEmployees: updatedList });
-            }
-        }
-    }
-
-    /**
-     * Downgrade Manager to Employee
-     * - Unassigns all their employees (clears employees' managerId)
-     * - They can now have a manager assigned to them
-     */
-    downgradeToEmployee(userId: string) {
-        console.log('🔽 UserService - Downgrading user to Employee:', userId);
-        const user = this.getUserById(userId);
-        if (!user) return;
-
-        const assignedEmployees = user.assignedEmployees || [];
-
-        // Clear managerId from all assigned employees
-        assignedEmployees.forEach(employeeId => {
-            this.updateUser(employeeId, { managerId: '' });
-        });
-
-        // Update user role and clear assignedEmployees
-        this.updateUser(userId, {
-            role: 'Employee',
-            assignedEmployees: [],
-            managerId: ''
-        });
-    }
-
-    /**
-     * Delete a user
-     */
-    deleteUser(id: string) {
-        const currentUsers = this.usersSubject.value;
-        const newUsers = currentUsers.filter(user => user.id !== id);
+    this.apiService.createUser(user).subscribe({
+      next: (created: any) => {
+        // Created may return the new record; re-map if needed
+        this.refreshUsers();
+      },
+      error: (err) => {
+        console.error('Error creating user via API, storing locally as fallback:', err);
+        const newUsers = [...current, user];
         this.usersSubject.next(newUsers);
         this.saveUsersToStorage(newUsers);
+      }
+    });
+  }
+
+  /**
+   * Update an existing user.
+   * IMPORTANT: we send GUID strings (or null) for relationships—no parseInt.
+   */
+  updateUser(id: string, updatedUser: Partial<User>) {
+    const dto = {
+      fullName: updatedUser.fullName,
+      role: updatedUser.role,
+      department: updatedUser.department,
+      status: updatedUser.status,
+      // GUID string or null clears manager
+      managerId: updatedUser.managerId ?? null,
+      // Array of GUID strings for employees
+      assignedEmployeeIds: updatedUser.assignedEmployees ?? []
+    };
+
+    // console.log('📡 UserService - updateUser ->', id, dto);
+
+    this.apiService.updateUser(id, dto).subscribe({
+      next: () => this.refreshUsers(),
+      error: (err) => console.error('❌ Update failed:', err)
+    });
+  }
+
+  /** Internal helper to update without auto-refresh; lets us batch changes and refresh once */
+  private updateUserRaw(id: string, updatedUser: Partial<User>) {
+    const dto = {
+      fullName: updatedUser.fullName,
+      role: updatedUser.role,
+      department: updatedUser.department,
+      status: updatedUser.status,
+      managerId: updatedUser.managerId ?? null,
+      assignedEmployeeIds: updatedUser.assignedEmployees ?? []
+    };
+    return this.apiService.updateUser(id, dto).pipe(
+      catchError(err => {
+        console.error('❌ updateUserRaw failed for', id, err);
+        return of(null);
+      })
+    );
+  }
+
+  /** Deactivate user (PATCH) */
+  deactivateUser(id: string) {
+    this.apiService.deactivateUser(id).subscribe({
+      next: () => this.updateUser(id, { status: 'Inactive' }),
+      error: (err) => {
+        console.error('❌ Error deactivating user:', err);
+        // Fallback: still mark as inactive locally
+        this.updateUser(id, { status: 'Inactive' });
+      }
+    });
+  }
+
+  /** Activate user (PATCH) */
+  activateUser(id: string) {
+    this.apiService.activateUser(id).subscribe({
+      next: () => this.updateUser(id, { status: 'Active' }),
+      error: (err) => {
+        console.error('❌ Error activating user:', err);
+        // Fallback: still mark as active locally
+        this.updateUser(id, { status: 'Active' });
+      }
+    });
+  }
+
+  /**
+   * Delete a user
+   * If your ApiService has deleteUser(id), call it here. Otherwise this keeps local only.
+   */
+  deleteUser(id: string) {
+    // If you have an API endpoint:
+    // this.apiService.deleteUser(id).subscribe({
+    //   next: () => this.refreshUsers(),
+    //   error: (err) => console.error('❌ Delete failed:', err)
+    // });
+
+    // Local fallback (current behavior)
+    const current = this.usersSubject.value;
+    const updated = current.filter(u => u.id !== id);
+    this.usersSubject.next(updated);
+    this.saveUsersToStorage(updated);
+  }
+
+  // ---------------------------
+  // Manager ↔ Employee assignments
+  // ---------------------------
+
+  /**
+   * Assign (or reassign) a manager to an employee and maintain both sides.
+   * - Set employee.managerId = managerId (or null to unassign)
+   * - Remove employee from oldManager.assignedEmployees
+   * - Add employee to newManager.assignedEmployees
+   */
+  assignManagerToEmployee(employeeId: string, managerId: string | null, oldManagerId?: string | null) {
+    const ops = [];
+
+    // 1) Update employee's manager
+    ops.push(this.updateUserRaw(employeeId, { managerId }));
+
+    // 2) Remove from old manager
+    if (oldManagerId && oldManagerId !== managerId) {
+      const oldManager = this.getUserById(oldManagerId);
+      if (oldManager?.assignedEmployees) {
+        const updatedList = oldManager.assignedEmployees.filter(id => id !== employeeId);
+        ops.push(this.updateUserRaw(oldManagerId, { assignedEmployees: updatedList }));
+      }
     }
 
-    /**
-     * Deactivate a user (set status to Inactive)
-     * Backend endpoint: PATCH /api/User/{userId}/deactivate
-     */
-    deactivateUser(id: string) {
-        this.apiService.deactivateUser(id).subscribe({
-            next: () => {
-                console.log('✅ UserService - User deactivated:', id);
-                // Update local state
-                this.updateUser(id, { status: 'Inactive' });
-            },
-            error: (err) => {
-                console.error('❌ UserService - Error deactivating user:', err);
-                // Fallback: update locally anyway
-                this.updateUser(id, { status: 'Inactive' });
-            }
-        });
+    // 3) Add to new manager
+    if (managerId) {
+      const newManager = this.getUserById(managerId);
+      const currentList = newManager?.assignedEmployees ?? [];
+      if (!currentList.includes(employeeId)) {
+        ops.push(this.updateUserRaw(managerId, { assignedEmployees: [...currentList, employeeId] }));
+      }
     }
 
-    /**
-     * Activate a user (set status to Active)
-     * Backend endpoint: PATCH /api/User/{userId}/activate
-     */
-    activateUser(id: string) {
-        this.apiService.activateUser(id).subscribe({
-            next: () => {
-                console.log('✅ UserService - User activated:', id);
-                // Update local state
-                this.updateUser(id, { status: 'Active' });
-            },
-            error: (err) => {
-                console.error('❌ UserService - Error activating user:', err);
-                // Fallback: update locally anyway
-                this.updateUser(id, { status: 'Active' });
-            }
-        });
+    if (ops.length === 0) return;
+
+    forkJoin(ops).pipe(finalize(() => this.refreshUsers())).subscribe();
+  }
+
+  /**
+   * Overwrite the list of employees assigned to a manager and reflect on each employee.
+   * - Set manager.assignedEmployees = newEmployeeIds
+   * - For newly added employees → set employee.managerId = managerId
+   * - For removed employees → set employee.managerId = null
+   */
+  assignEmployeesToManager(managerId: string, newEmployeeIds: string[], oldEmployeeIds: string[]) {
+    const ops = [];
+
+    // 1) Update manager list
+    ops.push(this.updateUserRaw(managerId, { assignedEmployees: newEmployeeIds }));
+
+    // 2) New assignments → ensure employee.managerId = managerId
+    newEmployeeIds.forEach(empId => {
+      const emp = this.getUserById(empId);
+      if (!emp || emp.managerId !== managerId) {
+        ops.push(this.updateUserRaw(empId, { managerId }));
+      }
+    });
+
+    // 3) Removed employees → clear managerId
+    oldEmployeeIds.forEach(empId => {
+      if (!newEmployeeIds.includes(empId)) {
+        ops.push(this.updateUserRaw(empId, { managerId: null }));
+      }
+    });
+
+    forkJoin(ops).pipe(finalize(() => this.refreshUsers())).subscribe();
+  }
+
+  /**
+   * Upgrade Employee → Manager
+   * - Clear managerId
+   * - Clear assignedEmployees
+   * - Remove from old manager's assignedEmployees list
+   */
+  upgradeToManager(userId: string) {
+    const user = this.getUserById(userId);
+    if (!user) return;
+
+    const ops = [];
+
+    const oldManagerId = user.managerId ?? null;
+
+    // Make the user a Manager and clear relationships
+    ops.push(this.updateUserRaw(userId, {
+      role: 'Manager',
+      managerId: null,
+      assignedEmployees: []
+    }));
+
+    // Remove from old manager
+    if (oldManagerId) {
+      const oldManager = this.getUserById(oldManagerId);
+      if (oldManager?.assignedEmployees) {
+        const updatedList = oldManager.assignedEmployees.filter(id => id !== userId);
+        ops.push(this.updateUserRaw(oldManagerId, { assignedEmployees: updatedList }));
+      }
     }
 
-    /**
-     * Search users by name (fullName)
-     */
-    searchUsersByName(name: string): User[] {
-        const searchTerm = name.toLowerCase();
-        return this.usersSubject.value.filter(user =>
-            user.fullName.toLowerCase().includes(searchTerm)
-        );
+    forkJoin(ops).pipe(finalize(() => this.refreshUsers())).subscribe();
+  }
+
+  /**
+   * Downgrade Manager → Employee
+   * - Clear managerId of all assigned employees
+   * - Clear manager.assignedEmployees
+   * - Set user.role = 'Employee'
+   */
+  downgradeToEmployee(userId: string) {
+    const user = this.getUserById(userId);
+    if (!user) return;
+
+    const ops = [];
+
+    const assigned = user.assignedEmployees ?? [];
+
+    // Clear manager on every assigned employee
+    assigned.forEach(empId => {
+      ops.push(this.updateUserRaw(empId, { managerId: null }));
+    });
+
+    // Downgrade the manager
+    ops.push(this.updateUserRaw(userId, {
+      role: 'Employee',
+      assignedEmployees: [],
+      managerId: null
+    }));
+
+    forkJoin(ops).pipe(finalize(() => this.refreshUsers())).subscribe();
+  }
+
+  // ---------------------------
+  // Local Storage helpers
+  // ---------------------------
+
+  private saveUsersToStorage(users: User[]) {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    const deduped = this.deduplicateUsers(users);
+    localStorage.setItem('users', JSON.stringify(deduped));
+  }
+
+  private loadUsersFromStorage() {
+    if (!isPlatformBrowser(this.platformId)) {
+      this.usersSubject.next([]);
+      return;
     }
 
-    /**
-     * Get user count by role
-     */
-    getUserCountByRole(role: string): number {
-        return this.usersSubject.value.filter(user => user.role === role).length;
+    const saved = localStorage.getItem('users');
+    if (!saved) {
+      this.usersSubject.next([]);
+      return;
     }
 
-    /**
-     * Get user count by department
-     */
-    getUserCountByDepartment(department: string): number {
-        return this.usersSubject.value.filter(user => user.department === department).length;
-    }
+    try {
+      let users: User[] = JSON.parse(saved);
+      users = this.migrateUsersToFullName(users);
+      users = this.deduplicateUsers(users);
 
-    /**
-     * Save users to localStorage
-     */
-    private saveUsersToStorage(users: User[]) {
-        if (isPlatformBrowser(this.platformId)) {
-            // Deduplicate before saving
-            const deduplicatedUsers = this.deduplicateUsers(users);
-            localStorage.setItem('users', JSON.stringify(deduplicatedUsers));
-        }
-    }
+      // Filter out dummy emails if needed
+      const dummyEmails = new Set([
+        'akash@gmail.com', 'chandana@gmail.com', 'prachothan@gmail.com',
+        'gopi@gmail.com', 'umesh@gmail.com', 'john.doe@example.com',
+        'jane.doe@example.com', 'test@test.com'
+      ]);
+      users = users.filter(u => !dummyEmails.has(u.email?.toLowerCase()));
 
-    /**
-     * Load users from localStorage if they exist
-     */
-    private loadUsersFromStorage() {
-        if (isPlatformBrowser(this.platformId)) {
-            const savedUsers = localStorage.getItem('users');
-            if (savedUsers) {
-                try {
-                    let users = JSON.parse(savedUsers);
-                    // Migrate old format (firstName/lastName) to new format (fullName)
-                    users = this.migrateUsersToFullName(users);
-                    // Deduplicate users by email (keep first occurrence)
-                    users = this.deduplicateUsers(users);
-                    // Filter out old dummy data emails
-                    const dummyEmails = [
-                        'akash@gmail.com',
-                        'chandana@gmail.com',
-                        'prachothan@gmail.com',
-                        'gopi@gmail.com',
-                        'umesh@gmail.com',
-                        'john.doe@example.com',
-                        'jane.doe@example.com',
-                        'test@test.com'
-                    ];
-                    users = users.filter((u: User) => !dummyEmails.includes(u.email?.toLowerCase()));
-                    this.usersSubject.next(users);
-                    console.log('✅ UserService.loadUsersFromStorage - Loaded', users.length, 'users from localStorage:', users.map((u: User) => ({ fullName: u.fullName, email: u.email, hasPassword: !!u.password })));
-                    // Save migrated data back to storage
-                    this.saveUsersToStorage(users);
-                } catch (e) {
-                    console.error('Error loading users from storage', e);
-                    // Start with empty array
-                    this.usersSubject.next([]);
-                }
-            } else {
-                // No saved data, start with empty array
-                console.log('ℹ️ UserService.loadUsersFromStorage - No saved users, starting fresh');
-                this.usersSubject.next([]);
-            }
-        } else {
-            // Server-side rendering, start with empty array
-            this.usersSubject.next([]);
-        }
+      this.usersSubject.next(users);
+      this.saveUsersToStorage(users); // persist migrated/deduped
+    } catch (e) {
+      console.error('Error loading users from storage', e);
+      this.usersSubject.next([]);
     }
+  }
 
-    /**
-     * Migrate users from old format (firstName/lastName) to new format (fullName)
-     */
-    private migrateUsersToFullName(users: User[]): User[] {
-        return users.map(user => {
-            // If user already has fullName, keep it
-            if (user.fullName) {
-                return user;
-            }
-            // If user has firstName/lastName, combine them
-            if ((user as any).firstName || (user as any).lastName) {
-                const firstName = (user as any).firstName || '';
-                const lastName = (user as any).lastName || '';
-                return {
-                    ...user,
-                    fullName: `${firstName} ${lastName}`.trim() || user.email
-                };
-            }
-            // Fallback to email if no name data
-            return {
-                ...user,
-                fullName: user.fullName || user.email
-            };
-        });
-    }
+  private migrateUsersToFullName(users: User[]): User[] {
+    return users.map(u => {
+      if (u.fullName) return u;
+      const anyUser = u as any;
+      const firstName = anyUser.firstName || '';
+      const lastName = anyUser.lastName || '';
+      const fullName = `${firstName} ${lastName}`.trim();
+      return { ...u, fullName: fullName || u.email };
+    });
+  }
 
-    /**
-     * Remove duplicate users by email
-     */
-    private deduplicateUsers(users: User[]): User[] {
-        const seen = new Map<string, User>();
-        users.forEach(user => {
-            const emailKey = user.email.toLowerCase();
-            if (!seen.has(emailKey)) {
-                seen.set(emailKey, user);
-            }
-        });
-        return Array.from(seen.values());
-    }
+  private deduplicateUsers(users: User[]): User[] {
+    const seen = new Map<string, User>();
+    users.forEach(u => {
+      const key = u.email.toLowerCase();
+      if (!seen.has(key)) seen.set(key, u);
+    });
+    return Array.from(seen.values());
+  }
 
-    /**
-     * Check if email already exists
-     */
-    emailExists(email: string): boolean {
-        return this.usersSubject.value.some(user => user.email.toLowerCase() === email.toLowerCase());
-    }
+  // ---------------------------
+  // Status derived from local timer session (optional)
+  // ---------------------------
 
-    /**
-     * Get department list
-     */
-    getDepartments(): string[] {
-        const departments = new Set(this.usersSubject.value.map(user => user.department).filter(Boolean) as string[]);
-        return Array.from(departments);
+  hasActiveTimerSession(userId: string): boolean {
+    if (typeof window === 'undefined' || !window.localStorage) return false;
+    try {
+      const timerSession = localStorage.getItem('timerSession');
+      const userSession = localStorage.getItem('user_session');
+      if (timerSession && userSession) {
+        const user = JSON.parse(userSession);
+        return user.id === userId;
+      }
+    } catch (err) {
+      console.error('Error checking active timer session:', err);
     }
+    return false;
+  }
 
-    /**
-     * Check if a user has an active timer session
-     * Status should be "Active" if they have a running timer
-     */
-    hasActiveTimerSession(userId: string): boolean {
-        if (typeof window === 'undefined' || !window.localStorage) return false;
-        
-        try {
-            const timerSession = localStorage.getItem('timerSession');
-            const userSession = localStorage.getItem('user_session');
-            
-            // If there's a timer session and it belongs to this user, they're active
-            if (timerSession && userSession) {
-                const user = JSON.parse(userSession);
-                return user.id === userId;
-            }
-        } catch (error) {
-            console.error('Error checking active timer session:', error);
-        }
-        
-        return false;
+  getComputedStatus(user: User): 'Active' | 'Inactive' {
+    if (this.hasActiveTimerSession(user.id || '')) {
+      return 'Active';
     }
-
-    /**
-     * Get computed status for a user (Active if timer running, otherwise stored status)
-     */
-    getComputedStatus(user: User): 'Active' | 'Inactive' {
-        // If user has an active timer session, they're Active
-        if (this.hasActiveTimerSession(user.id || '')) {
-            return 'Active';
-        }
-        // Otherwise return their stored status
-        return user.status || 'Inactive';
-    }
+    return user.status || 'Inactive';
+  }
 }

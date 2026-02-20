@@ -1,0 +1,150 @@
+.notification-wrapper {
+  position: relative;
+}
+
+.notification-bell-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.3s;
+
+  &:hover {
+    color: #495057;
+  }
+
+  .badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #dc3545;
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    min-width: 18px;
+  }
+}
+
+.notification-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 380px;
+  max-height: 500px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+
+  .dropdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+
+    h6 {
+      font-weight: 600;
+      color: #212529;
+    }
+  }
+
+  .notifications-list {
+    overflow-y: auto;
+    max-height: 400px;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #dee2e6;
+      border-radius: 3px;
+    }
+  }
+
+  .notification-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem;
+    border-bottom: 1px solid #f1f3f5;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+      background: #f8f9fa;
+    }
+
+    &.unread {
+      background: #e7f3ff;
+
+      &:hover {
+        background: #d0e8ff;
+      }
+    }
+
+    .notification-icon {
+      font-size: 1.5rem;
+      margin-right: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .notification-content {
+      flex: 1;
+
+      .notification-message {
+        font-size: 0.875rem;
+        color: #495057;
+        line-height: 1.4;
+      }
+
+      .notification-time {
+        font-size: 0.75rem;
+      }
+    }
+
+    .btn-mark-read {
+      background: transparent;
+      border: none;
+      color: #6c757d;
+      padding: 0.25rem;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+
+      &:hover {
+        color: #28a745;
+      }
+    }
+
+    &:hover .btn-mark-read {
+      opacity: 1;
+    }
+  }
+
+  .dropdown-footer {
+    padding: 0.75rem;
+    border-top: 1px solid #e9ecef;
+    background: #f8f9fa;
+    border-radius: 0 0 8px 8px;
+  }
+
+  .empty-state {
+    i {
+      opacity: 0.3;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .notification-dropdown {
+    width: 320px;
+  }
+}

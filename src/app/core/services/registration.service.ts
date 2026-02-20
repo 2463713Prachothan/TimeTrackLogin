@@ -5,8 +5,8 @@ import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 
 export interface PendingRegistration {
-  registrationId: number;
-  id?: string;
+  registrationId: string;     // ✅ GUID comes as string
+  id?: string;                // optional alias
   name: string;
   fullName?: string;
   email: string;
@@ -18,10 +18,7 @@ export interface PendingRegistration {
   processedByName?: string;
   rejectionReason?: string;
 }
-
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class RegistrationService {
   private platformId = inject(PLATFORM_ID);
   private http = inject(HttpClient);
@@ -35,7 +32,7 @@ export class RegistrationService {
       if (userSession) {
         try {
           const user = JSON.parse(userSession);
-          if (user.token) {
+          if (user?.token) {
             headers = headers.set('Authorization', `Bearer ${user.token}`);
           }
         } catch (e) {
@@ -46,9 +43,6 @@ export class RegistrationService {
     return headers;
   }
 
-  /**
-   * Get ALL registrations (pending + approved + rejected)
-   */
   getAllRegistrations(): Observable<PendingRegistration[]> {
     return this.http.get<any>(`${this.API_URL}`, { headers: this.getHeaders() })
       .pipe(
@@ -60,9 +54,6 @@ export class RegistrationService {
       );
   }
 
-  /**
-   * Get pending registrations only
-   */
   getPendingRegistrations(): Observable<PendingRegistration[]> {
     return this.http.get<any>(`${this.API_URL}/pending`, { headers: this.getHeaders() })
       .pipe(
@@ -74,22 +65,17 @@ export class RegistrationService {
       );
   }
 
-  /**
-   * Get pending count
-   */
   getPendingCount(): Observable<number> {
     return this.http.get<any>(`${this.API_URL}/pending/count`, { headers: this.getHeaders() })
       .pipe(
-        map(response => response.data || 0),
+        map(response => response.data ?? 0),
         catchError(() => of(0))
       );
   }
 
-  /**
-   * Approve a registration
-   */
-  approveRegistration(registrationId: number | string): Observable<any> {
-    const id = typeof registrationId === 'string' ? parseInt(registrationId, 10) : registrationId;
+  /** ✅ APPROVE: send GUID as-is (no parseInt) */
+  approveRegistration(registrationId: string): Observable<any> {
+    const id = encodeURIComponent(registrationId);
     return this.http.post<any>(
       `${this.API_URL}/${id}/approve`,
       {},
@@ -97,23 +83,19 @@ export class RegistrationService {
     );
   }
 
-  /**
-   * Reject a registration
-   */
-  rejectRegistration(registrationId: number | string, reason?: string): Observable<any> {
-    const id = typeof registrationId === 'string' ? parseInt(registrationId, 10) : registrationId;
+  /** ✅ REJECT: route id is GUID, body only needs reason */
+  rejectRegistration(registrationId: string, reason = ''): Observable<any> {
+    const id = encodeURIComponent(registrationId);
     return this.http.post<any>(
       `${this.API_URL}/${id}/reject`,
-      { registrationId: id, reason: reason || '' },
+      { reason }, // Do not include registrationId; backend takes it from route
       { headers: this.getHeaders() }
     );
   }
 
-  /**
-   * Delete a registration
-   */
-  deleteRegistration(registrationId: number | string): Observable<any> {
-    const id = typeof registrationId === 'string' ? parseInt(registrationId, 10) : registrationId;
+  /** ✅ DELETE: route id is GUID */
+  deleteRegistration(registrationId: string): Observable<any> {
+    const id = encodeURIComponent(registrationId);
     return this.http.delete<any>(
       `${this.API_URL}/${id}`,
       { headers: this.getHeaders() }
@@ -122,15 +104,15 @@ export class RegistrationService {
 
   private mapRegistrations(data: any[]): PendingRegistration[] {
     return data.map(r => ({
-      registrationId: r.registrationId,
-      id: r.registrationId?.toString(),
+      registrationId: String(r.registrationId), // ✅ ensure string
+      id: String(r.registrationId),
       name: r.name,
       fullName: r.name,
       email: r.email,
       role: r.role,
       department: r.department,
       status: r.status,
-      appliedDate: r.appliedDate,
+       appliedDate: r.appliedDate,
       processedDate: r.processedDate,
       processedByName: r.processedByName,
       rejectionReason: r.rejectionReason
