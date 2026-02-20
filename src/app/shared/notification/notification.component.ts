@@ -134,7 +134,7 @@ import { NotificationService } from '../../core/services/notification.service';
 export class NotificationComponent {
   private notificationService = inject(NotificationService);
 
-  notifications = this.notificationService.notifications;
+  notifications = this.notificationService.toastNotifications;
 
   getIcon(type: string): string {
     switch (type) {
@@ -152,6 +152,6 @@ export class NotificationComponent {
   }
 
   close(id: string): void {
-    this.notificationService.removeNotification(id);
+    this.notificationService.removeToast(id);
   }
 }

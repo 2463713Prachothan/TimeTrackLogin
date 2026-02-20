@@ -1,0 +1,76 @@
+<div class="notification-wrapper" (clickOutside)="closeDropdown()">
+  <!-- Bell Icon with Badge -->
+  <button 
+    class="notification-bell-btn" 
+    (click)="toggleDropdown()"
+    [attr.aria-label]="'Notifications (' + unreadCount + ' unread)'"
+  >
+    <i class="bi bi-bell-fill"></i>
+    <span class="badge" *ngIf="unreadCount > 0">
+      {{ unreadCount > 99 ? '99+' : unreadCount }}
+    </span>
+  </button>
+
+  <!-- Dropdown Panel -->
+  <div class="notification-dropdown" *ngIf="isDropdownOpen" [@slideDown]>
+    <!-- Header -->
+    <div class="dropdown-header">
+      <h6 class="mb-0">Notifications</h6>
+      <button 
+        class="btn btn-link btn-sm text-decoration-none" 
+        (click)="markAllAsRead()"
+        *ngIf="notifications.length > 0"
+      >
+        Mark all as read
+      </button>
+    </div>
+
+    <!-- Loading State -->
+    <div class="text-center py-4" *ngIf="isLoading">
+      <div class="spinner-border spinner-border-sm text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="notifications-list" *ngIf="!isLoading">
+      <div 
+        class="notification-item" 
+        *ngFor="let notification of notifications"
+        [class.unread]="notification.status === 'Unread'"
+        (click)="markAsRead(notification)"
+      >
+        <div class="notification-icon">
+          {{ getIcon(notification.type) }}
+        </div>
+        <div class="notification-content">
+          <p class="notification-message mb-1">{{ notification.message }}</p>
+          <small class="notification-time text-muted">
+            {{ getTimeAgo(notification.createdDate) }}
+          </small>
+        </div>
+        <button 
+          class="btn-mark-read" 
+          (click)="markAsRead(notification, $event)"
+          *ngIf="notification.status === 'Unread'"
+          title="Mark as read"
+        >
+          <i class="bi bi-check2"></i>
+        </button>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state text-center py-4" *ngIf="notifications.length === 0">
+        <i class="bi bi-bell-slash fs-1 text-muted"></i>
+        <p class="text-muted mt-2 mb-0">No new notifications</p>
+      </div>
+    </div>
+
+    <!-- Footer (View All) -->
+    <div class="dropdown-footer" *ngIf="notifications.length > 0">
+      <a routerLink="/notifications" class="btn btn-sm btn-link w-100">
+        View all notifications
+      </a>
+    </div>
+  </div>
+</div>
