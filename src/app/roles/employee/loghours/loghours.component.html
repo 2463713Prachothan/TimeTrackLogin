@@ -1,13 +1,13 @@
-<div class="time-logging-view">
+<div class="time-logging-view employee-log-container">
     <!-- Statistics Row -->
     <div class="stats-row">
         <div class="stat-card">
             <div class="card-body">
                 <div class="text-group">
-                    <span class="label">Today's Hours</span>
-                    <span class="value timer-display">{{ displayTime }}</span>
+                    <span class="label">Total Work Hours</span>
+                    <span class="value">{{ liveWorkHours }}</span>
                 </div>
-                <div class="icon-box blue">🕒</div>
+                <div class="icon-box orange">⏱️</div>
             </div>
         </div>
 
@@ -15,7 +15,7 @@
             <div class="card-body">
                 <div class="text-group">
                     <span class="label">This Week</span>
-                    <span class="value">{{ thisWeekHours | number:'1.2-2' }} hrs</span>
+                    <span class="value">{{ thisWeekHours }}</span>
                 </div>
                 <div class="icon-box green">📅</div>
             </div>
@@ -32,37 +32,113 @@
         </div>
     </div>
 
-    <!-- Stop Logging Button -->
-    <div class="action-section">
-        <button class="stop-btn" (click)="saveAndClearSession()">
-            <span class="btn-icon">⏹️</span> Stop Logging & Save Time
+    <!-- Compact Single-Row Action Bar -->
+    <div class="action-bar-horizontal">
+        <!-- Date Selection -->
+        <input 
+            #dateInput
+            type="date" 
+            [(ngModel)]="selectedDate" 
+            [max]="maxDate"
+            (change)="onDateChange()"
+            (click)="dateInput.showPicker()"
+            class="date-picker" 
+            title="Select Date" />
+
+        <!-- Punch In Section -->
+        <div class="action-section">
+            <label class="checkbox-inline">
+                <input type="checkbox" [(ngModel)]="punchInChecked" [disabled]="isPunchedIn || isReadOnly" />
+                <span>Punch In</span>
+            </label>
+            <div class="time-badge blue-badge">
+                <span>{{ punchInTime }}</span>
+            </div>
+        </div>
+
+        <!-- Activity Section (Show after Punch In) -->
+        <select 
+            *ngIf="isPunchedIn"
+            [(ngModel)]="selectedActivity" 
+            class="activity-compact"
+            [disabled]="isPunchedOut || isOnBreak || isReadOnly">
+            <option value="" disabled>Activity</option>
+            <option 
+                *ngFor="let activity of availableActivities" 
+                [value]="activity"
+                [disabled]="!isActivityAvailable(activity)">
+                {{ activity }}
+            </option>
+        </select>
+
+        <!-- Break Section (Show after Punch In) -->
+        <div class="action-section" *ngIf="isPunchedIn && selectedActivity">
+            <label class="checkbox-inline">
+                <input 
+                    type="checkbox" 
+                    [(ngModel)]="breakStartChecked" 
+                    [disabled]="isOnBreak || isPunchedOut || isReadOnly" />
+                <span>Start</span>
+            </label>
+        </div>
+
+        <div class="action-section" *ngIf="isOnBreak">
+            <label class="checkbox-inline">
+                <input type="checkbox" [(ngModel)]="breakEndChecked" [disabled]="isReadOnly" />
+                <span>End</span>
+            </label>
+        </div>
+
+        <!-- Break Duration Badge (Show after Punch In) -->
+        <div class="action-section" *ngIf="isPunchedIn">
+            <span class="break-label">Break</span>
+            <div class="time-badge yellow-badge" title="Cumulative Break Duration">
+                <span>{{ cumulativeBreakDisplay }}</span>
+            </div>
+        </div>
+
+        <!-- Punch Out Section (Show after Punch In) -->
+        <div class="action-section" *ngIf="isPunchedIn">
+            <label class="checkbox-inline">
+                <input 
+                    type="checkbox" 
+                    [(ngModel)]="punchOutChecked" 
+                    [disabled]="isOnBreak || isPunchedOut || isReadOnly" />
+                <span>Punch Out</span>
+            </label>
+            <div class="time-badge red-badge">
+                <span>{{ punchOutTime }}</span>
+            </div>
+        </div>
+
+        <!-- Action Button -->
+        <button class="add-btn" (click)="onCapture()" [disabled]="isSubmitting || isReadOnly || isPunchedOut">
+            <span *ngIf="!isSubmitting">Add</span>
+            <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm"></span>
         </button>
     </div>
 
-    <!-- Logs Section -->
-    <div class="logs-section">
-        <div class="logs-header">
-            <h3>Time Logs</h3>
+    <!-- Breaks Table -->
+    <div class="breaks-section" *ngIf="breaks.length > 0">
+        <div class="section-header">
+            <h3>Today's Breaks</h3>
         </div>
-
         <div class="table-responsive">
-            <table class="logs-table">
+            <table class="breaks-table">
                 <thead>
                     <tr>
-                        <th>Date</th>
+                        <th>Activity</th>
                         <th>Start Time</th>
                         <th>End Time</th>
-                        <th>Break (min)</th>
-                        <th>Total Hours</th>
+                        <th>Duration</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr *ngFor="let log of logs">
-                        <td>{{ log.date }}</td>
-                        <td>{{ log.startTime }}</td>
-                        <td>{{ log.endTime }}</td>
-                        <td>{{ log.breakMin }}</td>
-                        <td class="bold-text">{{ log.totalHours }} hrs</td>
+                    <tr *ngFor="let break of breaks">
+                        <td>{{ break.activity }}</td>
+                        <td>{{ break.startTime }}</td>
+                        <td>{{ break.endTime }}</td>
+                        <td class="bold-text">{{ break.duration }}</td>
                     </tr>
                 </tbody>
             </table>
