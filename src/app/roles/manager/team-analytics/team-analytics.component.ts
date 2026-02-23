@@ -20,6 +20,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
   
   private trendChart: any;
   private memberChart: any;
+  private completionChart: any;
   private chartsInitialized = false;
 
   // Performance table data
@@ -31,79 +32,45 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
     avgHours: 0,
     completionRate: 0,
     completedTasks: 0,
-    totalTasks: 0
+    totalTasks: 0,
+    teamMembers: 0
   };
 
   constructor() {}
 
   ngOnInit() {
-    // Subscribe to logs for real-time team performance updates
+    console.log('📊 TeamAnalyticsComponent - Initializing');
+    
+    // Subscribe to team analytics data with auto-refresh
     this.dataService.logs$.pipe(takeUntil(this.destroy$)).subscribe(logs => {
       console.log('📊 Team Analytics - Logs updated:', logs.length);
-      this.calculateTeamPerformance(logs);
-      this.calculateSummary(logs);
-      this.updateCharts(logs);
+      if (logs.length > 0) {
+        this.updateMemberChart(logs);
+        this.updateTrendChart(logs);
+        this.teamPerformance = this.dataService.getTeamPerformanceByMember(logs);
+      }
     });
 
     // Subscribe to tasks for completion metrics
     this.dataService.tasks$.pipe(takeUntil(this.destroy$)).subscribe(tasks => {
       console.log('📊 Team Analytics - Tasks updated:', tasks.length);
-      this.summary.totalTasks = tasks.length;
-      this.summary.completedTasks = tasks.filter(t => t.status === 'Completed').length;
-      this.summary.completionRate = tasks.length > 0
-        ? Math.round((this.summary.completedTasks / tasks.length) * 100)
-        : 0;
-    });
-  }
-
-  // Calculate summary statistics from logs
-  calculateSummary(logs: any[]) {
-    if (!logs || logs.length === 0) {
-      this.summary.totalHours = 0;
-      this.summary.avgHours = 0;
-      return;
-    }
-
-    const total = logs.reduce((sum, log) => sum + log.totalHours, 0);
-    this.summary.totalHours = Number(total.toFixed(1));
-    const members = new Set(logs.map(l => l.employee)).size;
-    this.summary.avgHours = members > 0 ? Number((total / members).toFixed(1)) : 0;
-  }
-
-  calculateTeamPerformance(logs: any[]) {
-    // Group logs by employee
-    const employeeData: { [key: string]: any } = {};
-
-    logs.forEach(log => {
-      if (!employeeData[log.employee]) {
-        employeeData[log.employee] = {
-          name: log.employee,
-          hours: 0,
-          tasks: 0,
-          efficiency: 0,
-          status: 'Good'
-        };
-      }
-      employeeData[log.employee].hours += log.totalHours;
-    });
-
-    // Calculate efficiency for each employee
-    Object.values(employeeData).forEach((emp: any) => {
-      // Efficiency based on hours logged (assume 8 hours per day is 100%)
-      const daysWorked = Math.ceil(emp.hours / 8);
-      emp.efficiency = Math.min(Math.round((emp.hours / (daysWorked * 8)) * 100), 100);
-      
-      // Set status based on efficiency
-      if (emp.efficiency >= 90) {
-        emp.status = 'Excellent';
-      } else if (emp.efficiency >= 70) {
-        emp.status = 'Good';
-      } else {
-        emp.status = 'Needs Attention';
+      if (tasks.length > 0) {
+        this.summary.totalTasks = tasks.length;
+        this.summary.completedTasks = tasks.filter(t => t.status === 'Completed').length;
+        this.summary.completionRate = tasks.length > 0
+          ? Math.round((this.summary.completedTasks / tasks.length) * 100)
+          : 0;
+        this.updateCompletionChart(tasks);
       }
     });
 
-    this.teamPerformance = Object.values(employeeData);
+    // Subscribe to summary data
+    this.dataService.getTeamAnalytics().pipe(takeUntil(this.destroy$)).subscribe(analytics => {
+      if (analytics && analytics.summary) {
+        this.summary = analytics.summary;
+        console.log('📊 Summary updated:', this.summary);
+      }
+    });
   }
 
   ngAfterViewInit() {
@@ -113,20 +80,14 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
     }, 100);
   }
 
-  private updateCharts(logs: any[]) {
-    if (!this.chartsInitialized || !logs || logs.length === 0) {
-      return;
-    }
-    this.updateMemberChart(logs);
-    this.updateTrendChart(logs);
-  }
-
   private initCharts() {
     try {
       const trendCanvas = document.getElementById('trendChart');
       const memberCanvas = document.getElementById('memberChart');
+      const completionCanvas = document.getElementById('completionChart');
 
-      if (!trendCanvas || !memberCanvas) {
+      if (!trendCanvas || !memberCanvas || !completionCanvas) {
+        console.warn('⚠️ Chart canvases not found');
         return;
       }
 
@@ -181,6 +142,29 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
         }
       });
 
+      // Initialize completion chart - task completion by status
+      this.completionChart = new Chart("completionChart", {
+        type: 'doughnut',
+        data: {
+          labels: ['Completed', 'In Progress', 'Pending'],
+          datasets: [{
+            data: [0, 0, 0],
+            backgroundColor: ['#10b981', '#3b82f6', '#e5e7eb'],
+            borderColor: '#ffffff',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+
       this.chartsInitialized = true;
       console.log('📊 Charts initialized - waiting for data');
 
@@ -190,18 +174,19 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   // Update member hours chart with real data
-  updateMemberChart(logs: any[]) {
+  private updateMemberChart(logs: any[]) {
     if (!this.memberChart || !this.chartsInitialized) return;
 
     try {
       const memberData: { [key: string]: number } = {};
       logs.forEach(log => {
-        memberData[log.employee] = (memberData[log.employee] || 0) + log.totalHours;
+        const employeeName = log.employee || log.employeeName || 'Unknown';
+        memberData[employeeName] = (memberData[employeeName] || 0) + (log.totalHours || 0);
       });
 
       const sortedMembers = Object.keys(memberData).sort();
       this.memberChart.data.labels = sortedMembers;
-      this.memberChart.data.datasets[0].data = sortedMembers.map(m => memberData[m]);
+      this.memberChart.data.datasets[0].data = sortedMembers.map(m => parseFloat(memberData[m].toFixed(2)));
       this.memberChart.update();
       console.log('📊 Member chart updated with real data');
     } catch (error) {
@@ -210,22 +195,40 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   // Update trend chart with real data
-  updateTrendChart(logs: any[]) {
+  private updateTrendChart(logs: any[]) {
     if (!this.trendChart || !this.chartsInitialized) return;
 
     try {
       const dateData: { [key: string]: number } = {};
       logs.forEach(log => {
-        dateData[log.date] = (dateData[log.date] || 0) + log.totalHours;
+        const date = log.date || new Date().toLocaleDateString();
+        dateData[date] = (dateData[date] || 0) + (log.totalHours || 0);
       });
 
       const sortedDates = Object.keys(dateData).sort();
       this.trendChart.data.labels = sortedDates;
-      this.trendChart.data.datasets[0].data = sortedDates.map(d => dateData[d]);
+      this.trendChart.data.datasets[0].data = sortedDates.map(d => parseFloat(dateData[d].toFixed(2)));
       this.trendChart.update();
       console.log('📊 Trend chart updated with real data');
     } catch (error) {
       console.error('Trend chart update error:', error);
+    }
+  }
+
+  // Update task completion chart
+  private updateCompletionChart(tasks: any[]) {
+    if (!this.completionChart || !this.chartsInitialized) return;
+
+    try {
+      const completed = tasks.filter(t => t.status === 'Completed').length;
+      const inProgress = tasks.filter(t => t.status === 'In Progress').length;
+      const pending = tasks.filter(t => t.status === 'Pending').length;
+
+      this.completionChart.data.datasets[0].data = [completed, inProgress, pending];
+      this.completionChart.update();
+      console.log('📊 Completion chart updated:', { completed, inProgress, pending });
+    } catch (error) {
+      console.error('Completion chart update error:', error);
     }
   }
 
@@ -237,6 +240,9 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
     }
     if (this.memberChart) {
       this.memberChart.destroy();
+    }
+    if (this.completionChart) {
+      this.completionChart.destroy();
     }
   }
 }
