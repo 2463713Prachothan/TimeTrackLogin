@@ -1,24 +1,31 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, Observable, interval, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { ApiService } from './api.service';
-import { ApiResponse, TeamTimeLog, DashboardStats } from '../models/time-log.model';
+import { 
+  ApiResponse, 
+  TeamTimeLog, 
+  TeamTimeLogDto,
+  DashboardStats,
+  CreateTimeLogDto,
+  TimeLogResponseDto
+} from '../models/time-log.model';
 
 export interface TimeLog {
   id?: string;
   employee: string;
-  employeeId?: string;           // Prefer using this in UI instead of matching by name
+  employeeId?: string;
   date: string;
   startTime: string;
-  endTime?: string;              // Optional - for ongoing logs
-  break: number;                 // in minutes
+  endTime?: string | null;       // Made nullable
+  break: number;
   totalHours: number;
-  currentHours?: number;         // Real-time display for ongoing logs
+  currentHours?: number;
   description?: string;
-  status?: 'Pending' | 'Approved' | 'Rejected' | 'In Progress';
+  status?: 'Pending' | 'Approved' | 'Rejected' | 'In Progress' | 'Completed';
   createdDate?: Date;
-  isLive?: boolean;              // Indicates if this is a live/ongoing log
+  isLive?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -27,7 +34,9 @@ export class TimeLogService {
   private http = inject(HttpClient);
 
   private readonly baseUrl = '/api';
-  private readonly refreshInterval = 5000; // Refresh live hours every 5s
+  private readonly timeLogUrl = `${this.baseUrl}/timelog`;
+  private readonly userUrl = `${this.baseUrl}/user`;
+  private readonly refreshInterval = 5000;
 
   private logsSubject = new BehaviorSubject<TimeLog[]>([]);
   logs$ = this.logsSubject.asObservable();
@@ -38,54 +47,9 @@ export class TimeLogService {
   }
 
   // ---------------------------
-  // Load & Realtime
+  // Auth header helper
   // ---------------------------
 
-  /** Load logs from API (no dummy/local fallback) */
-  private loadLogs(): void {
-    this.apiService.getTimeLogs().subscribe({
-      next: (logs: any[]) => {
-        const list = Array.isArray(logs) ? logs : [];
-        this.logsSubject.next(list);
-      },
-      error: (err) => {
-        console.error('Error loading time logs:', err);
-        this.logsSubject.next([]); // start clean
-      }
-    });
-  }
-
-  /** Recalculate current/live hours at an interval */
-  private startRealtimeUpdates(): void {
-    interval(this.refreshInterval).subscribe(() => {
-      const currentLogs = this.logsSubject.value;
-      const updatedLogs = this.calculateLiveHours(currentLogs);
-      this.logsSubject.next(updatedLogs);
-    });
-  }
-
-  /** Compute live hours for ongoing logs */
-  private calculateLiveHours(logs: TimeLog[]): TimeLog[] {
-    const now = new Date();
-    const currentTimeStr = now.toTimeString().slice(0, 5); // "HH:MM"
-
-    return logs.map(log => {
-      if (!log?.isLive || log.status !== 'In Progress') return log;
-
-      const hours = this.calculateHours(log.startTime, currentTimeStr, log.break);
-      return {
-        ...log,
-        currentHours: Math.max(0, hours),
-        totalHours: Math.max(0, hours)
-      };
-    });
-  }
-
-  // ---------------------------
-  // Auth header helper (standardized)
-  // ---------------------------
-
-  /** Read token from the same place as other services: localStorage['user_session'].token */
   private getAuthHeaders(): HttpHeaders {
     let headers = new HttpHeaders({ 'Content-Type': 'application/json' });
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -103,17 +67,111 @@ export class TimeLogService {
   }
 
   // ---------------------------
-  // Team endpoints (GUID string IDs)
+  // NEW API ENDPOINTS (Backend v2.0)
   // ---------------------------
 
-  /** Get team time logs for a manager (managerId is GUID string) */
+  /** Create time log (POST /api/timelog) */
+  createTimeLog(dto: CreateTimeLogDto): Observable<ApiResponse<TimeLogResponseDto>> {
+    return this.http.post<ApiResponse<TimeLogResponseDto>>(
+      this.timeLogUrl,
+      dto,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /** Update time log (PUT /api/timelog/{logId}) */
+  updateTimeLog(logId: string, dto: CreateTimeLogDto): Observable<ApiResponse<TimeLogResponseDto>> {
+    return this.http.put<ApiResponse<TimeLogResponseDto>>(
+      `${this.timeLogUrl}/${logId}`,
+      dto,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /** Delete time log (DELETE /api/timelog/{logId}) */
+  deleteTimeLog(logId: string): Observable<ApiResponse<boolean>> {
+    return this.http.delete<ApiResponse<boolean>>(
+      `${this.timeLogUrl}/${logId}`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /** Get time log by ID (GET /api/timelog/{logId}) */
+  getTimeLogById(logId: string): Observable<ApiResponse<TimeLogResponseDto>> {
+    return this.http.get<ApiResponse<TimeLogResponseDto>>(
+      `${this.timeLogUrl}/${logId}`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /** Get user's time logs (GET /api/timelog/user) */
+  getUserTimeLogs(startDate?: string, endDate?: string): Observable<ApiResponse<TimeLogResponseDto[]>> {
+    let params = new HttpParams();
+    if (startDate) params = params.set('startDate', startDate);
+    if (endDate) params = params.set('endDate', endDate);
+
+    return this.http.get<ApiResponse<TimeLogResponseDto[]>>(
+      `${this.timeLogUrl}/user`,
+      { headers: this.getAuthHeaders(), params }
+    );
+  }
+
+  /** Get total hours (GET /api/timelog/total-hours) */
+  getTotalHours(startDate: string, endDate: string): Observable<ApiResponse<number>> {
+    const params = new HttpParams()
+      .set('startDate', startDate)
+      .set('endDate', endDate);
+
+    return this.http.get<ApiResponse<number>>(
+      `${this.timeLogUrl}/total-hours`,
+      { headers: this.getAuthHeaders(), params }
+    );
+  }
+
+  /** Get team time logs (GET /api/timelog/team/{managerId}) - NEW STRUCTURE */
+  getTeamTimeLogsV2(managerId: string): Observable<ApiResponse<TeamTimeLogDto[]>> {
+    const id = encodeURIComponent(managerId);
+    return this.http.get<ApiResponse<TeamTimeLogDto[]>>(
+      `${this.timeLogUrl}/team/${id}`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /** Approve time log (POST /api/timelog/{logId}/approve) */
+  approveTimeLog(logId: string): Observable<ApiResponse<boolean>> {
+    return this.http.post<ApiResponse<boolean>>(
+      `${this.timeLogUrl}/${logId}/approve`,
+      {},
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  // ---------------------------
+  // LEGACY METHODS (backward compatibility)
+  // ---------------------------
+
+  /** @deprecated Use getTeamTimeLogsV2 instead */
   getTeamTimeLogs(managerId: string): Observable<TeamTimeLog[]> {
     const id = encodeURIComponent(managerId);
     return this.http
-      .get<ApiResponse<TeamTimeLog[]>>(`${this.baseUrl}/TimeLog/team/${id}`, {
+      .get<ApiResponse<TeamTimeLogDto[]>>(`${this.timeLogUrl}/team/${id}`, {
         headers: this.getAuthHeaders()
       })
-      .pipe(map(response => response?.data || []));
+      .pipe(
+        map(response => {
+          if (!response?.data) return [];
+          // Convert new format to legacy format
+          return response.data.map(log => ({
+            employeeName: log.employeeName,
+            date: log.date,
+            startTime: log.startTime,
+            endTime: log.endTime,
+            breakDuration: log.breakDuration.toString(),
+            totalHours: log.totalHours
+          }));
+        }),
+        catchError(() => of([]))
+      );
   }
 
   /** Get dashboard stats for manager (team members + hours today) */
@@ -121,7 +179,7 @@ export class TimeLogService {
     const id = encodeURIComponent(managerId);
     return this.http
       .get<ApiResponse<{ teamMembersCount: number; teamHoursToday: number }>>(
-        `${this.baseUrl}/TimeLog/team/${id}/stats`,
+        `${this.userUrl}/manager-dashboard/${id}`,
         { headers: this.getAuthHeaders() }
       )
       .pipe(
@@ -130,11 +188,11 @@ export class TimeLogService {
       );
   }
 
-  /** Get dashboard stats via User API (if you have this route) */
+  /** Get dashboard stats via User API */
   getDashboardStats(managerId: string): Observable<DashboardStats | null> {
     const id = encodeURIComponent(managerId);
     return this.http
-      .get<ApiResponse<DashboardStats>>(`${this.baseUrl}/User/manager-dashboard/${id}`, {
+      .get<ApiResponse<DashboardStats>>(`${this.userUrl}/manager-dashboard/${id}`, {
         headers: this.getAuthHeaders()
       })
       .pipe(
@@ -145,15 +203,67 @@ export class TimeLogService {
 
   /** Alias for getDashboardStats */
   getManagerStats(id: string): Observable<DashboardStats | null> {
-    const encoded = encodeURIComponent(id);
-    return this.http
-      .get<ApiResponse<DashboardStats>>(`${this.baseUrl}/User/manager-dashboard/${encoded}`, {
-        headers: this.getAuthHeaders()
-      })
-      .pipe(
-        map(response => response?.data ?? null),
-        catchError(() => of(null))
-      );
+    return this.getDashboardStats(id);
+  }
+
+  // ---------------------------
+  // Load & Realtime Updates
+  // ---------------------------
+
+  private loadLogs(): void {
+    this.getUserTimeLogs().subscribe({
+      next: (response) => {
+        if (response.success && Array.isArray(response.data)) {
+          const logs = response.data.map(log => this.convertToLegacyTimeLog(log));
+          this.logsSubject.next(logs);
+        }
+      },
+      error: (err) => {
+        console.error('Error loading time logs:', err);
+        this.logsSubject.next([]);
+      }
+    });
+  }
+
+  private startRealtimeUpdates(): void {
+    interval(this.refreshInterval).subscribe(() => {
+      const currentLogs = this.logsSubject.value;
+      const updatedLogs = this.calculateLiveHours(currentLogs);
+      this.logsSubject.next(updatedLogs);
+    });
+  }
+
+  private calculateLiveHours(logs: TimeLog[]): TimeLog[] {
+    const now = new Date();
+    const currentTimeStr = now.toTimeString().slice(0, 5);
+
+    return logs.map(log => {
+      if (!log?.isLive || log.status !== 'In Progress') return log;
+
+      const hours = this.calculateHours(log.startTime, currentTimeStr, log.break);
+      return {
+        ...log,
+        currentHours: Math.max(0, hours),
+        totalHours: Math.max(0, hours)
+      };
+    });
+  }
+
+  private convertToLegacyTimeLog(dto: TimeLogResponseDto): TimeLog {
+    return {
+      id: dto.logId,
+      employee: dto.userName || 'Unknown',
+      employeeId: dto.userId,
+      date: new Date(dto.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      startTime: dto.startTime,
+      endTime: dto.endTime || undefined,
+      break: dto.breakDuration,
+      totalHours: dto.totalHours,
+      description: dto.activity,
+      status: dto.endTime === null ? 'In Progress' : 'Completed',
+      isLive: dto.endTime === null,
+      createdDate: new Date(dto.date)
+    };
   }
 
   /** Derived helpers */
@@ -185,21 +295,42 @@ export class TimeLogService {
 
   /** Add a new time log via API and update local stream */
   addLog(log: TimeLog) {
-    // Set defaults client-side (server can also enforce)
-    log.id = log.id || `log_${Date.now()}`;
-    log.createdDate = log.createdDate || new Date();
-    log.status = log.status || 'Pending';
+    // Transform to match POST /api/TimeLog endpoint payload requirements
+    const payload = {
+      date: log.date,                          // string (e.g., "2024-01-15")
+      startTime: log.startTime,                // string (e.g., "09:00 AM")
+      endTime: log.endTime || '',              // string (e.g., "05:00 PM")
+      breakDuration: Math.floor(log.break || 0), // integer (minutes)
+      totalHours: Number(log.totalHours || 0),   // decimal
+      activity: log.description || ''          // string
+    };
 
-    this.apiService.createTimeLog(log).subscribe({
+    // Get Bearer token from localStorage['user_session']
+    const headers = this.getAuthHeaders();
+
+    this.http.post<any>(`${this.baseUrl}/TimeLog`, payload, { headers }).subscribe({
       next: (created) => {
         const current = this.logsSubject.value;
-        this.logsSubject.next([...current, created ?? log]); // fallback to sent log if API returns no body
+        // Merge created response with original log data
+        const newLog: TimeLog = {
+          ...log,
+          id: created?.id || log.id || `log_${Date.now()}`,
+          createdDate: log.createdDate || new Date(),
+          status: log.status || 'Pending'
+        };
+        this.logsSubject.next([...current, newLog]);
       },
       error: (err) => {
         console.error('Error creating time log:', err);
-        // If you want strict API-only, remove this fallback:
+        // Fallback: update local store with original log
         const current = this.logsSubject.value;
-        this.logsSubject.next([...current, log]);
+        const fallbackLog: TimeLog = {
+          ...log,
+          id: log.id || `log_${Date.now()}`,
+          createdDate: log.createdDate || new Date(),
+          status: log.status || 'Pending'
+        };
+        this.logsSubject.next([...current, fallbackLog]);
       }
     });
   }

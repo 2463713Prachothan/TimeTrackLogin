@@ -3,7 +3,7 @@
     <div class="col-md-4">
       <div class="stat-highlight-card p-3 d-flex justify-content-between align-items-center">
         <div><small class="text-muted">Total Hours</small>
-          <h5 class="fw-bold mb-0">{{summaryStats.total}} hrs</h5>
+          <h5 class="fw-bold mb-0">{{summaryStats.total}}</h5>
         </div>
         <div class="icon-circle bg-blue-subtle"><i class="bi bi-clock"></i></div>
       </div>
@@ -11,7 +11,7 @@
     <div class="col-md-4">
       <div class="stat-highlight-card p-3 d-flex justify-content-between align-items-center">
         <div><small class="text-muted">Average per Day</small>
-          <h5 class="fw-bold mb-0">{{summaryStats.avg}} hrs</h5>
+          <h5 class="fw-bold mb-0">{{summaryStats.avg}}</h5>
         </div>
         <div class="icon-circle bg-green-subtle"><i class="bi bi-graph-up"></i></div>
       </div>
@@ -50,13 +50,12 @@
           <div class="d-flex justify-content-between align-items-start mb-3">
             <div>
               <h6 class="fw-bold mb-0">{{ member.name }}</h6>
-              <small class="text-muted">{{ member.email }}</small>
             </div>
             <div class="profile-icon">{{ member.name.charAt(0) }}</div>
           </div>
           <div class="d-flex justify-content-between small mb-1">
             <span class="text-muted">Total Hours:</span>
-            <span class="fw-bold">{{ getMemberStats(member.name).hours }} hrs</span>
+            <span class="fw-bold">{{ getMemberStats(member.name).hours }}</span>
           </div>
           <div class="d-flex justify-content-between small">
             <span class="text-muted">Days Logged:</span>
@@ -76,7 +75,7 @@
               <th class="col-date">Date</th>
               <th class="col-time">Start Time</th>
               <th class="col-time">End Time</th>
-              <th class="col-time">Break (min)</th>
+              <th class="col-time">Break</th>
               <th class="col-time">Total Hours</th>
             </tr>
           </thead>
@@ -85,17 +84,17 @@
               <td class="fw-medium text-dark col-employee">{{ log.employeeName }}</td>
               <td class="col-date">{{ log.date | date:'MMM dd' }}</td>
               <td>
-                <span class="time-badge">{{ log.startTime.slice(0, 5) }}</span>
+                <span class="time-badge">{{ convertTo12HourFormat(log.startTime) }}</span>
               </td>
               <td>
-                <span *ngIf="log.endTime; else liveTime" class="time-badge">{{ log.endTime.slice(0, 5) }}</span>
+                <span *ngIf="log.endTime; else liveTime" class="time-badge">{{ convertTo12HourFormat(log.endTime) }}</span>
                 <ng-template #liveTime>
                   <span class="badge bg-success-subtle text-success">{{ getElapsedTime(log.startTime) }}</span>
                 </ng-template>
               </td>
               <td>{{ formatBreakMinutes(log.breakDuration) }}</td>
               <td class="fw-bold">
-                <span class="hours-badge">{{ log.totalHours | number:'1.2-2' }} hrs</span>
+                <span class="hours-badge">{{ formatHoursToHHMM(log.totalHours) }}</span>
                 <span *ngIf="!log.endTime" class="badge bg-danger ms-2 live-indicator">
                   <span class="pulse"></span> LIVE
                 </span>

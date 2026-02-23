@@ -44,6 +44,10 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
   currentManagerName: string = '';
   activeTab: string = 'Manage Tasks';
 
+  // Filter properties
+  selectedStatusFilter: string = 'All';
+  selectedMemberFilter: string = 'All';
+
   selectedSubmission: TaskSubmission | null = null;
   selectedTask: any = null;
   approvalForm = {
@@ -130,6 +134,33 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  /**
+   * Get filtered tasks based on status and team member selection
+   */
+  get filteredTasks(): any[] {
+    let filtered = [...this.tasks];
+
+    // Filter by status
+    if (this.selectedStatusFilter !== 'All') {
+      filtered = filtered.filter(task => task.status === this.selectedStatusFilter);
+    }
+
+    // Filter by team member
+    if (this.selectedMemberFilter !== 'All') {
+      filtered = filtered.filter(task => task.assignedTo === this.selectedMemberFilter);
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Reset filters to show all tasks
+   */
+  resetFilters(): void {
+    this.selectedStatusFilter = 'All';
+    this.selectedMemberFilter = 'All';
   }
 
   /**

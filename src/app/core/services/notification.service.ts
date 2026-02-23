@@ -3,7 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, timer, of } from 'rxjs';
 import { map, switchMap, tap, catchError } from 'rxjs/operators';
-import { Notification, ApiResponse } from '../models/notification.model';
+import { Notification } from '../models/notification.model';
+import { ApiResponse } from '../models/time-log.model';
 
 // Toast notification interface
 export interface ToastNotification {

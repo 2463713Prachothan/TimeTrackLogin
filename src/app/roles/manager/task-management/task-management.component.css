@@ -306,6 +306,17 @@ textarea.form-control {
     cursor: not-allowed;
 }
 
+.btn-outline-secondary {
+    color: #64748b;
+    border-color: #cbd5e1;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+    color: #475569;
+}
+
 .btn-warning {
     background-color: #f59e0b;
     color: white;
@@ -315,6 +326,98 @@ textarea.form-control {
 .btn-warning:hover {
     background-color: #d97706;
     border-color: #d97706;
+}
+
+/* --- Filter Section --- */
+/* --- Filter Section --- */
+.filter-bar-horizontal {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    margin-bottom: 24px;
+    margin-top: 8px;
+}
+
+.filter-select {
+    height: 36px;
+    min-width: 180px;
+    max-width: 220px;
+    font-size: 13px;
+    padding: 6px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-select:hover {
+    border-color: #cbd5e1;
+}
+
+.filter-select:focus {
+    border-color: #8cc63f;
+    box-shadow: 0 0 0 3px rgba(140, 198, 63, 0.1);
+}
+
+.filter-btn {
+    height: 36px;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.filter-btn i {
+    font-size: 12px;
+}
+
+.btn-outline-secondary.filter-btn {
+    color: #64748b;
+    border-color: #e2e8f0;
+    background: white;
+}
+
+.btn-outline-secondary.filter-btn:hover {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+.btn-primary.filter-btn {
+    background-color: #8cc63f;
+    border-color: #8cc63f;
+    color: white;
+    margin-left: auto;
+}
+
+.btn-primary.filter-btn:hover {
+    background-color: #7ab82f;
+    border-color: #7ab82f;
+    box-shadow: 0 2px 8px rgba(140, 198, 63, 0.3);
+}
+
+.form-label {
+    margin-bottom: 8px;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.form-label.fw-semibold {
+    font-weight: 600;
+}
+
+.form-select {
+    cursor: pointer;
+}
+
+.form-select:hover {
+    border-color: #cbd5e1;
 }
 
 /* --- Responsive --- */
