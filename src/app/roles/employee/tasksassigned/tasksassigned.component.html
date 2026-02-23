@@ -12,28 +12,28 @@
         </div>
         }
     </div>
-
+ 
     <!-- Tabs Navigation -->
     <div class="tabs-navigation">
-        <button 
-            class="tab-button" 
+        <button
+            class="tab-button"
             [class.active]="activeTab === 'My Tasks'"
             (click)="activeTab = 'My Tasks'">
             <i class="fas fa-tasks"></i> My Tasks
         </button>
-        <button 
-            class="tab-button" 
+        <button
+            class="tab-button"
             [class.active]="activeTab === 'Submissions'"
             (click)="activeTab = 'Submissions'">
             <i class="fas fa-paper-plane"></i> My Submissions
         </button>
     </div>
-
+ 
     <!-- My Tasks Tab -->
     @if (activeTab === 'My Tasks') {
     <div class="user-management-section">
         <h3 class="title">My Tasks</h3>
-
+ 
         <!-- Loading State -->
         @if (isLoadingTasks) {
         <div class="text-center py-4">
@@ -43,7 +43,7 @@
             <p class="text-muted mt-2">Loading tasks...</p>
         </div>
         }
-
+ 
         <!-- Task List using *ngFor -->
         <div class="task-list" *ngIf="!isLoadingTasks">
             <div class="task-item" *ngFor="let task of assignedTasks">
@@ -54,7 +54,7 @@
                                 'fa-regular fa-circle-check icon-green': task.status === 'Completed',
                                 'fa-regular fa-clock icon-blue': task.status === 'In Progress',
                                 'fa-solid fa-play icon-gray': task.status === 'Pending'
-                            }"></i> 
+                            }"></i>
                             {{ task.title }}
                         </span>
                         <span class="task-id">#{{ task.displayTaskId || task.taskId }}</span>
@@ -91,16 +91,16 @@
                 </div>
                 <div class="task-actions">
                     <!-- Start Button (only for Pending tasks) -->
-                    <button 
+                    <button
                         class="btn-start-task"
                         (click)="onStartTask(task)"
                         [disabled]="task.status !== 'Pending'"
                         [title]="task.status !== 'Pending' ? 'Task already started or completed' : 'Click to start this task'">
                         <i class="fas fa-play-circle"></i> Start
                     </button>
-                    
+                   
                     <!-- Complete Button (only for In Progress tasks) -->
-                    <button 
+                    <button
                         class="btn-complete-task"
                         (click)="openCompletionModalFromTask(task)"
                         [disabled]="task.status !== 'In Progress'"
@@ -109,7 +109,7 @@
                     </button>
                 </div>
             </div>
-
+ 
             <!-- Empty State -->
             <div class="no-tasks-message" *ngIf="assignedTasks.length === 0">
                 <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
@@ -119,12 +119,12 @@
         </div>
     </div>
     }
-
+ 
     <!-- Submissions Tab -->
     @if (activeTab === 'Submissions') {
     <div class="user-management-section">
         <h3 class="title">My Task Submissions</h3>
-
+ 
         @if (submissionHistory.length > 0) {
         <div class="submissions-table">
             <table class="table">
@@ -177,7 +177,7 @@
         }
     </div>
     }
-
+ 
     <!-- Task Completion Modal -->
     @if (showSubmissionModal && selectedTask) {
     <div class="modal-overlay" (click)="closeModal()">
@@ -188,7 +188,7 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-
+ 
             <div class="modal-body">
                 <!-- Task Info -->
                 <div class="task-submission-info">
@@ -211,14 +211,14 @@
                         <span>{{ selectedTask.totalHours }} hours</span>
                     </div>
                 </div>
-
+ 
                 <!-- Task Completion Form -->
                 <form class="submission-form">
                     <div class="form-group">
                         <label for="hoursSpent">Hours Spent</label>
-                        <input 
+                        <input
                             id="hoursSpent"
-                            type="number" 
+                            type="number"
                             [(ngModel)]="submissionForm.hoursSpent"
                             name="hoursSpent"
                             class="form-control"
@@ -226,10 +226,10 @@
                             step="0.5"
                             placeholder="Enter hours spent on this task">
                     </div>
-
+ 
                     <div class="form-group">
                         <label for="comments">Completion Comments (Optional)</label>
-                        <textarea 
+                        <textarea
                             id="comments"
                             [(ngModel)]="submissionForm.comments"
                             name="comments"
@@ -239,7 +239,7 @@
                     </div>
                 </form>
             </div>
-
+ 
             <div class="modal-footer">
                 <button class="btn btn-secondary" (click)="closeModal()">Cancel</button>
                 <button class="btn btn-primary" (click)="onCompleteTask()">
@@ -250,3 +250,4 @@
     </div>
     }
 </div>
+ 

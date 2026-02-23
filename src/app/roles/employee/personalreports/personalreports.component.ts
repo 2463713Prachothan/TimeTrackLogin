@@ -4,6 +4,7 @@ import { Chart, registerables } from 'chart.js';
 import { TimeLogService } from '../../../core/services/time-log.service';
 import { TaskService, Task } from '../../../core/services/task.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { ApiResponse } from '../../../core/models/time-log.model';
 
 Chart.register(...registerables);
 
@@ -58,31 +59,9 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
 
     console.log('📊 PersonalreportsComponent.loadProductivityData - Starting to load productivity data for:', currentUser.fullName);
 
-    // First try to load from Productivity API
-    console.log('📊 PersonalreportsComponent - Fetching productivity from API');
-    this.taskService.getProductivity().subscribe({
-      next: (productivityData: any) => {
-        console.log('✅ PersonalreportsComponent - API productivity data loaded successfully:', productivityData);
-        
-        // Verify the response has actual data
-        if (productivityData && Object.keys(productivityData).length > 0) {
-          this.applyProductivityData(productivityData);
-        } else {
-          console.warn('⚠️ PersonalreportsComponent - API returned empty response, using fallback');
-          this.loadProductivityDataFallback(currentUser);
-        }
-      },
-      error: (err) => {
-        console.warn('⚠️ PersonalreportsComponent - Productivity API failed, falling back to local calculation:', err);
-        console.warn('Error details:', {
-          status: err.status,
-          message: err.message,
-          statusText: err.statusText
-        });
-        // Fallback to previous calculation method
-        this.loadProductivityDataFallback(currentUser);
-      }
-    });
+    // Load productivity data using fallback method (API method not available)
+    console.log('📊 PersonalreportsComponent - Loading productivity data');
+    this.loadProductivityDataFallback(currentUser);
   }
 
   /**
@@ -155,14 +134,9 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
     });
 
     // Load tasks
-    this.taskService.getTasks().subscribe((tasks: Task[]) => {
-      // Filter tasks assigned to current employee
-      const myTasks = tasks.filter(task => 
-        task.assignedTo.toLowerCase() === currentUser.fullName.toLowerCase()
-      );
-
+    this.taskService.getMyTasks().subscribe((tasks: Task[]) => {
       // Calculate task metrics
-      this.calculateTaskMetrics(myTasks);
+      this.calculateTaskMetrics(tasks);
     });
   }
 

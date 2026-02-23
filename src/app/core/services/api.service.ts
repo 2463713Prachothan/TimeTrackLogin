@@ -321,15 +321,42 @@ export class ApiService {
   // ==================== TIME LOG ENDPOINTS ====================
 
   /**
-   * Get all time logs
-   * Backend endpoint: GET /api/TimeLog
+   * Get all time logs for current user
+   * Backend endpoint: GET /api/TimeLog/user
    */
-  getTimeLogs(): Observable<any[]> {
+  getTimeLogs(startDate?: string, endDate?: string): Observable<any[]> {
     if (this.useMockForTimeLogs) {
       return of([]);
     }
-    return this.http.get<any[]>(`${this.apiUrl}/TimeLog`, { headers: this.getHeaders() })
-      .pipe(catchError(err => this.handleError(err)));
+    
+    let url = `${this.apiUrl}/TimeLog/user`;
+    const params: string[] = [];
+    
+    if (startDate) params.push(`startDate=${encodeURIComponent(startDate)}`);
+    if (endDate) params.push(`endDate=${encodeURIComponent(endDate)}`);
+    
+    if (params.length > 0) {
+      url += '?' + params.join('&');
+    }
+    
+    console.log('📡 ApiService - Fetching time logs from:', url);
+    return this.http.get<any>(`${url}`, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('📥 ApiService - Time logs response:', response);
+        }),
+        map((response: any) => {
+          // Handle ApiResponseDto wrapper
+          if (response?.data) {
+            return Array.isArray(response.data) ? response.data : [response.data];
+          }
+          return Array.isArray(response) ? response : [];
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error fetching time logs:', err);
+          return of([]);
+        })
+      );
   }
 
   /**
@@ -360,24 +387,58 @@ export class ApiService {
    * Create time log
    * Backend endpoint: POST /api/TimeLog
    */
-  createTimeLog(timeLog: any): Observable<any> {
+  createTimeLog(data: any): Observable<any> {
     if (this.useMockForTimeLogs) {
-      return of({ ...timeLog, id: `log_${Date.now()}` });
+      return of({ ...data, id: `log_${Date.now()}` });
     }
-    return this.http.post<any>(`${this.apiUrl}/TimeLog`, timeLog, { headers: this.getHeaders() })
-      .pipe(catchError(err => this.handleError(err)));
+    
+    console.log('📡 ApiService - Creating time log:', data);
+    return this.http.post<any>(`${this.apiUrl}/TimeLog`, data, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('✅ ApiService - Time log created:', response);
+        }),
+        map((response: any) => {
+          // Handle ApiResponseDto wrapper
+          if (response?.data) {
+            return response.data;
+          }
+          return response;
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error creating time log:', err);
+          return this.handleError(err);
+        })
+      );
   }
 
   /**
    * Update time log
    * Backend endpoint: PUT /api/TimeLog/:id
    */
-  updateTimeLog(id: string, timeLog: any): Observable<any> {
+  updateTimeLog(id: string, data: any): Observable<any> {
     if (this.useMockForTimeLogs) {
-      return of(timeLog);
+      return of(data);
     }
-    return this.http.put<any>(`${this.apiUrl}/TimeLog/${id}`, timeLog, { headers: this.getHeaders() })
-      .pipe(catchError(err => this.handleError(err)));
+    
+    console.log(`📡 ApiService - Updating time log ${id}:`, data);
+    return this.http.put<any>(`${this.apiUrl}/TimeLog/${id}`, data, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('✅ ApiService - Time log updated:', response);
+        }),
+        map((response: any) => {
+          // Handle ApiResponseDto wrapper
+          if (response?.data) {
+            return response.data;
+          }
+          return response;
+        }),
+        catchError(err => {
+          console.error(`❌ ApiService - Error updating time log ${id}:`, err);
+          return this.handleError(err);
+        })
+      );
   }
 
   // ==================== TASK ENDPOINTS ====================

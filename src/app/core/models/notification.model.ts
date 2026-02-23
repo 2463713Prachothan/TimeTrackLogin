@@ -19,9 +19,3 @@ export enum NotificationStatus {
   Unread = 'Unread',
   Read = 'Read'
 }
-
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
-}

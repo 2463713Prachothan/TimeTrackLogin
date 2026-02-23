@@ -4,10 +4,12 @@ import { Injectable, Inject, inject, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, forkJoin, of } from 'rxjs';
 import { map, switchMap, catchError, finalize } from 'rxjs/operators';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ApiService } from './api.service';
+import { ApiResponse, UserDto, TeamMemberDto } from '../models/time-log.model';
 
 export interface User {
-  id?: string;                                      // GUID as string
+  id?: string;
   email: string;
   password?: string;
   fullName: string;
@@ -17,10 +19,8 @@ export interface User {
   joinDate?: string;
   status?: 'Active' | 'Inactive';
   createdDate?: Date;
-
-  // Relationships (GUID strings)
-  managerId?: string | null;                        // For employees
-  assignedEmployees?: string[];                     // For managers
+  managerId?: string | null;
+  assignedEmployees?: string[];
 }
 
 @Injectable({
@@ -29,15 +29,81 @@ export interface User {
 export class UserService {
   private platformId = inject(PLATFORM_ID);
   private apiService = inject(ApiService);
+  private http = inject(HttpClient);
+
+  private readonly baseUrl = '/api/user';
 
   private usersSubject = new BehaviorSubject<User[]>([]);
   users$ = this.usersSubject.asObservable();
 
-  // Track current user changes (if needed by UI)
   currentUserChanged = signal<User | null>(null);
 
   constructor() {
     this.loadUsers();
+  }
+
+  // ---------------------------
+  // Auth Headers
+  // ---------------------------
+
+  private getAuthHeaders(): HttpHeaders {
+    let headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const userSession = localStorage.getItem('user_session');
+      if (userSession) {
+        try {
+          const user = JSON.parse(userSession);
+          if (user?.token) headers = headers.set('Authorization', `Bearer ${user.token}`);
+        } catch {
+          // ignore parse errors
+        }
+      }
+    }
+    return headers;
+  }
+
+  // ---------------------------
+  // NEW API ENDPOINTS (Backend v2.0)
+  // ---------------------------
+
+  /** Get current user profile (GET /api/user/profile) */
+  getProfile(): Observable<ApiResponse<UserDto>> {
+    return this.http.get<ApiResponse<UserDto>>(
+      `${this.baseUrl}/profile`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /** Get my team members (GET /api/user/my-team) - Manager/Admin only */
+  getMyTeam(): Observable<ApiResponse<TeamMemberDto[]>> {
+    return this.http.get<ApiResponse<TeamMemberDto[]>>(
+      `${this.baseUrl}/my-team`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /** Get employees by manager ID (GET /api/user/{managerId}/employees) */
+  getEmployeesByManager(managerId: string): Observable<ApiResponse<UserDto[]>> {
+    return this.http.get<ApiResponse<UserDto[]>>(
+      `${this.baseUrl}/${managerId}/employees`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /** Get manager dashboard stats (GET /api/user/manager-dashboard/{managerId}) */
+  getManagerDashboard(managerId: string): Observable<any> {
+    return this.http.get(
+      `${this.baseUrl}/manager-dashboard/${managerId}`,
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /** Get all users (GET /api/user/all) - Manager/Admin only */
+  getAllUsers(): Observable<ApiResponse<UserDto[]>> {
+    return this.http.get<ApiResponse<UserDto[]>>(
+      `${this.baseUrl}/all`,
+      { headers: this.getAuthHeaders() }
+    );
   }
 
   // ---------------------------

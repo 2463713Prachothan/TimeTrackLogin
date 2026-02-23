@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { TimeLogService } from '../../../core/services/time-log.service';
 import { TaskService, Task } from '../../../core/services/task.service';
+import { ApiResponse } from '../../../core/models/time-log.model';
 
 @Component({
   selector: 'app-dashboard',
@@ -68,14 +69,10 @@ export class DashboardemployeeComponent implements OnInit {
     });
 
     // Load tasks
-    this.taskService.getTasks().subscribe((tasks: Task[]) => {
-      const myTasks = tasks.filter(task => 
-        task.assignedTo.toLowerCase() === currentUser.fullName.toLowerCase()
-      );
-
-      this.completedTasks = myTasks.filter(t => t.status === 'Completed').length;
-      this.inProgressTasks = myTasks.filter(t => t.status === 'In Progress').length;
-      this.pendingTasks = myTasks.filter(t => t.status === 'Pending').length;
+    this.taskService.getMyTasks().subscribe((myTasks: Task[]) => {
+      this.completedTasks = myTasks.filter((t: Task) => t.status === 'Completed').length;
+      this.inProgressTasks = myTasks.filter((t: Task) => t.status === 'In Progress').length;
+      this.pendingTasks = myTasks.filter((t: Task) => t.status === 'Pending').length;
 
       const total = myTasks.length;
       this.taskCompletionRate = total > 0 ? Math.round((this.completedTasks / total) * 100) : 0;

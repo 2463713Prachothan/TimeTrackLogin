@@ -58,6 +58,9 @@ export class EmployeeComponent implements OnInit {
   }
 
   logout() {
+    // Set signal for loghours component to clear state on next init
+    localStorage.setItem('clear_loghours_state', 'true');
+    
     // Save the final time log before logging out
     this.timeLogService.saveDailyTimeLog();
     
