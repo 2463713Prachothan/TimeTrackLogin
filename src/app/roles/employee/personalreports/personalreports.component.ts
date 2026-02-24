@@ -1,10 +1,12 @@
-import { Component, OnInit, AfterViewInit, ViewChild, ElementRef, inject } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Chart, registerables } from 'chart.js';
 import { TimeLogService } from '../../../core/services/time-log.service';
 import { TaskService, Task } from '../../../core/services/task.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ApiResponse } from '../../../core/models/time-log.model';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 Chart.register(...registerables);
 
@@ -15,13 +17,16 @@ Chart.register(...registerables);
   templateUrl: './personalreports.component.html',
   styleUrls: ['./personalreports.component.css']
 })
-export class PersonalreportsComponent implements OnInit, AfterViewInit { 
+export class PersonalreportsComponent implements OnInit, AfterViewInit, OnDestroy { 
   @ViewChild('barChart') barChartCanvas!: ElementRef;
   @ViewChild('pieChart') pieChartCanvas!: ElementRef;
 
   private timeLogService = inject(TimeLogService);
   private taskService = inject(TaskService);
   private authService = inject(AuthService);
+  
+  // Subject for unsubscribing
+  private destroy$ = new Subject<void>();
 
   // Stats data
   totalHoursLogged: number = 0;
@@ -46,14 +51,27 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
   private pieChartInstance: Chart | null = null;
 
   ngOnInit() {
+    console.log('🔄 PersonalreportsComponent initialized - Loading all data');
+    // Load data immediately and ensure it displays
     this.loadProductivityData();
     // ALWAYS load time logs to ensure total hours is calculated
     this.loadTimeLogsForTotalHours();
+    
+    // Force refresh after a short delay to ensure data is loaded
+    setTimeout(() => {
+      if (this.totalHoursLogged === 0) {
+        console.log('⚠️ No data loaded, forcing refresh...');
+        this.loadTimeLogsForTotalHours();
+      }
+    }, 1000);
   }
 
   ngAfterViewInit() {
-    this.createBarChart();
-    this.createPieChart();
+    // Initialize empty charts first, will update when data loads
+    setTimeout(() => {
+      this.createBarChart();
+      this.createPieChart();
+    }, 100);
   }
 
   /**
@@ -90,7 +108,7 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
   }
 
   /**
-   * Load time logs to calculate total hours
+   * Load time logs to calculate total hours for last 7 days
    * This runs separately to ensure total hours is always populated
    */
   private loadTimeLogsForTotalHours() {
@@ -100,40 +118,117 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    console.log('📊 Loading time logs for total hours calculation');
+    console.log('📊 Loading time logs for last 7 days calculation');
     
-    this.timeLogService.getLogs().subscribe({
-      next: (logs: any[]) => {
-        if (!logs || logs.length === 0) {
-          console.log('📊 No time logs found');
-          return;
-        }
-
-        // Filter logs for current employee
-        const myLogs = logs.filter(log => 
-          log.employee === currentUser.fullName || 
-          log.employeeId === currentUser.id ||
-          log.userId === currentUser.id
-        );
-
-        console.log('📊 Time logs for user:', myLogs.length);
-
-        if (myLogs.length > 0) {
-          // Calculate total hours from logs
-          const totalFromLogs = myLogs.reduce((sum, log) => sum + (log.totalHours || 0), 0);
-          console.log('📊 Total hours from logs:', totalFromLogs);
-          
-          // Only update if API didn't provide a value or provided 0
-          if (this.totalHoursLogged === 0 || this.totalHoursLogged === undefined) {
-            this.totalHoursLogged = totalFromLogs;
-            console.log('✅ Updated totalHoursLogged from time logs:', this.totalHoursLogged);
+    // Calculate date range for last 7 days
+    const today = new Date();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 6); // Last 7 days including today
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+    
+    const startDate = sevenDaysAgo.toISOString();
+    const endDate = today.toISOString();
+    
+    console.log('📊 Fetching time logs from', startDate, 'to', endDate);
+    
+    // Use getUserTimeLogs with date range to get last 7 days data
+    this.timeLogService.getUserTimeLogs(startDate, endDate)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: any) => {
+          if (!response || !response.success || !response.data) {
+            console.log('📊 No time logs found in API response');
+            return;
           }
+
+          const logs = response.data;
+          console.log('📊 Time logs received:', logs.length);
+
+          if (logs.length > 0) {
+            // Calculate total hours for last 7 days
+            const totalFromLogs = logs.reduce((sum: number, log: any) => 
+              sum + (log.hoursSpent || log.totalHours || 0), 0);
+            
+            this.totalHoursLogged = totalFromLogs;
+            console.log('✅ Total hours logged (last 7 days):', this.totalHoursLogged);
+            
+            // Calculate daily breakdown for chart
+            this.calculateDailyHours(logs);
+          } else {
+            console.log('📊 No time logs in last 7 days');
+            this.totalHoursLogged = 0;
+            this.initializeEmptyDailyHours();
+          }
+        },
+        error: (err: any) => {
+          console.error('❌ Error loading time logs:', err);
+          this.totalHoursLogged = 0;
+          this.initializeEmptyDailyHours();
         }
-      },
-      error: (err) => {
-        console.error('❌ Error loading time logs:', err);
-      }
-    });
+      });
+  }
+  
+  /**
+   * Calculate daily hours for the last 7 days from time logs
+   */
+  private calculateDailyHours(logs: any[]) {
+    const today = new Date();
+    this.lastSevenDaysLabels = [];
+    this.lastSevenDaysHours = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      
+      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      this.lastSevenDaysLabels.push(dateStr);
+      
+      // Sum hours for this specific day
+      const dayLogs = logs.filter((log: any) => {
+        const logDate = new Date(log.date || log.loggedDate);
+        logDate.setHours(0, 0, 0, 0);
+        return logDate.getTime() === date.getTime();
+      });
+      
+      const dayHours = dayLogs.reduce((sum: number, log: any) => 
+        sum + (log.hoursSpent || log.totalHours || 0), 0);
+      
+      this.lastSevenDaysHours.push(parseFloat(dayHours.toFixed(2)));
+    }
+    
+    console.log('📊 Daily hours breakdown:', this.lastSevenDaysHours);
+    
+    // Calculate weekly average
+    const daysWithLogs = this.lastSevenDaysHours.filter(h => h > 0).length;
+    this.weeklyAverage = daysWithLogs > 0 
+      ? parseFloat((this.totalHoursLogged / daysWithLogs).toFixed(2))
+      : 0;
+    
+    // Update chart with new data
+    this.updateChartData();
+  }
+  
+  /**
+   * Initialize empty daily hours when no data available
+   */
+  private initializeEmptyDailyHours() {
+    const today = new Date();
+    this.lastSevenDaysLabels = [];
+    this.lastSevenDaysHours = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      this.lastSevenDaysLabels.push(dateStr);
+      this.lastSevenDaysHours.push(0);
+    }
+    
+    this.weeklyAverage = 0;
+    
+    // Update chart with empty data
+    this.updateChartData();
   }
 
   /**
@@ -150,7 +245,9 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
 
     // First try to load from Productivity API
     console.log('📊 PersonalreportsComponent - Fetching productivity from API: /api/Productivity');
-    this.taskService.getProductivity().subscribe({
+    this.taskService.getProductivity()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
       next: (productivityData: any) => {
         console.log('✅ PersonalreportsComponent - API productivity data loaded successfully:', productivityData);
         
@@ -184,7 +281,13 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
     this.totalHoursLogged = parseFloat(data.totalHoursLogged) || 0;
     this.taskCompletionRate = parseInt(data.taskCompletionRate) || 0;
     this.efficiencyScore = parseInt(data.efficiencyScore) || 0;
-    this.completedTasks = parseInt(data.completedTasks) || 0;
+    
+    // Completed tasks includes both 'Completed' and 'Approved' status
+    // If API returns separate counts, sum them; otherwise use completedTasks
+    const completedCount = parseInt(data.completedTasks) || 0;
+    const approvedCount = parseInt(data.approvedTasks) || 0;
+    this.completedTasks = completedCount + approvedCount;
+    
     this.totalTasks = parseInt(data.totalTasks) || 0;
     this.inProgressTasks = parseInt(data.inProgressTasks) || 0;
     this.pendingTasks = parseInt(data.pendingTasks) || 0;
@@ -208,12 +311,21 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
     }
 
     if (data.taskDistribution) {
+      const completedCount = parseInt(data.taskDistribution.completed) || 0;
+      const approvedCount = parseInt(data.taskDistribution.approved) || 0;
       this.taskStatusData = {
-        completed: parseInt(data.taskDistribution.completed) || 0,
+        completed: completedCount + approvedCount,  // Combine completed and approved for display
         inProgress: parseInt(data.taskDistribution.inProgress) || 0,
         pending: parseInt(data.taskDistribution.pending) || 0
       };
       console.log('📊 Task distribution:', this.taskStatusData);
+    } else {
+      // If no taskDistribution from API, use the counts we calculated
+      this.taskStatusData = {
+        completed: this.completedTasks,
+        inProgress: this.inProgressTasks,
+        pending: this.pendingTasks
+      };
     }
 
     // Generate labels for the last 7 days
@@ -244,40 +356,44 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
     console.log('⚠️ Using fallback method to load productivity data');
     
     // Load time logs
-    this.timeLogService.getLogs().subscribe({
-      next: (logs: any[]) => {
-        // Filter logs for current employee
-        const myLogs = logs.filter(log => 
-          log.employee === currentUser.fullName || log.employeeId === currentUser.id
-        );
+    this.timeLogService.getLogs()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (logs: any[]) => {
+          // Filter logs for current employee
+          const myLogs = logs.filter(log => 
+            log.employee === currentUser.fullName || log.employeeId === currentUser.id
+          );
 
-        console.log('📝 Fallback - Time logs found:', myLogs.length);
+          console.log('📝 Fallback - Time logs found:', myLogs.length);
 
-        // Calculate total hours and weekly data
-        this.calculateTimeMetrics(myLogs);
-      },
-      error: (err) => {
-        console.error('❌ Error loading time logs:', err);
-        // Show demo data if no real data available
-        this.loadDemoData();
-      }
-    });
-
-    // Load tasks
-    this.taskService.getMyTasks().subscribe({
-      next: (tasks: Task[]) => {
-        console.log('📝 Fallback - Tasks found:', tasks.length);
-        // Calculate task metrics
-        this.calculateTaskMetrics(tasks);
-      },
-      error: (err) => {
-        console.error('❌ Error loading tasks:', err);
-        // Show demo data if no real data available
-        if (this.totalHoursLogged === 0 && this.totalTasks === 0) {
+          // Calculate total hours and weekly data
+          this.calculateTimeMetrics(myLogs);
+        },
+        error: (err) => {
+          console.error('❌ Error loading time logs:', err);
+          // Show demo data if no real data available
           this.loadDemoData();
         }
-      }
-    });
+      });
+
+    // Load tasks
+    this.taskService.getMyTasks()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (tasks: Task[]) => {
+          console.log('📝 Fallback - Tasks found:', tasks.length);
+          // Calculate task metrics
+          this.calculateTaskMetrics(tasks);
+        },
+        error: (err) => {
+          console.error('❌ Error loading tasks:', err);
+          // Show demo data if no real data available
+          if (this.totalHoursLogged === 0 && this.totalTasks === 0) {
+            this.loadDemoData();
+          }
+        }
+      });
   }
 
   /**
@@ -333,7 +449,7 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
   /**
    * Calculate task-based metrics (completion rate, efficiency)
    */
-  private calculateTaskMetrics(tasks: Task[]) {
+  private calculateTaskMetrics(tasks: any[]) {
     if (tasks.length === 0) {
       console.warn('⚠️ No tasks found. Showing 0 values.');
       this.taskCompletionRate = 0;
@@ -346,10 +462,10 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
 
     this.totalTasks = tasks.length;
 
-    // Count tasks by status
-    this.completedTasks = tasks.filter(t => t.status === 'Completed').length;
-    this.inProgressTasks = tasks.filter(t => t.status === 'In Progress').length;
-    this.pendingTasks = tasks.filter(t => t.status === 'Pending').length;
+    // Count tasks by status - Approved tasks are considered Completed
+    this.completedTasks = tasks.filter((t: any) => t.status === 'Completed' || t.status === 'Approved').length;
+    this.inProgressTasks = tasks.filter((t: any) => t.status === 'In Progress' || t.status === 'InProgress').length;
+    this.pendingTasks = tasks.filter((t: any) => t.status === 'Pending').length;
 
     // Calculate completion rate
     this.taskCompletionRate = this.totalTasks > 0 
@@ -405,6 +521,36 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
   }
 
   /**
+   * Update chart data without recreating the charts
+   */
+  private updateChartData() {
+    console.log('🔄 Updating chart data');
+    
+    // Update bar chart if it exists
+    if (this.barChartInstance) {
+      this.barChartInstance.data.labels = this.lastSevenDaysLabels;
+      this.barChartInstance.data.datasets[0].data = this.lastSevenDaysHours;
+      this.barChartInstance.update();
+      console.log('✅ Bar chart updated with data:', this.lastSevenDaysHours);
+    } else {
+      console.log('⚠️ Bar chart not initialized yet');
+    }
+    
+    // Update pie chart if it exists
+    if (this.pieChartInstance) {
+      this.pieChartInstance.data.datasets[0].data = [
+        this.taskStatusData.completed,
+        this.taskStatusData.inProgress,
+        this.taskStatusData.pending
+      ];
+      this.pieChartInstance.update();
+      console.log('✅ Pie chart updated with data:', this.taskStatusData);
+    } else {
+      console.log('⚠️ Pie chart not initialized yet');
+    }
+  }
+
+  /**
    * Create bar chart for daily hours logged
    */
   createBarChart() {
@@ -414,14 +560,18 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
     }
 
     console.log('📊 Creating bar chart with data:', this.lastSevenDaysHours);
+    
+    // Initialize with empty data if not yet loaded
+    const labels = this.lastSevenDaysLabels.length > 0 ? this.lastSevenDaysLabels : ['Loading...'];
+    const data = this.lastSevenDaysHours.length > 0 ? this.lastSevenDaysHours : [0];
 
     this.barChartInstance = new Chart(this.barChartCanvas.nativeElement, {
       type: 'bar',
       data: {
-        labels: this.lastSevenDaysLabels,
+        labels: labels,
         datasets: [{
           label: 'Hours Logged',
-          data: this.lastSevenDaysHours,
+          data: data,
           backgroundColor: '#8cc63f',
           borderRadius: 8,
           borderSkipped: false
@@ -434,7 +584,7 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
         scales: {
           y: {
             beginAtZero: true,
-            max: Math.max(8, Math.max(...this.lastSevenDaysHours) + 1)
+            max: Math.max(8, data.length > 0 ? Math.max(...data) + 1 : 8)
           }
         },
         plugins: {
@@ -487,5 +637,23 @@ export class PersonalreportsComponent implements OnInit, AfterViewInit {
         }
       }
     });
+  }
+  
+  ngOnDestroy() {
+    // Unsubscribe from all subscriptions
+    this.destroy$.next();
+    this.destroy$.complete();
+    
+    // Destroy chart instances
+    if (this.barChartInstance) {
+      this.barChartInstance.destroy();
+      this.barChartInstance = null;
+    }
+    if (this.pieChartInstance) {
+      this.pieChartInstance.destroy();
+      this.pieChartInstance = null;
+    }
+    
+    console.log('🧹 PersonalreportsComponent cleaned up');
   }
 }

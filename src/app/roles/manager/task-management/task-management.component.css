@@ -420,6 +420,46 @@ textarea.form-control {
     border-color: #cbd5e1;
 }
 
+/* --- Progress Bars --- */
+.progress {
+    background-color: #e2e8f0;
+    border-radius: 4px;
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+/* --- Action Buttons --- */
+.btn-success {
+    background-color: #10b981;
+    border-color: #10b981;
+}
+
+.btn-success:hover {
+    background-color: #059669;
+    border-color: #059669;
+}
+
+.btn-danger {
+    background-color: #ef4444;
+    border-color: #ef4444;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+    border-color: #dc2626;
+}
+
+/* --- Overdue Indicators --- */
+.border-danger {
+    border-color: #fca5a5 !important;
+}
+
+.text-danger {
+    color: #ef4444 !important;
+}
+
 /* --- Responsive --- */
 @media (max-width: 768px) {
     .table-responsive {

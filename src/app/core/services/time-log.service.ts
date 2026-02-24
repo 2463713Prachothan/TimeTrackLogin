@@ -43,7 +43,8 @@ export class TimeLogService {
 
   constructor() {
     this.loadLogs();
-    this.startRealtimeUpdates();
+    // Real-time updates disabled - only load data on initialization
+    // this.startRealtimeUpdates();
   }
 
   // ---------------------------

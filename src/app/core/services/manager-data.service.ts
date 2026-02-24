@@ -68,10 +68,10 @@ export class ManagerDataService {
   private getTeamDataFromBackend(): Observable<any> {
     return combineLatest([
       this.apiService.getTimeLogs().pipe(startWith([])),
-      this.apiService.getTasks().pipe(startWith([]))
+      this.apiService.getTasksCreatedByMe().pipe(startWith([]))
     ]).pipe(
       map(([logs, tasks]) => {
-        console.log('📊 Team data received - Logs:', logs.length, 'Tasks:', tasks.length);
+        console.log('📊 Team data received - Logs:', logs.length, 'Tasks (created by manager):', tasks.length);
         return { logs, tasks };
       })
     );

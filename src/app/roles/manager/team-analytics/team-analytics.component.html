@@ -1,33 +1,80 @@
 <div class="container-fluid p-0">
-  <div class="row g-3 mb-4">
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
-        <div><small class="text-muted d-block">Total Team Hours</small><h5 class="fw-bold mb-0">{{ summary.totalHours }} hrs</h5></div>
-        <div class="icon-box icon-blue rounded p-2"><i class="bi bi-people"></i></div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
-        <div><small class="text-muted d-block">Avg Hours/Member</small><h5 class="fw-bold mb-0">{{ summary.avgHours }} hrs</h5></div>
-        <div class="icon-box icon-green rounded p-2"><i class="bi bi-graph-up"></i></div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
-        <div>
-          <small class="text-muted d-block">Completion Rate</small>
-          <h5 class="fw-bold mb-0">{{ summary.completionRate }}%</h5>
-        </div>
-        <div class="icon-box icon-purple rounded p-2"><i class="bi bi-bullseye"></i></div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
-        <div><small class="text-muted d-block">Tasks Completed</small><h5 class="fw-bold mb-0">{{ summary.completedTasks }} / {{ summary.totalTasks }}</h5></div>
-        <div class="icon-box icon-yellow rounded p-2"><i class="bi bi-award"></i></div>
+  <!-- Date Range Filter -->
+  <div class="filter-section mb-4">
+    <div class="card border-0 shadow-sm p-3">
+      <div class="d-flex align-items-center gap-3">
+        <label class="fw-bold text-muted">Date Range:</label>
+        <input 
+          type="date" 
+          [(ngModel)]="startDate" 
+          (change)="onDateRangeChange()"
+          class="form-control"
+          style="width: auto;">
+        <span class="text-muted">to</span>
+        <input 
+          type="date" 
+          [(ngModel)]="endDate" 
+          (change)="onDateRangeChange()"
+          class="form-control"
+          style="width: auto;">
+        <button class="btn btn-primary" (click)="loadAllAnalytics()">
+          <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+        <button class="btn btn-outline-secondary" (click)="loadMockData()" title="Load sample data for testing">
+          <i class="bi bi-database"></i> Load Mock Data
+        </button>
+        <small class="text-muted ms-auto" *ngIf="teamSummary">
+          Showing {{ getDaysDiff() }} days of data
+        </small>
       </div>
     </div>
   </div>
+
+  <!-- Loading State -->
+  <div class="text-center py-5" *ngIf="loading">
+    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="text-muted mt-3">Loading analytics data...</p>
+  </div>
+
+  <!-- Error State (non-blocking) -->
+  <div class="alert alert-warning" *ngIf="error && !loading">
+    <i class="bi bi-info-circle-fill"></i> {{ error }}
+  </div>
+
+  <!-- Content - Always render charts for initialization -->
+  <div [style.display]="loading ? 'none' : 'block'">
+    <!-- Dashboard Summary Cards -->
+    <div class="row g-3 mb-4" *ngIf="teamSummary">
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
+          <div><small class="text-muted d-block">Total Team Hours</small><h5 class="fw-bold mb-0">{{ formatHours(teamSummary.totalTeamHours) }}</h5></div>
+          <div class="icon-box icon-blue rounded p-2"><i class="bi bi-clock"></i></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
+          <div><small class="text-muted d-block">Avg Hours/Member</small><h5 class="fw-bold mb-0">{{ formatHours(teamSummary.averageHoursPerMember) }}</h5></div>
+          <div class="icon-box icon-green rounded p-2"><i class="bi bi-graph-up"></i></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
+          <div>
+            <small class="text-muted d-block">Completion Rate</small>
+            <h5 class="fw-bold mb-0">{{ teamSummary.completionRate }}%</h5>
+          </div>
+          <div class="icon-box icon-purple rounded p-2"><i class="bi bi-bullseye"></i></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
+          <div><small class="text-muted d-block">Tasks Completed</small><h5 class="fw-bold mb-0">{{ teamSummary.completedTasksCount }} / {{ teamSummary.totalTasksCount }}</h5></div>
+          <div class="icon-box icon-yellow rounded p-2"><i class="bi bi-award"></i></div>
+        </div>
+      </div>
+    </div>
 
   <div class="row g-3 mb-4">
     <div class="col-md-6"><div class="card border-0 shadow-sm p-4 h-100"><h6 class="fw-bold mb-4">Team Hours Trend</h6><canvas id="trendChart"></canvas></div></div>
@@ -41,29 +88,61 @@
   <div class="card border-0 shadow-sm p-4 mb-4">
     <h6 class="fw-bold mb-4">Team Member Performance</h6>
     <div class="table-responsive">
-      <table class="table align-middle">
+      <table class="table align-middle" *ngIf="memberPerformance && memberPerformance.members.length > 0">
         <thead class="table-light small text-muted text-uppercase">
-          <tr><th>Member</th><th>Total Hours</th><th>Tasks Completed</th><th>Efficiency Score</th><th>Status</th></tr>
+          <tr>
+            <th>Member</th>
+            <th>Total Hours</th>
+            <th>Tasks Assigned</th>
+            <th>Completed</th>
+            <th>In Progress</th>
+            <th>Pending</th>
+            <th>Overdue</th>
+            <th>Efficiency Score</th>
+            <th>Status</th>
+          </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let m of teamPerformance">
+          <tr *ngFor="let m of memberPerformance.members; let i = index">
             <td class="fw-bold">{{ m.name }}</td>
-            <td>{{ m.hours }} hrs</td>
-            <td>{{ m.tasks }} tasks</td>
-            <td style="width: 30%;">
+            <td><strong>{{ formatHours(m.totalHours) }}</strong></td>
+            <td>{{ m.tasksAssigned }}</td>
+            <td>
+              <span class="badge bg-success">{{ m.tasksCompleted }}</span>
+            </td>
+            <td>
+              <span class="badge bg-primary">{{ m.tasksInProgress }}</span>
+            </td>
+            <td>
+              <span class="badge bg-secondary">{{ m.tasksPending }}</span>
+            </td>
+            <td>
+              <span class="badge bg-danger" *ngIf="m.overdueTasksCount > 0">{{ m.overdueTasksCount }}</span>
+              <span class="text-muted" *ngIf="m.overdueTasksCount === 0">-</span>
+            </td>
+            <td style="width: 25%;">
               <div class="d-flex align-items-center">
-                <div class="progress flex-grow-1 me-2" style="height: 6px;">
-                  <div class="progress-bar bg-primary" [style.width.%]="m.efficiency"></div>
+                <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                  <div class="progress-bar" 
+                    [class.bg-success]="m.efficiencyScore >= 90"
+                    [class.bg-info]="m.efficiencyScore >= 70 && m.efficiencyScore < 90"
+                    [class.bg-warning]="m.efficiencyScore < 70"
+                    [style.width.%]="m.efficiencyScore"></div>
                 </div>
-                <small class="text-muted">{{ m.efficiency }}%</small>
+                <small class="fw-bold">{{ m.efficiencyScore | number:'1.0-0' }}%</small>
               </div>
             </td>
             <td>
-              <span class="badge rounded-pill" [ngClass]="m.status === 'Excellent' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'">{{ m.status }}</span>
+              <span class="badge rounded-pill" [ngClass]="getPerformanceClass(m.performanceStatus)">{{ m.performanceStatus }}</span>
             </td>
           </tr>
         </tbody>
       </table>
+      <div class="text-center py-4 text-muted" *ngIf="!memberPerformance || memberPerformance.members.length === 0">
+        <i class="bi bi-people" style="font-size: 3rem; opacity: 0.3;"></i>
+        <p class="mt-2">No team member performance data available</p>
+      </div>
     </div>
+  </div>
   </div>
 </div>

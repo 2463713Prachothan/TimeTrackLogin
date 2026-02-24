@@ -593,27 +593,23 @@ export class ApiService {
 
   /**
    * Start a task (change status to 'In Progress')
-   * Backend endpoint: PUT /api/Task/:id with status update
+   * Backend endpoint: PATCH /api/Task/{id}/start
    */
   startTask(id: string): Observable<any> {
     if (this.useMockForTasks) {
-      return of({ success: true, status: 'In Progress' });
+      return of({ success: true, status: 'InProgress' });
     }
-    const payload = { status: 'In Progress' };
-    const url = `${this.apiUrl}/Task/${id}`;
+    const url = `${this.apiUrl}/Task/${id}/start`;
     
-    console.log('📡 ApiService.startTask - Making PUT request to:', url);
-    console.log('📤 Payload:', payload);
-    console.log('🔐 Headers:', this.getHeaders());
+    console.log('📡 ApiService.startTask - Making PATCH request to:', url);
     
-    return this.http.put<any>(url, payload, { headers: this.getHeaders() })
+    return this.http.patch<any>(url, {}, { headers: this.getHeaders() })
       .pipe(
         tap((response: any) => {
           console.log('✅ ApiService - Task started:', response);
         }),
         catchError(err => {
           console.error('❌ ApiService - Error starting task:', err);
-          console.error('Status:', err.status, 'Message:', err.message);
           return this.handleError(err);
         })
       );
@@ -621,31 +617,23 @@ export class ApiService {
 
   /**
    * Complete a task (change status to 'Completed')
-   * Backend endpoint: PUT /api/Task/:id with status update
+   * Backend endpoint: PATCH /api/Task/{id}/complete
    */
   completeTask(id: string, hoursSpent: number = 0, comments: string = ''): Observable<any> {
     if (this.useMockForTasks) {
       return of({ success: true, status: 'Completed' });
     }
-    const payload = { 
-      status: 'Completed',
-      hoursSpent, 
-      comments 
-    };
-    const url = `${this.apiUrl}/Task/${id}`;
+    const url = `${this.apiUrl}/Task/${id}/complete`;
     
-    console.log('📡 ApiService.completeTask - Making PUT request to:', url);
-    console.log('📤 Payload:', payload);
-    console.log('🔐 Headers:', this.getHeaders());
+    console.log('📡 ApiService.completeTask - Making PATCH request to:', url);
     
-    return this.http.put<any>(url, payload, { headers: this.getHeaders() })
+    return this.http.patch<any>(url, {}, { headers: this.getHeaders() })
       .pipe(
         tap((response: any) => {
           console.log('✅ ApiService - Task completed:', response);
         }),
         catchError(err => {
           console.error('❌ ApiService - Error completing task:', err);
-          console.error('Status:', err.status, 'Message:', err.message);
           return this.handleError(err);
         })
       );
@@ -653,17 +641,15 @@ export class ApiService {
 
   /**
    * Approve a task completion (manager action)
-   * Backend endpoint: PUT /api/Task/:id with approved status
+   * Backend endpoint: PATCH /api/Task/{id}/approve
    */
   approveTaskCompletion(id: string, approvalComments: string = ''): Observable<any> {
     if (this.useMockForTasks) {
       return of({ success: true, status: 'Approved' });
     }
-    const payload = { 
-      status: 'Approved',
-      approvalComments 
-    };
-    return this.http.put<any>(`${this.apiUrl}/Task/${id}`, payload, { headers: this.getHeaders() })
+    const url = `${this.apiUrl}/Task/${id}/approve`;
+    
+    return this.http.patch<any>(url, {}, { headers: this.getHeaders() })
       .pipe(
         tap((response: any) => {
           console.log('✅ ApiService - Task approved:', response);
@@ -675,11 +661,199 @@ export class ApiService {
       );
   }
 
+  /**
+   * Reject a task completion (manager action)
+   * Backend endpoint: PATCH /api/Task/{id}/reject
+   */
+  rejectTask(id: string, reason: string): Observable<any> {
+    const url = `${this.apiUrl}/Task/${id}/reject`;
+    const payload = { reason };
+    
+    console.log('📡 ApiService.rejectTask - Making PATCH request to:', url);
+    
+    return this.http.patch<any>(url, payload, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('✅ ApiService - Task rejected:', response);
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error rejecting task:', err);
+          return this.handleError(err);
+        })
+      );
+  }
+
+  /**
+   * Log time spent on a task
+   * Backend endpoint: POST /api/Task/log-time
+   */
+  logTaskTime(dto: any): Observable<any> {
+    const url = `${this.apiUrl}/Task/log-time`;
+    
+    console.log('📡 ApiService.logTaskTime - Making POST request to:', url);
+    
+    return this.http.post<any>(url, dto, { headers: this.getHeaders() })
+      .pipe(
+        tap((response: any) => {
+          console.log('✅ ApiService - Time logged:', response);
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error logging time:', err);
+          return this.handleError(err);
+        })
+      );
+  }
+
+  /**
+   * Get tasks pending approval (manager only)
+   * Backend endpoint: GET /api/Task/pending-approval
+   */
+  getPendingApprovalTasks(): Observable<any> {
+    const url = `${this.apiUrl}/Task/pending-approval`;
+    
+    return this.http.get<any>(url, { headers: this.getHeaders() })
+      .pipe(
+        map((response: any) => {
+          // Extract tasks from response
+          const tasks = Array.isArray(response) ? response : 
+                       (response?.data || response?.$values || []);
+          return tasks;
+        }),
+        tap((tasks: any) => {
+          console.log('✅ ApiService - Pending approval tasks:', tasks);
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error getting pending tasks:', err);
+          return this.handleError(err);
+        })
+      );
+  }
+
+  /**
+   * Get overdue tasks (manager only)
+   * Backend endpoint: GET /api/Task/overdue
+   */
+  getOverdueTasks(): Observable<any> {
+    const url = `${this.apiUrl}/Task/overdue`;
+    
+    return this.http.get<any>(url, { headers: this.getHeaders() })
+      .pipe(
+        map((response: any) => {
+          // Extract tasks from response
+          const tasks = Array.isArray(response) ? response : 
+                       (response?.data || response?.$values || []);
+          return tasks;
+        }),
+        tap((tasks: any) => {
+          console.log('✅ ApiService - Overdue tasks:', tasks);
+        }),
+        catchError(err => {
+          console.error('❌ ApiService - Error getting overdue tasks:', err);
+          return this.handleError(err);
+        })
+      );
+  }
+
   // ==================== REGISTRATION ENDPOINTS ====================
   // Note: Registration endpoints are now handled directly by RegistrationService
   // using /api/Registration endpoints
 
   // ==================== CONFIGURATION ====================
+
+  /**
+   * Get manager dashboard statistics
+   * Backend endpoint: GET /api/Task/manager-stats
+   */
+  getManagerStats(): Observable<any> {
+    const url = `${this.apiUrl}/Task/manager-stats`;
+    console.log('📡 ApiService.getManagerStats - Making GET request to:', url);
+    
+    return this.http.get<any>(url, { headers: this.getHeaders() }).pipe(
+      tap(response => {
+        console.log('✅ ApiService.getManagerStats - Response received:', response);
+      }),
+      catchError(err => {
+        console.error('❌ ApiService.getManagerStats - Error:', err);
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * Get employee dashboard statistics
+   * Backend endpoint: GET /api/Task/employee-stats
+   */
+  getEmployeeStats(): Observable<any> {
+    const url = `${this.apiUrl}/Task/employee-stats`;
+    console.log('📡 ApiService.getEmployeeStats - Making GET request to:', url);
+    
+    return this.http.get<any>(url, { headers: this.getHeaders() }).pipe(
+      tap(response => {
+        console.log('✅ ApiService.getEmployeeStats - Response received:', response);
+      }),
+      catchError(err => {
+        console.error('❌ ApiService.getEmployeeStats - Error:', err);
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * Get time logs for a specific task
+   * Backend endpoint: GET /api/Task/{taskId}/time-logs
+   */
+  getTaskTimeLogs(taskId: string): Observable<any> {
+    const url = `${this.apiUrl}/Task/${taskId}/time-logs`;
+    console.log('📡 ApiService.getTaskTimeLogs - Making GET request to:', url);
+    
+    return this.http.get<any>(url, { headers: this.getHeaders() }).pipe(
+      tap(response => {
+        console.log('✅ ApiService.getTaskTimeLogs - Response received:', response);
+      }),
+      catchError(err => {
+        console.error('❌ ApiService.getTaskTimeLogs - Error:', err);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Get tasks filtered by status
+   * Backend endpoint: GET /api/Task?status={status}
+   */
+  getTasksByStatus(status: string): Observable<any> {
+    const url = `${this.apiUrl}/Task?status=${status}`;
+    console.log('📡 ApiService.getTasksByStatus - Making GET request to:', url);
+    
+    return this.http.get<any>(url, { headers: this.getHeaders() }).pipe(
+      tap(response => {
+        console.log('✅ ApiService.getTasksByStatus - Response received:', response);
+      }),
+      catchError(err => {
+        console.error('❌ ApiService.getTasksByStatus - Error:', err);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Get tasks filtered by assigned employee (manager only)
+   * Backend endpoint: GET /api/Task?assignedToUserId={userId}
+   */
+  getTasksByEmployee(employeeId: string): Observable<any> {
+    const url = `${this.apiUrl}/Task?assignedToUserId=${employeeId}`;
+    console.log('📡 ApiService.getTasksByEmployee - Making GET request to:', url);
+    
+    return this.http.get<any>(url, { headers: this.getHeaders() }).pipe(
+      tap(response => {
+        console.log('✅ ApiService.getTasksByEmployee - Response received:', response);
+      }),
+      catchError(err => {
+        console.error('❌ ApiService.getTasksByEmployee - Error:', err);
+        return of([]);
+      })
+    );
+  }
 
   /**
    * Get productivity data for current employee
@@ -729,6 +903,132 @@ export class ApiService {
     );
   }
 
+  // ==================== ORGANIZATION ANALYTICS ENDPOINTS ====================
+
+  /**
+   * Get organization-wide analytics summary
+   * Backend endpoint: GET /api/Analytics/organization-summary
+   */
+  getOrganizationAnalytics(period: 7 | 14 | 30 | 90 = 7): Observable<any> {
+    console.log(`📡 ApiService - Fetching organization analytics with period: ${period}`);
+
+    if (!isPlatformBrowser(this.platformId)) {
+      console.log('⚠️ ApiService - Skipping getOrganizationAnalytics in SSR');
+      return of({
+        statusCode: 200,
+        data: {
+          totalHoursLogged: 0,
+          avgHoursPerEmployee: 0,
+          activeEmployees: 0,
+          totalEmployees: 0,
+          completedTasks: 0,
+          inProgressTasks: 0,
+          pendingTasks: 0,
+          taskCompletionPercentage: 0,
+          employeeCount: 0,
+          managerCount: 0,
+          adminCount: 0,
+          departmentMetrics: [],
+          avgEmployeesPerDepartment: 0,
+          hoursTrendData: [],
+          reportGeneratedAt: new Date().toISOString(),
+          periodRange: `Last ${period} days`
+        }
+      });
+    }
+
+    return this.http.get<any>(
+      `${this.apiUrl}/Analytics/organization-summary`,
+      { 
+        params: { period },
+        headers: this.getHeaders() 
+      }
+    ).pipe(
+      tap((response: any) => {
+        console.log('✅ ApiService - Organization analytics response:', response);
+      }),
+      catchError((err: any) => {
+        console.error('❌ ApiService - Error fetching organization analytics:', err);
+        return this.handleError(err);
+      })
+    );
+  }
+
+  /**
+   * Get department-specific analytics
+   * Backend endpoint: GET /api/Analytics/department/{departmentName}
+   */
+  getDepartmentAnalytics(departmentName: string, startDate?: string, endDate?: string): Observable<any> {
+    console.log(`📡 ApiService - Fetching analytics for department: ${departmentName}`);
+
+    if (!isPlatformBrowser(this.platformId)) {
+      return of({
+        statusCode: 200,
+        data: {
+          departmentName,
+          employeeCount: 0,
+          totalHours: 0,
+          avgHoursPerEmployee: 0,
+          completedTasks: 0,
+          inProgressTasks: 0,
+          pendingTasks: 0,
+          employeeIds: []
+        }
+      });
+    }
+
+    const params: any = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+
+    return this.http.get<any>(
+      `${this.apiUrl}/Analytics/department/${encodeURIComponent(departmentName)}`,
+      { 
+        params,
+        headers: this.getHeaders() 
+      }
+    ).pipe(
+      tap((response: any) => {
+        console.log(`✅ ApiService - Department analytics for ${departmentName}:`, response);
+      }),
+      catchError((err: any) => {
+        console.error(`❌ ApiService - Error fetching department analytics:`, err);
+        return this.handleError(err);
+      })
+    );
+  }
+
+  /**
+   * Get hours trend data for charts
+   * Backend endpoint: GET /api/Analytics/hours-trend
+   */
+  getHoursTrend(days: 7 | 14 | 30 | 90 = 7): Observable<any> {
+    console.log(`📡 ApiService - Fetching hours trend for ${days} days`);
+
+    if (!isPlatformBrowser(this.platformId)) {
+      return of({
+        statusCode: 200,
+        data: []
+      });
+    }
+
+    return this.http.get<any>(
+      `${this.apiUrl}/Analytics/hours-trend`,
+      { 
+        params: { days },
+        headers: this.getHeaders() 
+      }
+    ).pipe(
+      tap((response: any) => {
+        console.log('✅ ApiService - Hours trend response:', response);
+      }),
+      catchError((err: any) => {
+        console.error('❌ ApiService - Error fetching hours trend:', err);
+        return this.handleError(err);
+      })
+    );
+  }
+
   // ==================== CONFIGURATION ====================
 
   /**
@@ -751,6 +1051,50 @@ export class ApiService {
 
   setUseMockForUsers(useMock: boolean): void {
     this.useMockForUsers = useMock;
+  }
+
+  /**
+   * Get task completion breakdown by status
+   * Backend endpoint: GET /api/Analytics/task-completion-breakdown
+   */
+  getTaskCompletionBreakdown(startDate?: string, endDate?: string): Observable<any> {
+    console.log('📡 ApiService - Fetching task completion breakdown');
+
+    const params: any = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+
+    if (!isPlatformBrowser(this.platformId)) {
+      console.log('⚠️ ApiService - Skipping getTaskCompletionBreakdown in SSR');
+      return of({
+        success: true,
+        data: {
+          completedCount: 0,
+          inProgressCount: 0,
+          pendingCount: 0,
+          rejectedCount: 0,
+          overdueCount: 0,
+          totalCount: 0,
+          completionPercentage: 0
+        }
+      });
+    }
+
+    return this.http.get<any>(
+      `${this.apiUrl}/Analytics/task-completion-breakdown`,
+      { 
+        params,
+        headers: this.getHeaders() 
+      }
+    ).pipe(
+      tap((response: any) => {
+        console.log('✅ ApiService - Task completion breakdown response:', response);
+      }),
+      catchError((err: any) => {
+        console.error('❌ ApiService - Error fetching task completion breakdown:', err);
+        return this.handleError(err);
+      })
+    );
   }
 
   /**

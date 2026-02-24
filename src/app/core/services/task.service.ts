@@ -380,6 +380,62 @@ export class TaskService {
     }
 
     /**
+     * Reject task completion (manager action)
+     * Calls PATCH /api/Task/{id}/reject
+     */
+    rejectTask(id: any, reason: string): Observable<any> {
+        if (id === undefined || id === null) {
+            console.error('TaskService.rejectTask - ID is undefined or null');
+            return new Observable(observer => {
+                observer.error({ error: { message: 'Task ID is missing' } });
+            });
+        }
+        
+        const taskId = String(id);
+        console.log('📡 TaskService.rejectTask - Rejecting task', taskId);
+        return this.apiService.rejectTask(taskId, reason);
+    }
+
+    /**
+     * Log time spent on a task
+     * Calls POST /api/Task/log-time
+     */
+    logTaskTime(dto: any): Observable<any> {
+        console.log('📡 TaskService.logTaskTime - Logging time:', dto);
+        return this.apiService.logTaskTime(dto).pipe(
+            tap((response: any) => {
+                console.log('✅ TaskService.logTaskTime - Response:', response);
+            })
+        );
+    }
+
+    /**
+     * Get tasks pending approval (manager only)
+     * Calls GET /api/Task/pending-approval
+     */
+    getPendingApprovalTasks(): Observable<any> {
+        console.log('📡 TaskService.getPendingApprovalTasks - Fetching pending approval tasks');
+        return this.apiService.getPendingApprovalTasks().pipe(
+            tap((response: any) => {
+                console.log('✅ TaskService.getPendingApprovalTasks - Response:', response);
+            })
+        );
+    }
+
+    /**
+     * Get overdue tasks (manager only)
+     * Calls GET /api/Task/overdue
+     */
+    getOverdueTasks(): Observable<any> {
+        console.log('📡 TaskService.getOverdueTasks - Fetching overdue tasks');
+        return this.apiService.getOverdueTasks().pipe(
+            tap((response: any) => {
+                console.log('✅ TaskService.getOverdueTasks - Response:', response);
+            })
+        );
+    }
+
+    /**
      * Get productivity data for current employee
      * Calls GET /api/Productivity
      */
