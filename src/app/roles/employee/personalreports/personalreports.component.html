@@ -3,8 +3,8 @@
     <div class="stat-card">
       <div class="stat-text">
         <span class="label">Total Hours Logged</span>
-        <h2 class="value">{{ totalHoursLogged.toFixed(1) }} hrs</h2>
-        <span class="subtext green">Last 7 days</span>
+        <h2 class="value">{{ getFormattedTotalHours() }}</h2>
+        <span class="subtext green">This week (last 7 days)</span>
       </div>
       <div class="icon-box blue-tint">📈</div>
     </div>
@@ -51,7 +51,7 @@
       <div class="insight-icon">🔵</div>
       <div class="insight-content">
         <strong>Weekly Average</strong>
-        <p>You're averaging {{ weeklyAverage }} hours per day</p>
+        <p>You're averaging {{ getFormattedWeeklyAverage() }} per day</p>
       </div>
     </div>
 

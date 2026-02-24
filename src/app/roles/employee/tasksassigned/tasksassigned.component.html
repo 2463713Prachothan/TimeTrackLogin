@@ -23,9 +23,9 @@
         </button>
         <button
             class="tab-button"
-            [class.active]="activeTab === 'Submissions'"
-            (click)="activeTab = 'Submissions'">
-            <i class="fas fa-paper-plane"></i> My Submissions
+            [class.active]="activeTab === 'Approvals'"
+            (click)="activeTab = 'Approvals'">
+            <i class="fas fa-check-circle"></i> Approvals
         </button>
     </div>
  
@@ -46,7 +46,7 @@
  
         <!-- Task List using *ngFor -->
         <div class="task-list" *ngIf="!isLoadingTasks">
-            <div class="task-item" *ngFor="let task of assignedTasks">
+            <div class="task-item" *ngFor="let task of getMyActiveTasks()">
                 <div class="task-header">
                     <div class="task-info">
                         <span class="task-name">
@@ -57,7 +57,7 @@
                             }"></i>
                             {{ task.title }}
                         </span>
-                        <span class="task-id">#{{ task.displayTaskId || task.taskId }}</span>
+                        <span class="task-id">Task #{{ task.taskId }}</span>
                     </div>
                     <div class="task-meta">
                         <!-- Status badge with conditional CSS class -->
@@ -66,6 +66,12 @@
                             'bg-warning text-dark': task.status === 'In Progress',
                             'bg-secondary': task.status === 'Pending'
                         }">{{ task.status }}</span>
+                        <!-- Rejected badge if task was rejected -->
+                        @if (task.isRejected) {
+                        <span class="badge bg-danger">
+                            <i class="fas fa-times-circle"></i> Needs Revision
+                        </span>
+                        }
                         <!-- Priority badge -->
                         <span class="badge" [ngClass]="{
                             'bg-danger': task.priority === 'High',
@@ -77,107 +83,164 @@
                 <div class="task-description">
                     {{ task.description }}
                 </div>
-                <div class="task-details">
-                    <span><i class="fas fa-hourglass"></i> {{ task.estimatedHours || 0 }} hours</span>
-                    <span *ngIf="task.dueDate"><i class="fas fa-calendar"></i> {{ task.dueDate | date: 'MMM dd, yyyy' }}</span>
+                @if (task.isRejected && task.rejectionReason) {
+                <div class="alert alert-danger mt-2 mb-2" style="font-size: 0.875rem;">
+                    <strong><i class="fas fa-exclamation-triangle"></i> Manager's Feedback:</strong>
+                    <p class="mb-0 mt-1">{{ task.rejectionReason }}</p>
+                    <small class="text-muted mt-1 d-block"><strong>Action Required:</strong> Please address this feedback and complete the task again.</small>
                 </div>
+                }
+                <div class="task-details">
+                    <span><i class="fas fa-hourglass"></i> Est: {{ task.estimatedHours || 0 }}h</span>
+                    @if (task.actualHours) {
+                    <span><i class="fas fa-clock"></i> Actual: {{ task.actualHours }}h</span>
+                    }
+                    <span *ngIf="task.dueDate"><i class="fas fa-calendar"></i> {{ task.dueDate | date: 'MMM dd, yyyy' }}</span>
+                    @if (task.isOverdue) {
+                    <span class="badge bg-danger text-white"><i class="fas fa-exclamation-triangle"></i> OVERDUE</span>
+                    }
+                    @if (task.daysUntilDue !== undefined && task.daysUntilDue <= 3 && task.daysUntilDue > 0 && !task.isOverdue) {
+                    <span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Due in {{ task.daysUntilDue }} days</span>
+                    }
+                </div>
+                <!-- Progress Bar: Estimated vs Actual Hours -->
+                @if (task.estimatedHours && task.actualHours !== undefined) {
                 <div class="progress-container">
                     <div class="progress-info">
-                        <span>Progress</span>
+                        <span>Hours Progress: {{ task.actualHours }} / {{ task.estimatedHours }} ({{ (task.actualHours / task.estimatedHours * 100) | number:'1.0-0' }}%)</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-fill" 
+                          [ngClass]="{
+                            'bg-danger': (task.actualHours / task.estimatedHours) > 1.2,
+                            'bg-warning': (task.actualHours / task.estimatedHours) > 1 && (task.actualHours / task.estimatedHours) <= 1.2,
+                            'bg-success': (task.actualHours / task.estimatedHours) <= 1
+                          }"
+                          [style.width.%]="(task.actualHours / task.estimatedHours * 100 > 100 ? 100 : task.actualHours / task.estimatedHours * 100)"></div>
+                    </div>
+                </div>
+                } @else {
+                <div class="progress-container">
+                    <div class="progress-info">
+                        <span>Task Progress</span>
                     </div>
                     <div class="progress-bar-bg">
                         <div class="progress-fill" [style.width.%]="getProgressPercentage(task.status)"></div>
                     </div>
                 </div>
+                }
                 <div class="task-actions">
                     <!-- Start Button (only for Pending tasks) -->
                     <button
                         class="btn-start-task"
                         (click)="onStartTask(task)"
-                        [disabled]="task.status !== 'Pending'"
+                        [disabled]="task.status !== 'Pending' && task.canStart === false"
                         [title]="task.status !== 'Pending' ? 'Task already started or completed' : 'Click to start this task'">
                         <i class="fas fa-play-circle"></i> Start
                     </button>
-                   
+
                     <!-- Complete Button (only for In Progress tasks) -->
                     <button
                         class="btn-complete-task"
                         (click)="openCompletionModalFromTask(task)"
-                        [disabled]="task.status !== 'In Progress'"
-                        [title]="task.status !== 'In Progress' ? 'Task must be started first' : 'Click to mark as completed'">
-                        <i class="fas fa-check-circle"></i> Completed
+                        [disabled]="(task.status !== 'InProgress' && task.status !== 'In Progress') || task.canComplete === false"
+                        [title]="task.status === 'InProgress' || task.status === 'In Progress' ? 'Click to mark as completed' : 'Task must be started first'">
+                        <i class="fas fa-check-circle"></i> Complete
                     </button>
                 </div>
             </div>
  
             <!-- Empty State -->
-            <div class="no-tasks-message" *ngIf="assignedTasks.length === 0">
+            <div class="no-tasks-message" *ngIf="getMyActiveTasks().length === 0">
                 <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                <p>No tasks assigned yet!</p>
+                <p>No active tasks!</p>
                 <small class="text-muted">Tasks assigned to you will appear here.</small>
             </div>
         </div>
     </div>
     }
- 
-    <!-- Submissions Tab -->
-    @if (activeTab === 'Submissions') {
+
+    <!-- Approvals Tab -->
+    @if (activeTab === 'Approvals') {
     <div class="user-management-section">
-        <h3 class="title">My Task Submissions</h3>
- 
-        @if (submissionHistory.length > 0) {
-        <div class="submissions-table">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Task</th>
-                        <th>Task ID</th>
-                        <th>Submitted</th>
-                        <th>Status</th>
-                        <th>Completion</th>
-                        <th>Hours</th>
-                        <th>Comments</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @for (submission of submissionHistory; track submission.id) {
-                    <tr>
-                        <td>{{ submission.taskTitle }}</td>
-                        <td><span class="task-id-badge">#{{ submission.taskId }}</span></td>
-                        <td>{{ submission.submittedDate | date: 'MMM dd, yyyy HH:mm' }}</td>
-                        <td>
-                            <span [class]="'badge ' + getSubmissionStatusClass(submission.approvalStatus)">
-                                {{ submission.approvalStatus }}
-                            </span>
-                        </td>
-                        <td>
-                            <span [class]="'badge ' + getCompletionStatusClass(submission.completionStatus)">
-                                {{ submission.completionStatus }}
-                            </span>
-                        </td>
-                        <td>{{ submission.hoursSpent }} hrs</td>
-                        <td class="comments-cell">
-                            {{ submission.comments || '-' }}
-                            @if (submission.approvalComments) {
-                            <div class="approval-comment">
-                                <strong>Manager:</strong> {{ submission.approvalComments }}
-                            </div>
-                            }
-                        </td>
-                    </tr>
+        <h3 class="title">Task Approvals</h3>
+
+        <div class="task-list">
+            @for (task of getApprovalTasks(); track task.taskId || task.id) {
+            <div class="task-item">
+                <div class="task-header">
+                    <div class="task-info">
+                        <span class="task-name">
+                            <i [ngClass]="{
+                                'fa-solid fa-check-circle icon-green': task.status === 'Approved',
+                                'fa-regular fa-clock icon-warning': task.status === 'Completed',
+                                'fa-solid fa-times-circle icon-red': task.isRejected
+                            }"></i>
+                            {{ task.title }}
+                        </span>
+                        <span class="task-id">Task #{{ task.taskId }}</span>
+                    </div>
+                    <div class="task-meta">
+                        @if (task.status === 'Completed') {
+                        <span class="badge bg-warning text-dark">
+                            <i class="fas fa-clock"></i> Awaiting Approval
+                        </span>
+                        } @else if (task.status === 'Approved') {
+                        <span class="badge bg-success">
+                            <i class="fas fa-check-circle"></i> Approved
+                        </span>
+                        } @else if (task.isRejected) {
+                        <span class="badge bg-danger">
+                            <i class="fas fa-times-circle"></i> Rejected
+                        </span>
+                        }
+                        <span class="badge" [ngClass]="{
+                            'bg-danger': task.priority === 'High',
+                            'bg-warning text-dark': task.priority === 'Medium',
+                            'bg-success': task.priority === 'Low'
+                        }">{{ task.priority }}</span>
+                    </div>
+                </div>
+                <div class="task-description">
+                    {{ task.description }}
+                </div>
+                @if (task.isRejected && task.rejectionReason) {
+                <div class="alert alert-danger mt-2 mb-2" style="font-size: 0.875rem;">
+                    <strong><i class="fas fa-exclamation-triangle"></i> Rejection Reason:</strong>
+                    <p class="mb-0 mt-1">{{ task.rejectionReason }}</p>
+                    <small class="text-muted mt-1 d-block">Please address this feedback and complete the task again.</small>
+                </div>
+                }
+                <div class="task-details">
+                    <span><i class="fas fa-hourglass"></i> Est: {{ task.estimatedHours || 0 }}h</span>
+                    @if (task.actualHours) {
+                    <span><i class="fas fa-clock"></i> Actual: {{ task.actualHours }}h</span>
                     }
-                </tbody>
-            </table>
+                    @if (task.completedDate) {
+                    <span><i class="fas fa-calendar-check"></i> Completed: {{ task.completedDate | date: 'MMM dd, yyyy' }}</span>
+                    }
+                    @if (task.approvedDate) {
+                    <span><i class="fas fa-check"></i> Approved: {{ task.approvedDate | date: 'MMM dd, yyyy' }}</span>
+                    }
+                    @if (task.approvedByUserName) {
+                    <span><i class="fas fa-user-check"></i> By: {{ task.approvedByUserName }}</span>
+                    }
+                </div>
+            </div>
+            }
+
+            <!-- Empty State -->
+            @if (getApprovalTasks().length === 0) {
+            <div class="no-tasks-message">
+                <i class="fas fa-clipboard-check fa-3x text-muted mb-3"></i>
+                <p>No approval history</p>
+                <small class="text-muted">Completed tasks will appear here for approval tracking.</small>
+            </div>
+            }
         </div>
-        } @else {
-        <div class="no-submissions-message">
-            <i class="fas fa-paper-plane"></i>
-            <p>No task submissions yet</p>
-        </div>
-        }
     </div>
     }
- 
+
     <!-- Task Completion Modal -->
     @if (showSubmissionModal && selectedTask) {
     <div class="modal-overlay" (click)="closeModal()">

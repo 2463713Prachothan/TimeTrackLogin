@@ -1,70 +1,160 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { BehaviorSubject, Observable, combineLatest, interval } from 'rxjs';
+import { map, startWith, tap, switchMap } from 'rxjs/operators';
+import { ApiService } from './api.service';
+import { TimeLogService } from './time-log.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ManagerDataService {
+  private apiService = inject(ApiService);
+  private timeLogService = inject(TimeLogService);
+
   // User session management
   private currentUserSubject = new BehaviorSubject<any>(this.getSavedUser());
   currentUser$ = this.currentUserSubject.asObservable();
 
-  // Sample time logs data
-  private initialLogs = [
-    { employee: 'Akash', date: this.getCurrentDate(), startTime: '09:00', endTime: '17:30', break: 60, totalHours: 7.50 },
-    { employee: 'Chandana chai', date: this.getCurrentDate(), startTime: '08:30', endTime: '17:00', break: 60, totalHours: 7.50 },
-    { employee: 'Prachothan reddy', date: this.getCurrentDate(), startTime: '09:00', endTime: '18:30', break: 60, totalHours: 8.50 },
-    { employee: 'Akash', date: this.getDateDaysAgo(1), startTime: '09:00', endTime: '18:00', break: 60, totalHours: 8.00 },
-    { employee: 'Chandana chai', date: this.getDateDaysAgo(1), startTime: '09:00', endTime: '17:00', break: 30, totalHours: 7.50 },
-    { employee: 'Prachothan reddy', date: this.getDateDaysAgo(2), startTime: '10:00', endTime: '19:00', break: 60, totalHours: 8.00 },
-    { employee: 'Gopi Krishna', date: this.getCurrentDate(), startTime: '10:00', endTime: '19:00', break: 60, totalHours: 8.00 },
-    { employee: 'Umesh', date: this.getCurrentDate(), startTime: '08:00', endTime: '16:00', break: 60, totalHours: 7.00 }
-  ];
-
-  // Sample tasks data
-  private initialTasks = [
-    { title: 'API Integration', description: 'Connect frontend to login service', assignedTo: 'Akash', hours: 12, status: 'In Progress' },
-    { title: 'UI Refinement', description: 'Adjust table padding and font sizes', assignedTo: 'Chandana chai', hours: 4, status: 'Completed' },
-    { title: 'Database Design', description: 'Create SQL schema for time tracking', assignedTo: 'Prachothan reddy', hours: 20, status: 'Pending' },
-    { title: 'Unit Testing', description: 'Write tests for manager dashboard', assignedTo: 'Umesh', hours: 8, status: 'In Progress' }
-  ];
-
-  // Sample performance data
-  private initialPerformance = [
-    { name: 'Akash', hours: 35.5, tasks: 4, efficiency: 92, status: 'Excellent' },
-    { name: 'Chandana', hours: 28.0, tasks: 3, efficiency: 85, status: 'Excellent' },
-    { name: 'Prachothan', hours: 15.5, tasks: 1, efficiency: 45, status: 'Needs Attention' },
-    { name: 'Gopi', hours: 11.5, tasks: 1, efficiency: 27, status: 'Needs Attention' },
-    { name: 'Umesh', hours: 40.2, tasks: 6, efficiency: 98, status: 'Excellent' }
-  ];
-
-  // Reactive data streams
-  private logsSubject = new BehaviorSubject<any[]>(this.initialLogs);
-  private tasksSubject = new BehaviorSubject<any[]>(this.initialTasks);
-  private perfSubject = new BehaviorSubject<any[]>(this.initialPerformance);
+  // Reactive data streams - will be populated from backend
+  private logsSubject = new BehaviorSubject<any[]>([]);
+  private tasksSubject = new BehaviorSubject<any[]>([]);
+  private perfSubject = new BehaviorSubject<any[]>([]);
 
   logs$ = this.logsSubject.asObservable();
   tasks$ = this.tasksSubject.asObservable();
   performance$ = this.perfSubject.asObservable();
 
   constructor() {
-    // Initialize with sample data
-    this.logsSubject.next(this.initialLogs);
-    this.tasksSubject.next(this.initialTasks);
-    this.perfSubject.next(this.initialPerformance);
+    this.loadTeamData();
     this.setUser('Manager User', 'Manager');
+    
+    // Auto-refresh data every 5 seconds for live updates
+    interval(5000).pipe(
+      switchMap(() => this.getTeamDataFromBackend())
+    ).subscribe(
+      (data: any) => {
+        if (data && data.logs) {
+          this.logsSubject.next(data.logs);
+        }
+      }
+    );
   }
 
-  // Generate current date string
-  private getCurrentDate(): string {
-    return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  /**
+   * Load all team data from backend APIs
+   */
+  private loadTeamData() {
+    console.log('📊 ManagerDataService - Loading team data from backend');
+    
+    this.getTeamDataFromBackend().subscribe(
+      (data: any) => {
+        console.log('✅ ManagerDataService - Data loaded successfully');
+        if (data.logs) {
+          this.logsSubject.next(data.logs);
+        }
+        if (data.tasks) {
+          this.tasksSubject.next(data.tasks);
+        }
+      },
+      (err) => {
+        console.error('❌ ManagerDataService - Error loading data:', err);
+      }
+    );
   }
 
-  // Generate date string for X days ago
-  private getDateDaysAgo(days: number): string {
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  /**
+   * Get team data from backend
+   */
+  private getTeamDataFromBackend(): Observable<any> {
+    return combineLatest([
+      this.apiService.getTimeLogs().pipe(startWith([])),
+      this.apiService.getTasksCreatedByMe().pipe(startWith([]))
+    ]).pipe(
+      map(([logs, tasks]) => {
+        console.log('📊 Team data received - Logs:', logs.length, 'Tasks (created by manager):', tasks.length);
+        return { logs, tasks };
+      })
+    );
+  }
+
+  /**
+   * Get team analytics - combines logs and tasks
+   */
+  getTeamAnalytics(): Observable<any> {
+    return combineLatest([this.logs$, this.tasks$]).pipe(
+      map(([logs, tasks]) => ({
+        logs,
+        tasks,
+        summary: this.calculateSummary(logs, tasks)
+      }))
+    );
+  }
+
+  /**
+   * Calculate summary statistics
+   */
+  private calculateSummary(logs: any[], tasks: any[]) {
+    const totalHours = logs.reduce((sum, log) => sum + (log.totalHours || 0), 0);
+    const members = new Set(logs.map(l => l.employee || l.employeeName)).size;
+    const completedTasks = tasks.filter(t => t.status === 'Completed').length;
+    const inProgressTasks = tasks.filter(t => t.status === 'In Progress').length;
+    const completionRate = tasks.length > 0 
+      ? Math.round((completedTasks / tasks.length) * 100)
+      : 0;
+
+    return {
+      totalHours: Math.round(totalHours * 10) / 10,
+      avgHours: members > 0 ? Math.round((totalHours / members) * 10) / 10 : 0,
+      completionRate,
+      completedTasks,
+      inProgressTasks,
+      totalTasks: tasks.length,
+      teamMembers: members
+    };
+  }
+
+  /**
+   * Get team performance by member
+   */
+  getTeamPerformanceByMember(logs: any[]): any[] {
+    const memberData: { [key: string]: any } = {};
+
+    logs.forEach(log => {
+      const employeeName = log.employee || log.employeeName || 'Unknown';
+      if (!memberData[employeeName]) {
+        memberData[employeeName] = {
+          name: employeeName,
+          hours: 0,
+          days: 0
+        };
+      }
+      memberData[employeeName].hours += log.totalHours || 0;
+    });
+
+    // Calculate days and efficiency for each employee
+    Object.values(memberData).forEach((emp: any) => {
+      // Assume each log entry might be a different day
+      emp.days = Math.max(1, Math.ceil(emp.hours / 8));
+      emp.efficiency = Math.min(Math.round((emp.hours / (emp.days * 8)) * 100), 100);
+      
+      if (emp.efficiency >= 90) {
+        emp.status = 'Excellent';
+      } else if (emp.efficiency >= 70) {
+        emp.status = 'Good';
+      } else {
+        emp.status = 'Needs Attention';
+      }
+    });
+
+    return Object.values(memberData);
+  }
+
+  /**
+   * Refresh data manually
+   */
+  refreshData() {
+    console.log('🔄 ManagerDataService - Manually refreshing data');
+    this.loadTeamData();
   }
 
   // Retrieve saved user from localStorage

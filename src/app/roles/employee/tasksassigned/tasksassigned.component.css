@@ -186,6 +186,20 @@
     background: #8cc63f;
     /* Your specific Green */
     border-radius: 3px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* Progress Bar Color Variations */
+.progress-fill.bg-success {
+    background: #10b981 !important;
+}
+
+.progress-fill.bg-warning {
+    background: #f59e0b !important;
+}
+
+.progress-fill.bg-danger {
+    background: #ef4444 !important;
 }
  
 /* Badge States */
@@ -338,16 +352,20 @@
     font-size: 12px;
 }
  
-/* --- Task Action Buttons --- */
+/* Task Actions - Updated for 3 buttons */
 .task-actions {
     display: flex;
     gap: 10px;
     margin-top: 12px;
 }
+
+.task-actions button {
+    flex: 1;
+    min-width: 100px;
+}
  
 .btn-start-task,
 .btn-complete-task {
-    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
