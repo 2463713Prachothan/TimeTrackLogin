@@ -18,7 +18,7 @@
         <div class="kpi-icon">⏱️</div>
         <div class="kpi-content">
           <div class="kpi-label">Total Hours</div>
-          <div class="kpi-value">{{ summary.totalHours }} hrs</div>
+          <div class="kpi-value">{{ formatHours(summary.totalHours) }}</div>
           <div class="kpi-sub">Organization</div>
         </div>
       </div>
@@ -27,17 +27,8 @@
         <div class="kpi-icon">👤</div>
         <div class="kpi-content">
           <div class="kpi-label">Avg Hours/Employee</div>
-          <div class="kpi-value">{{ summary.avgHoursPerEmployee }} hrs</div>
+          <div class="kpi-value">{{ formatHours(summary.avgHoursPerEmployee) }}</div>
           <div class="kpi-sub">Per employee</div>
-        </div>
-      </div>
-
-      <div class="kpi-card">
-        <div class="kpi-icon">✅</div>
-        <div class="kpi-content">
-          <div class="kpi-label">Task Completion</div>
-          <div class="kpi-value">{{ summary.taskCompletionPct }}%</div>
-          <div class="kpi-sub">1 of 5</div>
         </div>
       </div>
 
@@ -47,6 +38,15 @@
           <div class="kpi-label">Active Employees</div>
           <div class="kpi-value">{{ summary.activeEmployees }}</div>
           <div class="kpi-sub">Currently active</div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon">✅</div>
+        <div class="kpi-content">
+          <div class="kpi-label">Task Completion</div>
+          <div class="kpi-value">{{ taskCompletion.completionRate }}%</div>
+          <div class="kpi-sub">{{ taskCompletion.completed }}/{{ taskCompletion.completed + taskCompletion.inProgress + taskCompletion.pending }}</div>
         </div>
       </div>
     </div>
@@ -99,9 +99,9 @@
     </div>
 
     <div class="chart-card">
-      <h3 class="chart-title">Task Status Overview</h3>
+      <h3 class="chart-title">Hours by Department</h3>
       <div class="chart-container">
-        <canvas #taskStatusCanvas></canvas>
+        <canvas #hoursByDeptCanvas></canvas>
       </div>
     </div>
   </section>
@@ -124,9 +124,9 @@
           <tr *ngFor="let row of departmentRows" [ngClass]="{ 'zero-data': row.totalHours === 0 }">
             <td class="dept-name">{{ row.department }}</td>
             <td>{{ row.employees }}</td>
-            <td>{{ row.totalHours | number:'1.1-1' }} hrs</td>
+            <td>{{ formatHours(row.totalHours) }}</td>
             <td>{{ row.completedTasks }}</td>
-            <td>{{ row.avgHoursPerEmployee | number:'1.1-1' }} hrs</td>
+            <td>{{ formatHours(row.avgHoursPerEmployee) }}</td>
           </tr>
         </tbody>
       </table>
@@ -141,7 +141,7 @@
         <div class="insight-icon">ℹ️</div>
         <div class="insight-content">
           <h4>Productivity Overview</h4>
-          <p>Organization has logged <strong>{{ summary.totalHours }} total hours</strong> with an average of <strong>{{ summary.avgHoursPerEmployee }} hours</strong> per employee.</p>
+          <p>Organization has logged <strong>{{ formatHours(summary.totalHours) }} total hours</strong> with an average of <strong>{{ formatHours(summary.avgHoursPerEmployee) }} hours</strong> per employee.</p>
         </div>
       </div>
 

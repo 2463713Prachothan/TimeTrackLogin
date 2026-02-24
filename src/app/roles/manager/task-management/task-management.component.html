@@ -9,19 +9,27 @@
     </button>
     <button 
       class="tab-button" 
-      [class.active]="activeTab === 'Submissions'"
-      (click)="activeTab = 'Submissions'">
-      <i class="fas fa-file-check"></i> Task Submissions
-      @if (getPendingSubmissionsCount() > 0) {
-      <span class="notification-badge">{{ getPendingSubmissionsCount() }}</span>
-      }
+      [class.active]="activeTab === 'Pending Approval'"
+      (click)="activeTab = 'Pending Approval'; loadPendingApprovalTasks()">
+      <i class="fas fa-clock"></i> Pending Approval
+    </button>
+    <button 
+      class="tab-button" 
+      [class.active]="activeTab === 'Overdue Tasks'"
+      (click)="activeTab = 'Overdue Tasks'; loadOverdueTasks()">
+      <i class="fas fa-exclamation-triangle"></i> Overdue Tasks
+    </button>
+    <button 
+      class="tab-button" 
+      [class.active]="activeTab === 'Approved'"
+      (click)="activeTab = 'Approved'">
+      <i class="fas fa-check-circle"></i> Approved
     </button>
   </div>
 
-  <!-- Manage Tasks Tab -->
-  @if (activeTab === 'Manage Tasks') {
+  <!-- Stats Cards - Show on all tabs -->
   <div class="row g-3 mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
         <div>
           <small class="text-muted d-block">Pending Tasks</small>
@@ -32,18 +40,18 @@
         </div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
         <div>
           <small class="text-muted d-block">In Progress</small>
-          <h5 class="fw-bold mb-0">{{ getCount('In Progress') }}</h5>
+          <h5 class="fw-bold mb-0">{{ getCount('InProgress') }}</h5>
         </div>
         <div class="icon-box icon-blue rounded p-2">
           <i class="bi bi-clock"></i>
         </div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
         <div>
           <small class="text-muted d-block">Completed</small>
@@ -54,16 +62,30 @@
         </div>
       </div>
     </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
+        <div>
+          <small class="text-muted d-block">Approved</small>
+          <h5 class="fw-bold mb-0">{{ getCount('Approved') }}</h5>
+        </div>
+        <div class="icon-box icon-green rounded p-2">
+          <i class="bi bi-check-circle-fill"></i>
+        </div>
+      </div>
+    </div>
   </div>
 
+  <!-- Manage Tasks Tab -->
+  @if (activeTab === 'Manage Tasks') {
   <div class="card border-0 shadow-sm p-4">
     <!-- Compact Horizontal Filter Bar -->
     <div class="filter-bar-horizontal">
       <select class="form-select filter-select" [(ngModel)]="selectedStatusFilter">
         <option value="All">All Tasks</option>
         <option value="Pending">Pending</option>
-        <option value="In Progress">In Progress</option>
+        <option value="InProgress">In Progress</option>
         <option value="Completed">Completed</option>
+        <option value="Approved">Approved</option>
       </select>
       
       <select class="form-select filter-select" [(ngModel)]="selectedMemberFilter">
@@ -102,14 +124,26 @@
               
               <div class="mb-2">
                 <span class="badge rounded-pill me-2" [ngClass]="{
-                  'bg-success-subtle text-success': task.status === 'Completed',
-                  'bg-primary-subtle text-primary': task.status === 'In Progress',
+                  'bg-success text-white': task.status === 'Approved',
+                  'bg-warning text-dark': task.status === 'Completed',
+                  'bg-primary-subtle text-primary': task.status === 'InProgress' || task.status === 'In Progress',
                   'bg-light text-dark border': task.status === 'Pending'
                 }">{{ task.status }}</span>
                 
                 <span class="badge rounded-pill" [ngClass]="getPriorityClass(task.priority)">
                   {{ task.priority }} Priority
                 </span>
+
+                @if (task.isOverdue) {
+                <span class="badge rounded-pill bg-danger text-white">
+                  <i class="bi bi-exclamation-triangle"></i> OVERDUE
+                </span>
+                }
+                @if (task.daysUntilDue !== undefined && task.daysUntilDue <= 3 && task.daysUntilDue > 0 && !task.isOverdue) {
+                <span class="badge rounded-pill bg-warning text-dark">
+                  <i class="bi bi-clock"></i> Due in {{ task.daysUntilDue }} days
+                </span>
+                }
               </div>
               
               <p class="small text-muted mb-1">{{ task.description }}</p>
@@ -117,13 +151,48 @@
                 <strong>Assigned to:</strong>
                 <span class="badge bg-info-subtle text-info me-1">{{ task.assignedToUserName }}</span>
                 • Est. {{ task.estimatedHours }} hours
+                @if (task.actualHours) {
+                • Actual: {{ task.actualHours }} hours
+                }
                 @if (task.dueDate) {
                 • Due: {{ task.dueDate | date: 'MMM dd, yyyy' }}
                 }
               </small>
+
+              <!-- Progress Bar for Estimated vs Actual Hours -->
+              @if (task.estimatedHours && task.actualHours !== undefined) {
+              <div class="mt-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <small class="text-muted">Progress: {{ task.actualHours }} / {{ task.estimatedHours }} hours</small>
+                  <small class="text-muted">{{ (task.actualHours / task.estimatedHours * 100) | number:'1.0-0' }}%</small>
+                </div>
+                <div class="progress" style="height: 8px;">
+                  <div class="progress-bar" 
+                    [ngClass]="{
+                      'bg-danger': (task.actualHours / task.estimatedHours) > 1.2,
+                      'bg-warning': (task.actualHours / task.estimatedHours) > 1 && (task.actualHours / task.estimatedHours) <= 1.2,
+                      'bg-success': (task.actualHours / task.estimatedHours) <= 1
+                    }"
+                    [style.width.%]="(task.actualHours / task.estimatedHours * 100 > 100 ? 100 : task.actualHours / task.estimatedHours * 100)">
+                  </div>
+                </div>
+              </div>
+              }
             </div>
           </div>
           <div class="d-flex gap-2">
+            <!-- Approve Button (only for Completed tasks) -->
+            @if (task.status === 'Completed' && task.canApprove !== false) {
+            <button class="btn btn-success btn-sm" (click)="approveTask(task)" title="Approve task completion">
+              <i class="bi bi-check-circle"></i> Approve
+            </button>
+            }
+            <!-- Reject Button (only for Completed tasks) -->
+            @if (task.status === 'Completed') {
+            <button class="btn btn-danger btn-sm" (click)="rejectTask(task)" title="Reject and send back to In Progress">
+              <i class="bi bi-x-circle"></i> Reject
+            </button>
+            }
             <button class="btn btn-outline-primary btn-sm border-0" (click)="openEditModal(task)">
               <i class="bi bi-pencil"></i>
             </button>
@@ -147,81 +216,195 @@
   </div>
   }
 
-  <!-- Task Submissions Tab -->
-  @if (activeTab === 'Submissions') {
+  <!-- Pending Approval Tab -->
+  @if (activeTab === 'Pending Approval') {
   <div class="card border-0 shadow-sm p-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <h5 class="fw-bold mb-0">Task Submissions</h5>
-      <div class="d-flex gap-2 align-items-center">
-        <button class="btn btn-sm btn-outline-secondary" (click)="refreshSubmissions()">
-          <i class="bi bi-arrow-clockwise"></i> Refresh
-        </button>
-        <span class="badge bg-danger" *ngIf="getPendingSubmissionsCount() > 0">
-          {{ getPendingSubmissionsCount() }} Pending
-        </span>
-      </div>
+      <h5 class="fw-bold mb-0"><i class="fas fa-clock text-warning"></i> Tasks Pending Approval</h5>
+      <button class="btn btn-sm btn-outline-primary" (click)="loadPendingApprovalTasks()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
     </div>
 
-    @if (taskSubmissions.length > 0) {
-    <div class="table-responsive">
-      <table class="table table-hover">
-        <thead class="table-light">
-          <tr>
-            <th>Employee</th>
-            <th>Task</th>
-            <th>Task ID</th>
-            <th>Completion</th>
-            <th>Hours</th>
-            <th>Priority</th>
-            <th>Status</th>
-            <th>Submitted</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (submission of taskSubmissions; track submission.id) {
-          <tr [class.table-light]="submission.approvalStatus === 'Pending'">
-            <td class="fw-bold">{{ submission.submittedBy }}</td>
-            <td>{{ submission.taskTitle }}</td>
-            <td><span class="task-id-badge">#{{ submission.taskId }}</span></td>
-            <td>
-              <span [class]="'badge ' + getCompletionStatusClass(submission.completionStatus)">
-                {{ submission.completionStatus }}
-              </span>
-            </td>
-            <td>{{ submission.hoursSpent }} hrs</td>
-            <td>
-              <span [class]="'badge ' + getPriorityClass(submission.priority)">
-                {{ submission.priority }}
-              </span>
-            </td>
-            <td>
-              <span [class]="'badge ' + getStatusClass(submission.approvalStatus)">
-                {{ submission.approvalStatus }}
-              </span>
-            </td>
-            <td class="small text-muted">
-              {{ submission.submittedDate | date: 'MMM dd, yyyy HH:mm' }}
-            </td>
-            <td>
-              <button 
-                class="btn btn-sm btn-outline-primary"
-                (click)="openApprovalModal(submission)"
-                [disabled]="submission.approvalStatus !== 'Pending'">
-                <i class="fas fa-eye"></i> Review
-              </button>
-            </td>
-          </tr>
-          }
-        </tbody>
-      </table>
+    <div class="list-group list-group-flush">
+      @for (task of pendingApprovalTasks; track task.taskId) {
+      @if (task.status === 'Completed') {
+      <div class="card border mb-3 p-3 shadow-sm" style="border-left: 4px solid #ffc107 !important;">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <i class="bi bi-clock-fill text-warning"></i>
+              <h6 class="fw-bold mb-0">{{ task.title }}</h6>
+              <span class="task-id-badge">Task #{{ task.taskId }}</span>
+            </div>
+            <p class="small text-muted mb-2">{{ task.description }}</p>
+            <div class="d-flex gap-2 mb-2">
+              <span class="badge bg-info-subtle text-info">{{ task.assignedToUserName }}</span>
+              <span class="badge bg-warning text-dark">Awaiting Approval</span>
+              @if (task.completedDate) {
+              <small class="text-muted">Completed: {{ task.completedDate | date: 'MMM dd, yyyy HH:mm' }}</small>
+              }
+            </div>
+            @if (task.estimatedHours && task.actualHours !== undefined) {
+            <small class="text-muted">Est. {{ task.estimatedHours }}h | Actual: {{ task.actualHours }}h</small>
+            }
+            @if (getTaskSubmissionComments(task.taskId)) {
+            <div class="alert alert-info mt-2 mb-0" style="font-size: 0.875rem;">
+              <strong><i class="bi bi-chat-left-text"></i> Completion Notes:</strong>
+              <p class="mb-0 mt-1">{{ getTaskSubmissionComments(task.taskId) }}</p>
+            </div>
+            }
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-success btn-sm" (click)="approveTask(task)">
+              <i class="bi bi-check-circle"></i> Approve
+            </button>
+            <button class="btn btn-danger btn-sm" (click)="rejectTask(task)">
+              <i class="bi bi-x-circle"></i> Reject
+            </button>
+          </div>
+        </div>
+      </div>
+      }
+      }
+      @empty {
+      <div class="text-center py-5">
+        <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+        <p class="mt-3 text-muted">No tasks pending approval</p>
+      </div>
+      }
     </div>
-    } @else {
-    <div class="text-center py-5">
-      <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-      <p class="text-muted">No submissions to review</p>
+  </div>
+  }
+
+  <!-- Overdue Tasks Tab -->
+  @if (activeTab === 'Overdue Tasks') {
+  <div class="card border-0 shadow-sm p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h5 class="fw-bold mb-0"><i class="fas fa-exclamation-triangle text-danger"></i> Overdue Tasks</h5>
+      <button class="btn btn-sm btn-outline-primary" (click)="loadOverdueTasks()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
     </div>
-    }
+
+    <div class="list-group list-group-flush">
+      @for (task of overdueTasks; track task.taskId) {
+      @if (task.isOverdue) {
+      <div class="card border-danger mb-3 p-3 shadow-sm" style="border-left: 4px solid #dc3545 !important;">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+              <h6 class="fw-bold mb-0">{{ task.title }}</h6>
+              <span class="task-id-badge">Task #{{ task.taskId }}</span>
+              <span class="badge bg-danger text-white">
+                <i class="bi bi-clock"></i> OVERDUE
+              </span>
+            </div>
+            <p class="small text-muted mb-2">{{ task.description }}</p>
+            <div class="d-flex gap-2 mb-2">
+              <span class="badge bg-info-subtle text-info">{{ task.assignedToUserName }}</span>
+              <span class="badge" [ngClass]="{
+                'bg-success': task.status === 'Approved',
+                'bg-warning text-dark': task.status === 'Completed',
+                'bg-primary': task.status === 'InProgress' || task.status === 'In Progress',
+                'bg-secondary': task.status === 'Pending'
+              }">{{ task.status }}</span>
+              <span class="badge" [ngClass]="getPriorityClass(task.priority)">{{ task.priority }}</span>
+            </div>
+            <small class="text-danger">
+              <i class="bi bi-calendar-x"></i> Due: {{ task.dueDate | date: 'MMM dd, yyyy' }}
+              @if (task.daysUntilDue !== undefined && task.daysUntilDue < 0) {
+              ({{ -task.daysUntilDue }} days overdue)
+              }
+            </small>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary btn-sm" (click)="openEditModal(task)">
+              <i class="bi bi-pencil"></i> Update
+            </button>
+          </div>
+        </div>
+      </div>
+      }
+      }
+      @empty {
+      <div class="text-center py-5">
+        <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+        <p class="mt-3 text-muted">No overdue tasks</p>
+      </div>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- Approved Tab -->
+  @if (activeTab === 'Approved') {
+  <div class="card border-0 shadow-sm p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h5 class="fw-bold mb-0"><i class="fas fa-check-circle text-success"></i> Approved Tasks</h5>
+      <button class="btn btn-sm btn-outline-primary" (click)="refreshTasks()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+    </div>
+
+    <div class="list-group list-group-flush">
+      @for (task of filteredTasks; track task.taskId) {
+      @if (task.status === 'Approved') {
+      <div class="card border-success mb-3 p-3 shadow-sm" style="border-left: 4px solid #22c55e !important;">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <i class="bi bi-check-circle-fill text-success"></i>
+              <h6 class="fw-bold mb-0">{{ task.title }}</h6>
+              <span class="task-id-badge">#{{ task.taskId }}</span>
+              <span class="badge bg-success text-white">
+                <i class="bi bi-check-circle"></i> Approved
+              </span>
+            </div>
+            <p class="small text-muted mb-2">{{ task.description }}</p>
+            <div class="d-flex gap-2 mb-2">
+              <span class="badge bg-info-subtle text-info">{{ task.assignedToUserName }}</span>
+              <span class="badge" [ngClass]="getPriorityClass(task.priority)">{{ task.priority }}</span>
+              @if (task.completedDate) {
+              <small class="text-muted">Completed: {{ task.completedDate | date: 'MMM dd, yyyy' }}</small>
+              }
+              @if (task.approvedDate) {
+              <small class="text-success">Approved: {{ task.approvedDate | date: 'MMM dd, yyyy' }}</small>
+              }
+            </div>
+            @if (task.estimatedHours && task.actualHours !== undefined) {
+            <div class="mb-2">
+              <small class="text-muted">Est: {{ task.estimatedHours }}h | Actual: {{ task.actualHours }}h</small>
+              <div class="progress mt-1" style="height: 6px;">
+                <div class="progress-bar bg-success" 
+                  [style.width.%]="(task.actualHours / task.estimatedHours * 100 > 100 ? 100 : task.actualHours / task.estimatedHours * 100)">
+                </div>
+              </div>
+            </div>
+            }
+            @if (task.approvedByUserName) {
+            <small class="text-muted">
+              <i class="bi bi-person-check"></i> Approved by: {{ task.approvedByUserName }}
+            </small>
+            }
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-success btn-sm" (click)="openViewModal(task)">
+              <i class="bi bi-eye"></i> View History
+            </button>
+          </div>
+        </div>
+      </div>
+      }
+      }
+      @empty {
+      <div class="text-center py-5">
+        <i class="bi bi-check-circle text-muted" style="font-size: 3rem;"></i>
+        <p class="mt-3 text-muted">No approved tasks yet</p>
+      </div>
+      }
+    </div>
   </div>
   }
 </div>
@@ -430,6 +613,54 @@
         <button class="btn btn-primary px-4 fw-bold" (click)="processSubmission()">
           <i class="fas fa-check"></i> {{ approvalForm.status }}
         </button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Task History View Modal -->
+<div class="modal-backdrop fade show" *ngIf="showViewModal"></div>
+<div class="modal fade show d-block" *ngIf="showViewModal && viewTask" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-success text-white">
+        <h5 class="fw-bold mb-0">
+          <i class="bi bi-clock-history"></i> Task History - Task #{{ viewTask.taskId }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeViewModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="card border-0 bg-light mb-3">
+          <div class="card-body">
+            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-info-circle"></i> Task Information</h6>
+            <div class="row g-3">
+              <div class="col-md-6"><strong>Title:</strong> {{ viewTask.title }}</div>
+              <div class="col-md-6"><strong>Status:</strong> <span class="badge bg-success ms-2">{{ viewTask.status }}</span></div>
+              <div class="col-md-6"><strong>Assigned To:</strong> {{ viewTask.assignedToUserName }}</div>
+              <div class="col-md-6"><strong>Estimated:</strong> {{ viewTask.estimatedHours }}h</div>
+              <div class="col-md-12"><strong>Description:</strong> {{ viewTask.description }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Employee Work Descriptions -->
+        <div class="card border-0 bg-light" *ngIf="viewTask.timeLogs && viewTask.timeLogs.length > 0">
+          <div class="card-body">
+            <h6 class="fw-bold text-success mb-3"><i class="bi bi-check-circle"></i> Employee Work Descriptions</h6>
+            <div class="time-log-entry mb-3 pb-3 border-bottom" *ngFor="let log of viewTask.timeLogs; let last = last" [class.border-bottom]="!last">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                  <strong class="text-primary">{{ log.employeeName || 'Employee' }}</strong>
+                  <small class="text-muted ms-2">{{ log.date | date:'medium' }}</small>
+                </div>
+                <span class="badge bg-info">{{ log.hoursSpent }}h</span>
+              </div>
+              <p class="mb-0 text-secondary">{{ log.workDescription }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeViewModal()">Close</button>
       </div>
     </div>
   </div>

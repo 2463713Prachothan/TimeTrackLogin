@@ -5,6 +5,7 @@ import { ManagerDataService } from '../../core/services/manager-data.service';
 import { TimeLogService } from '../../core/services/time-log.service';
 import { UserService } from '../../core/services/user.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ApiService } from '../../core/services/api.service';
 import { ProfileModalComponent } from '../../shared/profile-modal/profile-modal.component';
 import { TeamMember } from '../../core/models/time-log.model';
 
@@ -34,10 +35,13 @@ export class ManagerComponent implements OnInit {
     private dataService: ManagerDataService,
     private authService: AuthService,
     private timeLogService: TimeLogService,
-    private userService: UserService
+    private userService: UserService,
+    private apiService: ApiService
   ) {}
 
   ngOnInit() {
+    console.log('🔄 ManagerComponent initialized - Loading all data');
+    
     // Navbar user info
     this.dataService.currentUser$.subscribe(userData => {
       const fullName = userData.fullName || userData.name || 'Manager';
@@ -50,32 +54,94 @@ export class ManagerComponent implements OnInit {
 
     // Active tasks & completion rate (from data service)
     this.dataService.tasks$.subscribe(tasks => {
-      const activeTasks = tasks.filter(t => t.status !== 'Completed').length;
-      const completedTasks = tasks.filter(t => t.status === 'Completed').length;
-      this.completionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
-      if (this.activeTasks === 0) {
-        this.activeTasks = activeTasks;
-      }
+      // Active tasks = InProgress tasks only
+      const activeTasks = tasks.filter(t => t.status === 'InProgress' || t.status === 'In Progress').length;
+      const completedTasks = tasks.filter(t => t.status === 'Completed' || t.status === 'Approved').length;
+      const totalTasks = tasks.length;
+      
+      // Completion rate = (completed / total) * 100
+      this.completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      
+      // Always update activeTasks count
+      this.activeTasks = activeTasks;
+      
+      console.log('📊 Dashboard metrics updated:', {
+        total: totalTasks,
+        completed: completedTasks,
+        active: activeTasks,
+        completionRate: this.completionRate
+      });
     });
 
-    // === MAIN: all manager calls use GUID string ===
-    const managerId = this.getCurrentManagerId(); // string | null
+    // Force refresh data to ensure it loads
+    this.dataService.refreshData();
+    
+    // === MAIN: Use new manager-stats API endpoint ===
+    this.loadManagerStats();
+    
+    const managerId = this.getCurrentManagerId();
     if (managerId) {
-      // Dashboard stats (prefers API, falls back to derived)
+      // Team members list (+ compute hours from team logs)
+      this.loadTeamMembers(managerId);
+    }
+    
+    // Force check after delay if data is still 0
+    setTimeout(() => {
+      if (this.activeTasks === 0 && this.completionRate === 0) {
+        console.log('⚠️ No data loaded, forcing refresh...');
+        this.dataService.refreshData();
+      }
+    }, 1500);
+  }
+
+  /**
+   * Load manager dashboard statistics from new API endpoint
+   */
+  private loadManagerStats(): void {
+    this.apiService.getManagerStats().subscribe({
+      next: (response) => {
+        if (response && response.success && response.data) {
+          const stats = response.data;
+          this.teamCount = stats.teamMemberCount || 0;
+          // Don't override activeTasks and completionRate from tasks$ subscription
+          // Only use API stats if tasks$ hasn't provided data yet
+          if (this.activeTasks === 0) {
+            this.activeTasks = stats.activeTasks || 0;
+          }
+          if (this.completionRate === 0) {
+            this.completionRate = Math.round(stats.completionRate || 0);
+          }
+          console.log('✅ Manager stats loaded (teamCount only):', stats);
+        } else if (response && !response.success) {
+          console.warn('⚠️ Manager stats API returned unsuccessfully');
+          this.fallbackToOldStats();
+        }
+      },
+      error: (err) => {
+        console.error('❌ Error loading manager stats, using fallback:', err);
+        this.fallbackToOldStats();
+      }
+    });
+  }
+
+  /**
+   * Fallback to old stats calculation if new API fails
+   */
+  private fallbackToOldStats(): void {
+    const managerId = this.getCurrentManagerId();
+    if (managerId) {
       this.timeLogService.getManagerStats(managerId).subscribe(stats => {
         if (stats) {
-          // adjust keys if your API returns different names
           this.teamCount = (stats as any).teamCount ?? 0;
-          this.activeTasks = (stats as any).activeTasks ?? this.activeTasks;
+          if ((stats as any).activeTasks !== undefined) {
+            this.activeTasks = (stats as any).activeTasks;
+          }
         } else {
           this.timeLogService.getTeamMembersCount(managerId).subscribe(teamCount => {
             this.teamCount = teamCount;
           });
         }
       });
-
-      // Team members list (+ compute hours from team logs)
-      this.loadTeamMembers(managerId);
     }
   }
 

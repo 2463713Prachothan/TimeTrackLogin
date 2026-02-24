@@ -69,10 +69,11 @@ export class DashboardemployeeComponent implements OnInit {
     });
 
     // Load tasks
-    this.taskService.getMyTasks().subscribe((myTasks: Task[]) => {
-      this.completedTasks = myTasks.filter((t: Task) => t.status === 'Completed').length;
-      this.inProgressTasks = myTasks.filter((t: Task) => t.status === 'In Progress').length;
-      this.pendingTasks = myTasks.filter((t: Task) => t.status === 'Pending').length;
+    this.taskService.getMyTasks().subscribe((myTasks: any[]) => {
+      // Approved tasks are considered Completed
+      this.completedTasks = myTasks.filter((t: any) => t.status === 'Completed' || t.status === 'Approved').length;
+      this.inProgressTasks = myTasks.filter((t: any) => t.status === 'In Progress' || t.status === 'InProgress').length;
+      this.pendingTasks = myTasks.filter((t: any) => t.status === 'Pending').length;
 
       const total = myTasks.length;
       this.taskCompletionRate = total > 0 ? Math.round((this.completedTasks / total) * 100) : 0;

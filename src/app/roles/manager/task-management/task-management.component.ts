@@ -9,6 +9,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { ApiService } from '../../../core/services/api.service';
 import { TaskSubmission, TaskService } from '../../../core/services/task.service';
 import { Subject, takeUntil } from 'rxjs';
+import Swal from 'sweetalert2';
 
 interface TeamMember {
   userId: string;
@@ -38,11 +39,16 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
   showModal = false;
   showApprovalModal = false;
   showEditModal = false;
+  showViewModal = false;  // For task history view
+  showTimeLogsModal = false;  // For time logs view
   tasks: any[] = [];
+  pendingApprovalTasks: any[] = [];
+  overdueTasks: any[] = [];
   teamMembers: TeamMember[] = [];
   taskSubmissions: TaskSubmission[] = [];
   currentManagerName: string = '';
   activeTab: string = 'Manage Tasks';
+  taskTimeLogs: any[] = [];  // Time logs for selected task
 
   // Filter properties
   selectedStatusFilter: string = 'All';
@@ -50,6 +56,7 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
 
   selectedSubmission: TaskSubmission | null = null;
   selectedTask: any = null;
+  viewTask: any = null;  // Task being viewed in history modal
   approvalForm = {
     status: 'Approved' as 'Approved' | 'Rejected' | 'Need Changes',
     comments: '',
@@ -138,21 +145,14 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
 
   /**
    * Get filtered tasks based on status and team member selection
+   * Uses backend API filtering when available
    */
   get filteredTasks(): any[] {
-    let filtered = [...this.tasks];
-
-    // Filter by status
-    if (this.selectedStatusFilter !== 'All') {
-      filtered = filtered.filter(task => task.status === this.selectedStatusFilter);
+    // If using API filters, return the already filtered tasks
+    if (this.selectedStatusFilter !== 'All' || this.selectedMemberFilter !== 'All') {
+      return this.tasks;
     }
-
-    // Filter by team member
-    if (this.selectedMemberFilter !== 'All') {
-      filtered = filtered.filter(task => task.assignedTo === this.selectedMemberFilter);
-    }
-
-    return filtered;
+    return this.tasks;
   }
 
   /**
@@ -161,6 +161,49 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
   resetFilters(): void {
     this.selectedStatusFilter = 'All';
     this.selectedMemberFilter = 'All';
+    this.loadTasksFromApi();
+  }
+
+  /**
+   * Filter tasks by status using backend API
+   */
+  filterByStatus(status: string): void {
+    this.selectedStatusFilter = status;
+    if (status === 'All') {
+      this.loadTasksFromApi();
+    } else {
+      this.apiService.getTasksByStatus(status).pipe(takeUntil(this.destroy$)).subscribe({
+        next: (response: any) => {
+          const tasks = response?.data || response || [];
+          console.log(`Tasks filtered by status ${status}:`, tasks);
+          this.tasks = tasks;
+        },
+        error: (err) => {
+          console.error('Error filtering tasks by status:', err);
+        }
+      });
+    }
+  }
+
+  /**
+   * Filter tasks by assigned employee using backend API
+   */
+  filterByEmployee(employeeId: string): void {
+    this.selectedMemberFilter = employeeId;
+    if (employeeId === 'All') {
+      this.loadTasksFromApi();
+    } else {
+      this.apiService.getTasksByEmployee(employeeId).pipe(takeUntil(this.destroy$)).subscribe({
+        next: (response: any) => {
+          const tasks = response?.data || response || [];
+          console.log(`Tasks filtered by employee ${employeeId}:`, tasks);
+          this.tasks = tasks;
+        },
+        error: (err) => {
+          console.error('Error filtering tasks by employee:', err);
+        }
+      });
+    }
   }
 
   /**
@@ -288,9 +331,9 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Delete task by ID with confirmation dialog
+   * Delete task by ID with SweetAlert confirmation dialog
    */
-  onDeleteTask(id: any): void {
+  async onDeleteTask(id: any): Promise<void> {
     // Validate ID exists
     if (!id && id !== 0) {
       console.error('Cannot delete task: ID is missing or undefined', id);
@@ -298,7 +341,32 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+    // Find task details for confirmation
+    const task = this.tasks.find(t => (t.taskId || t.id) === id);
+    const taskTitle = task?.title || 'this task';
+    const taskDisplayId = task?.displayTaskId || 'N/A';
+
+    // Show SweetAlert2 confirmation
+    const result = await Swal.fire({
+      title: 'Delete Task?',
+      html: `
+        <div style=\"text-align: left;\">
+          <p><strong>Task ${taskDisplayId}:</strong> ${taskTitle}</p>
+          <p class=\"text-danger\" style=\"margin-top: 15px;\">
+            <i class=\"fas fa-exclamation-triangle\"></i> 
+            This action cannot be undone. The task will be permanently deleted.
+          </p>
+        </div>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d',
+    });
+
+    if (!result.isConfirmed) {
       return;
     }
 
@@ -309,6 +377,12 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           console.log('Task deleted successfully');
+          
+          // Remove from all local arrays
+          this.tasks = this.tasks.filter(t => (t.taskId || t.id) !== id);
+          this.pendingApprovalTasks = this.pendingApprovalTasks.filter(t => (t.taskId || t.id) !== id);
+          this.overdueTasks = this.overdueTasks.filter(t => (t.taskId || t.id) !== id);
+          
           this.notificationService.success('Task deleted successfully');
           this.loadTasksFromApi();
         },
@@ -347,6 +421,38 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
     
     console.log('Edit form populated with:', this.editTask);
     this.showEditModal = true;
+  }
+
+  /**
+   * Open view modal for task history (Approved tab)
+   */
+  openViewModal(task: any) {
+    console.log('Opening view modal for task:', task);
+    this.viewTask = task;
+    
+    // Load time logs to display employee work descriptions
+    this.apiService.getTaskTimeLogs(task.taskId).subscribe({
+      next: (response) => {
+        const logs = response?.data || response || [];
+        this.viewTask.timeLogs = logs;
+        this.showViewModal = true;
+        console.log('✅ Time logs loaded for view modal:', logs);
+      },
+      error: (err) => {
+        console.error('❌ Error loading time logs for view modal:', err);
+        // Still show modal even if logs fail
+        this.viewTask.timeLogs = [];
+        this.showViewModal = true;
+      }
+    });
+  }
+
+  /**
+   * Close view modal
+   */
+  closeViewModal() {
+    this.showViewModal = false;
+    this.viewTask = null;
   }
 
   /**
@@ -526,7 +632,7 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
 
   /**
    * Approve task completion (manager action)
-   * Updates task to mark as approved and increments completed count
+   * Calls PATCH /api/Task/{id}/approve
    */
   approveTaskCompletion(submission: TaskSubmission) {
     if (!submission.taskId) {
@@ -538,26 +644,13 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
     const taskId = submission.taskId;
     const approvalComments = this.approvalForm.comments;
 
-    console.log('📋 Manager.approveTaskCompletion - Approving task:', taskId, 'Comments:', approvalComments);
+    console.log('📋 Manager.approveTaskCompletion - Approving task:', taskId);
 
-    // Prepare update payload with Completed status
-    const updatePayload = {
-      status: 'Completed',
-      approvalComments: approvalComments
-    };
-
-    this.taskService.updateTaskById(taskId, updatePayload)
+    this.taskService.approveTaskCompletion(taskId, approvalComments)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response: any) => {
           console.log('✅ Manager.approveTaskCompletion - Task approved:', response);
-          
-          // Update local tasks list immediately
-          const taskIndex = this.tasks.findIndex(t => t.id === taskId || t.taskId === taskId);
-          if (taskIndex !== -1) {
-            this.tasks[taskIndex].status = 'Completed';
-            console.log('✅ Manager - Task status updated to Completed in local list');
-          }
           
           // Approve submission in service
           this.submissionService.approveSubmission(
@@ -567,11 +660,9 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
           );
           
           // Reload tasks from API to ensure sync
-          setTimeout(() => {
-            this.loadTasksFromApi();
-          }, 500);
+          this.loadTasksFromApi();
           
-          this.notificationService.success('✅ Task completion approved! Completed count updated.');
+          this.notificationService.success('✅ Task completion approved!');
           this.isSubmitting = false;
         },
         error: (err: any) => {
@@ -581,6 +672,208 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
           this.isSubmitting = false;
         }
       });
+  }
+
+  /**
+   * Reject task (manager action)
+   * Calls PATCH /api/Task/{id}/reject with reason
+   */
+  rejectTaskCompletion(taskId: string, reason: string) {
+    if (!taskId) {
+      this.notificationService.error('Invalid task ID');
+      return;
+    }
+
+    if (!reason || !reason.trim()) {
+      this.notificationService.error('Please provide a reason for rejection');
+      return;
+    }
+
+    this.isSubmitting = true;
+
+    console.log('❌ Manager.rejectTaskCompletion - Rejecting task:', taskId);
+
+    this.taskService.rejectTask(taskId, reason)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: any) => {
+          console.log('✅ Manager.rejectTaskCompletion - Task rejected:', response);
+          
+          // Remove from pendingApprovalTasks immediately for instant UI update
+          this.pendingApprovalTasks = this.pendingApprovalTasks.filter(t => (t.taskId || t.id) !== taskId);
+          
+          // Reload tasks from API to ensure sync
+          this.loadTasksFromApi();
+          
+          this.notificationService.success('❌ Task rejected and sent back to In Progress');
+          this.isSubmitting = false;
+        },
+        error: (err: any) => {
+          console.error('❌ Manager.rejectTaskCompletion - Error rejecting task:', err);
+          const message = err.error?.message || err.error || 'Failed to reject task';
+          this.notificationService.error(message);
+          this.isSubmitting = false;
+        }
+      });
+  }
+
+  /**
+   * Approve task directly (from task list, not submission)
+   * Calls PATCH /api/Task/{id}/approve
+   */
+  approveTask(task: any) {
+    const taskId = task.taskId || task.id;
+    if (!taskId) {
+      this.notificationService.error('Invalid task ID');
+      return;
+    }
+
+    // Check if task is in Completed status
+    if (task.status !== 'Completed') {
+      this.notificationService.error('Only completed tasks can be approved');
+      return;
+    }
+
+    this.isSubmitting = true;
+
+    console.log('📋 Manager.approveTask - Approving task:', taskId);
+
+    this.taskService.approveTaskCompletion(taskId, '')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response: any) => {
+          console.log('✅ Manager.approveTask - Task approved:', response);
+          
+          // Remove from pendingApprovalTasks immediately for instant UI update
+          this.pendingApprovalTasks = this.pendingApprovalTasks.filter(t => (t.taskId || t.id) !== taskId);
+          
+          // Reload tasks from API to ensure sync
+          this.loadTasksFromApi();
+          
+          this.notificationService.success('✅ Task approved!');
+          this.isSubmitting = false;
+        },
+        error: (err: any) => {
+          console.error('❌ Manager.approveTask - Error approving task:', err);
+          const message = err.error?.message || err.error || 'Failed to approve task';
+          this.notificationService.error(message);
+          this.isSubmitting = false;
+        }
+      });
+  }
+
+  /**
+   * Reject task directly (from task list)
+   * Calls PATCH /api/Task/{id}/reject with reason
+   */
+  async rejectTask(task: any) {
+    const taskId = task.taskId || task.id;
+    if (!taskId) {
+      this.notificationService.error('Invalid task ID');
+      return;
+    }
+
+    // Check if task is in Completed status
+    if (task.status !== 'Completed') {
+      this.notificationService.error('Only completed tasks can be rejected');
+      return;
+    }
+
+    // Show SweetAlert2 popup for rejection reason
+    const result = await Swal.fire({
+      title: 'Reject Task',
+      html: `
+        <div style="text-align: left;">
+          <p><strong>Task:</strong> ${task.title}</p>
+          <p><strong>Employee:</strong> ${task.assignedToUserName}</p>
+          <p class="text-muted" style="margin-top: 15px;">Please provide a detailed reason for rejection:</p>
+        </div>
+      `,
+      input: 'textarea',
+      inputPlaceholder: 'Enter rejection reason (e.g., incomplete work, quality issues, missing requirements...).',
+      inputAttributes: {
+        'aria-label': 'Rejection reason',
+        'style': 'min-height: 100px;'
+      },
+      showCancelButton: true,
+      confirmButtonText: 'Reject Task',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d',
+      inputValidator: (value) => {
+        if (!value || !value.trim()) {
+          return 'Please provide a reason for rejection';
+        }
+        if (value.trim().length < 10) {
+          return 'Reason must be at least 10 characters';
+        }
+        return null;
+      }
+    });
+
+    if (result.isConfirmed && result.value) {
+      this.rejectTaskCompletion(taskId, result.value.trim());
+    }
+  }
+
+  /**
+   * Load pending approval tasks
+   * Calls GET /api/Task/pending-approval
+   */
+  loadPendingApprovalTasks() {
+    console.log('📋 Manager - Loading pending approval tasks');
+    
+    this.taskService.getPendingApprovalTasks()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (tasks: any[]) => {
+          console.log('✅ Manager - Pending approval tasks loaded:', tasks);
+          
+          // API now returns enriched tasks array directly
+          this.pendingApprovalTasks = Array.isArray(tasks) ? tasks : [];
+          
+          this.notificationService.success(`Found ${this.pendingApprovalTasks.length} tasks awaiting approval`);
+        },
+        error: (err: any) => {
+          console.error('❌ Manager - Error loading pending approval tasks:', err);
+          const message = err.error?.message || 'Failed to load pending approval tasks';
+          this.notificationService.error(message);
+        }
+      });
+  }
+
+  /**
+   * Load overdue tasks
+   * Calls GET /api/Task/overdue
+   */
+  loadOverdueTasks() {
+    console.log('📋 Manager - Loading overdue tasks');
+    
+    this.taskService.getOverdueTasks()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (tasks: any[]) => {
+          console.log('✅ Manager - Overdue tasks loaded:', tasks);
+          
+          // API now returns enriched tasks array directly
+          this.overdueTasks = Array.isArray(tasks) ? tasks : [];
+          
+          this.notificationService.success(`Found ${this.overdueTasks.length} overdue tasks`);
+        },
+        error: (err: any) => {
+          console.error('❌ Manager - Error loading overdue tasks:', err);
+          const message = err.error?.message || 'Failed to load overdue tasks';
+          this.notificationService.error(message);
+        }
+      });
+  }
+
+  /**
+   * Get task submission comments for a specific task
+   */
+  getTaskSubmissionComments(taskId: string): string {
+    const submission = this.taskSubmissions.find(s => s.taskId === taskId);
+    return submission?.comments || '';
   }
 
   /**
@@ -637,6 +930,9 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
    * Count tasks by status
    */
   getCount(status: string) {
+    if (status === 'In Progress' || status === 'InProgress') {
+      return this.tasks.filter(t => t.status === 'InProgress' || t.status === 'In Progress').length;
+    }
     return this.tasks.filter(t => t.status === status).length;
   }
 
@@ -684,5 +980,40 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
       priority: 'Medium',
       dueDate: ''
     };
+  }
+
+  /**
+   * Open time logs modal for a task
+   */
+  openTimeLogsModal(task: any): void {
+    this.selectedTask = task;
+    this.apiService.getTaskTimeLogs(task.taskId).subscribe({
+      next: (response) => {
+        const logs = response?.data || response || [];
+        this.taskTimeLogs = logs;
+        this.showTimeLogsModal = true;
+        console.log('✅ Time logs loaded:', logs);
+      },
+      error: (err) => {
+        console.error('❌ Error loading time logs:', err);
+        this.notificationService.error('Failed to load time logs');
+      }
+    });
+  }
+
+  /**
+   * Close time logs modal
+   */
+  closeTimeLogsModal(): void {
+    this.showTimeLogsModal = false;
+    this.taskTimeLogs = [];
+    this.selectedTask = null;
+  }
+
+  /**
+   * Get total hours from time logs
+   */
+  getTotalHoursFromLogs(): number {
+    return this.taskTimeLogs.reduce((sum, log) => sum + (log.hoursSpent || 0), 0);
   }
 }
