@@ -48,12 +48,16 @@ export class TaskService {
         // Load stored tasks synchronously first
         const storedTasks = this.loadTasksFromStorage();
         if (storedTasks.length > 0) {
-            console.log('Loaded tasks from localStorage:', storedTasks.length);
+            console.log('✅ TaskService - Loaded tasks from localStorage:', storedTasks.length);
             this.tasksSubject.next(storedTasks);
+        } else {
+            console.log('ℹ️ TaskService - No cached tasks found');
+            this.tasksSubject.next([]);
         }
-        
-        // Then try to fetch from API asynchronously
-        this.loadTasks();
+
+        // DISABLED: Automatic API fetch causes 401 errors on page load
+        // Use manual refresh via components when authenticated
+        // this.loadTasks();
     }
 
     /**
@@ -89,19 +93,10 @@ export class TaskService {
     }
 
     /**
-     * Load tasks from API or fallback to localStorage
+     * Load tasks from API (manual call only - use refresh button)
      */
     private loadTasks(): void {
-        // Try to load from localStorage first for better UX
-        const storedTasks = this.loadTasksFromStorage();
-        if (storedTasks.length > 0) {
-            console.log('Loaded tasks from localStorage:', storedTasks.length);
-            this.tasksSubject.next(storedTasks);
-        } else {
-            // Start with empty array
-            console.log('No tasks found, starting with empty array');
-            this.tasksSubject.next([]);
-        }
+        console.log('🔄 TaskService - Loading tasks from API...');
 
         // Try to fetch from API and update (only if API has data)
         this.apiService.getTasks().subscribe({
@@ -110,14 +105,20 @@ export class TaskService {
                     // Only update if API returned data
                     this.tasksSubject.next(tasks);
                     this.saveTasksToStorage(tasks);
+                    console.log('✅ TaskService - Loaded tasks from API:', tasks.length);
                 } else {
                     // API returned empty, keep current data
-                    console.log('API returned no tasks, keeping existing data');
+                    console.log('ℹ️ TaskService - API returned no tasks');
                 }
             },
             error: (err) => {
                 // API failed, keep localStorage/initial data
-                console.log('Failed to load tasks from API:', err);
+                console.error('❌ TaskService - Failed to load tasks from API:', err);
+                // Fallback to localStorage
+                const storedTasks = this.loadTasksFromStorage();
+                if (storedTasks.length > 0) {
+                    this.tasksSubject.next(storedTasks);
+                }
             }
         });
     }
@@ -130,10 +131,10 @@ export class TaskService {
     }
 
     /**
-     * Refresh tasks by reloading from API/storage
+     * Manually refresh tasks from API (call from components when authenticated)
      */
     refreshTasks(): void {
-        console.log('🔄 TaskService.refreshTasks - Reloading tasks from storage/API');
+        console.log('🔄 TaskService.refreshTasks - Reloading tasks from API');
         this.loadTasks();
     }
 
@@ -285,7 +286,7 @@ export class TaskService {
                 observer.error({ error: { message: 'Task ID is missing' } });
             });
         }
-        
+
         const taskId = String(id);
         console.log('TaskService.updateTaskById - Updating task', taskId, 'with data:', taskData);
         return this.apiService.updateTask(taskId, taskData);
@@ -303,7 +304,7 @@ export class TaskService {
                 observer.error({ error: { message: 'Task ID is missing' } });
             });
         }
-        
+
         const taskId = String(id);
         console.log('TaskService.deleteTaskById - Deleting task', taskId);
         return this.apiService.deleteTask(taskId);
@@ -327,7 +328,7 @@ export class TaskService {
                 observer.error({ error: { message: 'Task ID is missing' } });
             });
         }
-        
+
         const taskId = String(id);
         console.log('📡 TaskService.startTask - Starting task', taskId);
         return this.apiService.startTask(taskId).pipe(
@@ -350,7 +351,7 @@ export class TaskService {
                 observer.error({ error: { message: 'Task ID is missing' } });
             });
         }
-        
+
         const taskId = String(id);
         console.log('📡 TaskService.completeTask - Completing task', taskId, 'with hours:', hoursSpent);
         return this.apiService.completeTask(taskId, hoursSpent, comments).pipe(
@@ -373,7 +374,7 @@ export class TaskService {
                 observer.error({ error: { message: 'Task ID is missing' } });
             });
         }
-        
+
         const taskId = String(id);
         console.log('📡 TaskService.approveTaskCompletion - Approving task', taskId);
         return this.apiService.approveTaskCompletion(taskId, approvalComments);
@@ -390,7 +391,7 @@ export class TaskService {
                 observer.error({ error: { message: 'Task ID is missing' } });
             });
         }
-        
+
         const taskId = String(id);
         console.log('📡 TaskService.rejectTask - Rejecting task', taskId);
         return this.apiService.rejectTask(taskId, reason);
