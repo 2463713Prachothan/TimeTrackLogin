@@ -3,9 +3,9 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, Observable, interval, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { ApiService } from './api.service';
-import { 
-  ApiResponse, 
-  TeamTimeLog, 
+import {
+  ApiResponse,
+  TeamTimeLog,
   TeamTimeLogDto,
   DashboardStats,
   CreateTimeLogDto,
@@ -42,7 +42,11 @@ export class TimeLogService {
   logs$ = this.logsSubject.asObservable();
 
   constructor() {
-    this.loadLogs();
+    // DISABLED: Causes 401 Unauthorized errors on page load
+    // Load from localStorage only, no automatic API calls
+    // this.loadLogs();
+    this.loadLogsFromLocalStorage();
+
     // Real-time updates disabled - only load data on initialization
     // this.startRealtimeUpdates();
   }
@@ -211,19 +215,58 @@ export class TimeLogService {
   // Load & Realtime Updates
   // ---------------------------
 
+  /**
+   * Load time logs from localStorage (no API call)
+   */
+  private loadLogsFromLocalStorage(): void {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const stored = localStorage.getItem('time_logs');
+        if (stored) {
+          const logs = JSON.parse(stored);
+          this.logsSubject.next(logs);
+          console.log('✅ TimeLogService - Loaded logs from localStorage:', logs.length);
+        } else {
+          this.logsSubject.next([]);
+          console.log('ℹ️ TimeLogService - No cached logs found');
+        }
+      } catch (e) {
+        console.error('❌ TimeLogService - Error loading from localStorage:', e);
+        this.logsSubject.next([]);
+      }
+    }
+  }
+
+  /**
+   * Load time logs from API (manual call only - use refresh button)
+   */
   private loadLogs(): void {
+    console.log('🔄 TimeLogService - Loading logs from API...');
     this.getUserTimeLogs().subscribe({
       next: (response) => {
         if (response.success && Array.isArray(response.data)) {
           const logs = response.data.map(log => this.convertToLegacyTimeLog(log));
           this.logsSubject.next(logs);
+          // Save to localStorage for future use
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('time_logs', JSON.stringify(logs));
+          }
+          console.log('✅ TimeLogService - Loaded logs from API:', logs.length);
         }
       },
       error: (err) => {
-        console.error('Error loading time logs:', err);
-        this.logsSubject.next([]);
+        console.error('❌ TimeLogService - Error loading time logs:', err);
+        // Fallback to localStorage
+        this.loadLogsFromLocalStorage();
       }
     });
+  }
+
+  /**
+   * Manually refresh logs from API (call from components)
+   */
+  refreshLogs(): void {
+    this.loadLogs();
   }
 
   private startRealtimeUpdates(): void {
