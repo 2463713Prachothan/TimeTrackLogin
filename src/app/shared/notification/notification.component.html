@@ -1,76 +1,105 @@
-<div class="notification-wrapper" (clickOutside)="closeDropdown()">
-  <!-- Bell Icon with Badge -->
-  <button 
-    class="notification-bell-btn" 
-    (click)="toggleDropdown()"
-    [attr.aria-label]="'Notifications (' + unreadCount + ' unread)'"
-  >
+<div class="notification-bell-container" #notificationContainer>
+  <button class="notification-bell-btn" (click)="toggleDropdown()">
     <i class="bi bi-bell-fill"></i>
-    <span class="badge" *ngIf="unreadCount > 0">
-      {{ unreadCount > 99 ? '99+' : unreadCount }}
-    </span>
+    <span class="badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
   </button>
 
-  <!-- Dropdown Panel -->
-  <div class="notification-dropdown" *ngIf="isDropdownOpen" [@slideDown]>
-    <!-- Header -->
+  <!-- Notification Dropdown List -->
+  <div class="notification-dropdown" *ngIf="showDropdown && !selectedNotification">
     <div class="dropdown-header">
-      <h6 class="mb-0">Notifications</h6>
-      <button 
-        class="btn btn-link btn-sm text-decoration-none" 
-        (click)="markAllAsRead()"
-        *ngIf="notifications.length > 0"
-      >
-        Mark all as read
+      <h6 class="m-0">
+        <i class="bi bi-bell"></i> Notifications
+      </h6>
+      <button class="btn btn-sm btn-link text-success" (click)="markAllAsRead()" *ngIf="notifications.length > 0">
+        <i class="bi bi-check-all"></i> Mark all as read
       </button>
     </div>
 
-    <!-- Loading State -->
-    <div class="text-center py-4" *ngIf="isLoading">
-      <div class="spinner-border spinner-border-sm text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-    </div>
-
-    <!-- Notifications List -->
-    <div class="notifications-list" *ngIf="!isLoading">
-      <div 
-        class="notification-item" 
-        *ngFor="let notification of notifications"
-        [class.unread]="notification.status === 'Unread'"
-        (click)="markAsRead(notification)"
-      >
+    <div class="notifications-list">
+      <div *ngFor="let notif of notifications" 
+           class="notification-item" 
+           [class.unread]="!notif.isRead"
+           (click)="selectNotification(notif)">
         <div class="notification-icon">
-          {{ getIcon(notification.type) }}
+          <i [class]="getIconClass(notif.type)"></i>
+          <span class="unread-indicator" *ngIf="!notif.isRead"></span>
         </div>
         <div class="notification-content">
-          <p class="notification-message mb-1">{{ notification.message }}</p>
-          <small class="notification-time text-muted">
-            {{ getTimeAgo(notification.createdDate) }}
-          </small>
+          <p class="notification-message">{{ notif.message }}</p>
+          <small class="notification-time">{{ getTimeAgo(notif.createdAt) }}</small>
         </div>
-        <button 
-          class="btn-mark-read" 
-          (click)="markAsRead(notification, $event)"
-          *ngIf="notification.status === 'Unread'"
-          title="Mark as read"
-        >
-          <i class="bi bi-check2"></i>
-        </button>
+        <div class="notification-arrow">
+          <i class="bi bi-chevron-right"></i>
+        </div>
       </div>
 
-      <!-- Empty State -->
-      <div class="empty-state text-center py-4" *ngIf="notifications.length === 0">
-        <i class="bi bi-bell-slash fs-1 text-muted"></i>
-        <p class="text-muted mt-2 mb-0">No new notifications</p>
+      <div class="empty-state" *ngIf="notifications.length === 0">
+        <i class="bi bi-bell-slash"></i>
+        <p>No notifications</p>
       </div>
     </div>
 
-    <!-- Footer (View All) -->
     <div class="dropdown-footer" *ngIf="notifications.length > 0">
-      <a routerLink="/notifications" class="btn btn-sm btn-link w-100">
-        View all notifications
-      </a>
+      <button class="btn btn-sm btn-link w-100" (click)="clearAll()">
+        <i class="bi bi-trash"></i> Clear all
+      </button>
     </div>
   </div>
+
+  <!-- Notification Detail View -->
+  <div class="notification-detail-view" *ngIf="showDropdown && selectedNotification">
+    <div class="detail-header">
+      <button class="btn-back" (click)="closeDetailView()">
+        <i class="bi bi-chevron-left"></i> Back
+      </button>
+      <h6>Notification Details</h6>
+      <button class="btn-close" (click)="closeDropdown()">
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+
+    <div class="detail-content">
+      <div class="detail-info">
+        <h5 class="detail-title">
+          {{ getNotificationTitle(selectedNotification.type) }}
+        </h5>
+        
+        <p class="detail-message">{{ selectedNotification.message }}</p>
+
+        <div class="detail-meta">
+          <div class="meta-item">
+            <span class="meta-label">Type:</span>
+            <span class="meta-value type-badge" [ngClass]="'badge-' + getNotificationBadgeClass(selectedNotification.type)">
+              {{ formatType(selectedNotification.type) }}
+            </span>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-label">Status:</span>
+            <span class="meta-value status-badge" [ngClass]="selectedNotification.isRead ? 'badge-success' : 'badge-warning'">
+              <i class="bi" [ngClass]="selectedNotification.isRead ? 'bi-check-circle-fill' : 'bi-info-circle'"></i>
+              {{ selectedNotification.isRead ? 'Read' : 'Unread' }}
+            </span>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-label">Received:</span>
+            <span class="meta-value">{{ formatDate(selectedNotification.createdAt) }}</span>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-label">Time Ago:</span>
+            <span class="meta-value">{{ getTimeAgo(selectedNotification.createdAt) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-footer">
+      <button class="btn btn-light w-100" (click)="closeDropdown()">Close</button>
+    </div>
+  </div>
+
+  <!-- Backdrop for dropdown -->
+  <div class="notification-backdrop" *ngIf="showDropdown" (click)="closeDropdown()"></div>
 </div>

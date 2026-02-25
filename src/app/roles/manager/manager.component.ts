@@ -7,12 +7,13 @@ import { UserService } from '../../core/services/user.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
 import { ProfileModalComponent } from '../../shared/profile-modal/profile-modal.component';
+import { NotificationComponent } from '../../shared/notification/notification.component';
 import { TeamMember } from '../../core/models/time-log.model';
 
 @Component({
   selector: 'app-manager',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterModule, ProfileModalComponent],
+  imports: [CommonModule, RouterOutlet, RouterModule, ProfileModalComponent, NotificationComponent],
   templateUrl: './manager.component.html',
   styleUrls: ['./manager.component.css']
 })

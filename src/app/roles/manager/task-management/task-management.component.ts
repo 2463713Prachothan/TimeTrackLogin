@@ -25,7 +25,6 @@ interface TeamMember {
 })
 export class TaskManagementComponent implements OnInit, OnDestroy {
   private dataService = inject(ManagerDataService);
-  private userService = inject(UserService);
   private submissionService = inject(TaskSubmissionService);
   private notificationService = inject(NotificationService);
   private authService = inject(AuthService);

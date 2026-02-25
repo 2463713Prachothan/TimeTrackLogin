@@ -6,18 +6,18 @@
       <span class="logo-text">TimeTrack</span>
     </div>
 
-    <div class="nav-actions">
+  <div class="nav-actions">
       <div class="user-info">
         <span class="admin-name">{{ user.name }}</span>
         <span class="role-badge manager-badge">{{ user.role }}</span>
       </div>
-
+      <app-notification></app-notification>
       <div class="profile-container">
         <button class="profile-circle admin-circle" (click)="toggleDropdown($event)">
           {{ user.initial }}
         </button>
 
-        <div class="profile-dropdown" *ngIf="isDropdownOpen">
+        <div class="profile-dropdown" *ngIf="isDropdownOpen" (click)="$event.stopPropagation()">
           <div class="dropdown-item" (click)="openProfile()">
             <span class="item-icon"><i class="bi bi-person-circle"></i></span> My Profile
           </div>
