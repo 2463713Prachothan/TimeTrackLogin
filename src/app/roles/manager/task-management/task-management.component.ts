@@ -148,11 +148,32 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
    * Uses backend API filtering when available
    */
   get filteredTasks(): any[] {
-    // If using API filters, return the already filtered tasks
-    if (this.selectedStatusFilter !== 'All' || this.selectedMemberFilter !== 'All') {
-      return this.tasks;
+    let filtered = [...this.tasks];
+
+    // Filter by status if not 'All'
+    if (this.selectedStatusFilter !== 'All') {
+      filtered = filtered.filter(task => {
+        // Handle different status formats
+        const taskStatus = task.status || '';
+        const filterStatus = this.selectedStatusFilter;
+        
+        // Normalize comparison
+        if (filterStatus === 'InProgress') {
+          return taskStatus === 'InProgress' || taskStatus === 'In Progress';
+        }
+        return taskStatus === filterStatus;
+      });
     }
-    return this.tasks;
+
+    // Filter by team member if not 'All'
+    if (this.selectedMemberFilter !== 'All') {
+      filtered = filtered.filter(task => {
+        const assignedUserId = task.assignedToUserId || task.userId || '';
+        return assignedUserId === this.selectedMemberFilter;
+      });
+    }
+
+    return filtered;
   }
 
   /**
@@ -346,7 +367,31 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
     const taskTitle = task?.title || 'this task';
     const taskDisplayId = task?.displayTaskId || 'N/A';
 
-    // Show SweetAlert2 confirmation
+    // Check if task is approved - cannot delete approved tasks
+    if (task?.status === 'Approved' || task?.status === 'Completed') {
+      console.warn('Cannot delete approved or completed task:', taskTitle);
+      await Swal.fire({
+        title: 'Cannot Delete Task',
+        html: `
+          <div style=\"text-align: left;\">
+            <p><strong>Task ${taskDisplayId}:</strong> ${taskTitle}</p>
+            <p class=\"text-danger\" style=\"margin-top: 15px;\">
+              <i class=\"fas fa-lock\"></i> 
+              This task cannot be deleted because it has been <strong>${task.status}</strong>.
+            </p>
+            <p style=\"margin-top: 10px; font-size: 0.9rem;\">
+              Only <strong>Pending</strong> or <strong>In Progress</strong> tasks can be deleted.
+            </p>
+          </div>
+        `,
+        icon: 'error',
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#dc3545',
+      });
+      return;
+    }
+
+    // Show SweetAlert2 confirmation for deletable tasks
     const result = await Swal.fire({
       title: 'Delete Task?',
       html: `

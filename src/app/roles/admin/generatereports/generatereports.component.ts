@@ -101,9 +101,13 @@ export class GeneratereportsComponent implements OnInit, AfterViewInit, OnDestro
   @ViewChild('roleDistributionCanvas') roleDistributionCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('hoursByDeptCanvas') hoursByDeptCanvas?: ElementRef<HTMLCanvasElement>;
 
+    @ViewChild('tasksCompletedByDeptCanvas') tasksCompletedByDeptCanvas?: ElementRef<HTMLCanvasElement>;
+
   hoursTrendChart: any = null;
   roleChart: any = null;
   hoursByDeptChart: any = null;
+
+    tasksCompletedByDeptChart: any = null;
 
   constructor() {
     this.loadChartJS();
@@ -195,23 +199,26 @@ export class GeneratereportsComponent implements OnInit, AfterViewInit, OnDestro
     this.summary.activeEmployees = analyticsData.activeEmployees || 0;
     this.summary.avgEmployeesPerDept = analyticsData.avgEmployeesPerDepartment || 0;
 
-    // Update task completion metrics - PREFER dedicated endpoint data if available
-    if (taskCompletionResponse && taskCompletionResponse.data) {
-      this.taskCompletion.completed = taskCompletionResponse.data.completedCount || 0;
-      this.taskCompletion.inProgress = taskCompletionResponse.data.inProgressCount || 0;
-      this.taskCompletion.pending = taskCompletionResponse.data.pendingCount || 0;
-      this.taskCompletion.completionRate = taskCompletionResponse.data.completionPercentage || 0;
-      
-      console.log('✅ Using task completion breakdown from dedicated endpoint');
-    } else {
-      // Fallback to organization summary if dedicated endpoint fails
-      this.taskCompletion.completed = analyticsData.completedTasks || 0;
-      this.taskCompletion.inProgress = analyticsData.inProgressTasks || 0;
-      this.taskCompletion.pending = analyticsData.pendingTasks || 0;
-      this.taskCompletion.completionRate = analyticsData.taskCompletionPercentage || 0;
-      
-      console.log('⚠️ Using task data from organization summary (fallback)');
+    // Aggregate only tasks created by managers and assigned to employees
+    let allTasks: { completed: number; inProgress: number; pending: number }[] = [];
+    if (analyticsData.departmentMetrics && analyticsData.departmentMetrics.length > 0) {
+      analyticsData.departmentMetrics.forEach(dept => {
+        if (dept && dept.completedTasks !== undefined && dept.inProgressTasks !== undefined && dept.pendingTasks !== undefined) {
+          allTasks.push({
+            completed: dept.completedTasks,
+            inProgress: dept.inProgressTasks,
+            pending: dept.pendingTasks
+          });
+        }
+      });
     }
+    const totalCompleted = allTasks.reduce((sum, t) => sum + t.completed, 0);
+    const totalAssigned = allTasks.reduce((sum, t) => sum + t.completed + t.inProgress + t.pending, 0);
+    this.taskCompletion.completed = totalCompleted;
+    this.taskCompletion.inProgress = allTasks.reduce((sum, t) => sum + t.inProgress, 0);
+    this.taskCompletion.pending = allTasks.reduce((sum, t) => sum + t.pending, 0);
+    this.taskCompletion.completionRate = totalAssigned > 0 ? Math.round((totalCompleted / totalAssigned) * 100) : 0;
+    console.log('✅ Aggregated manager-assigned tasks:', { totalCompleted, totalAssigned });
 
     console.log('📊 Task Completion Metrics:', {
       completed: this.taskCompletion.completed,
@@ -378,6 +385,8 @@ export class GeneratereportsComponent implements OnInit, AfterViewInit, OnDestro
     this.createHoursTrendChart();
     this.createRoleDistributionChart();
     this.createHoursByDeptChart();
+
+      this.createTasksCompletedByDeptChart();
   }
 
   private updateCharts() {
@@ -395,13 +404,56 @@ export class GeneratereportsComponent implements OnInit, AfterViewInit, OnDestro
       this.hoursByDeptChart.data.datasets[0].data = this.departmentRows.map(r => r.totalHours);
       this.hoursByDeptChart.update();
     }
+
+      if (this.tasksCompletedByDeptChart) {
+        this.tasksCompletedByDeptChart.data.labels = this.departmentRows.map(r => r.department);
+        this.tasksCompletedByDeptChart.data.datasets[0].data = this.departmentRows.map(r => r.completedTasks);
+        this.tasksCompletedByDeptChart.update();
+      }
   }
 
   private destroyCharts() {
-    [this.hoursTrendChart, this.roleChart, this.hoursByDeptChart].forEach(chart => {
-      if (chart) chart.destroy();
+      [this.hoursTrendChart, this.roleChart, this.hoursByDeptChart, this.tasksCompletedByDeptChart].forEach(chart => {
+        if (chart) chart.destroy();
+      });
+      this.hoursTrendChart = this.roleChart = this.hoursByDeptChart = this.tasksCompletedByDeptChart = null;
+  }
+  private createTasksCompletedByDeptChart() {
+    const canvas = this.tasksCompletedByDeptCanvas?.nativeElement;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    this.tasksCompletedByDeptChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: this.departmentRows.map(r => r.department),
+        datasets: [
+          {
+            label: 'Completed Tasks',
+            data: this.departmentRows.map(r => r.completedTasks),
+            backgroundColor: ['#6366f1', '#8cc63f', '#f59e0b', '#e57373', '#64b5f6', '#ffd54f', '#81c784'],
+            borderColor: '#fff',
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { padding: 15, font: { size: 12 } }
+          },
+          title: {
+            display: true,
+            text: 'Tasks Completed by Department'
+          },
+          tooltip: { backgroundColor: 'rgba(31, 41, 55, 0.8)', padding: 12, cornerRadius: 8 }
+        }
+      }
     });
-    this.hoursTrendChart = this.roleChart = this.hoursByDeptChart = null;
   }
 
   private createHoursTrendChart() {
