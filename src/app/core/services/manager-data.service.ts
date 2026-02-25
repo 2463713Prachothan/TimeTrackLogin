@@ -25,35 +25,74 @@ export class ManagerDataService {
   performance$ = this.perfSubject.asObservable();
 
   constructor() {
-    this.loadTeamData();
+    // DISABLED: Causes 401 Unauthorized errors on page load
+    // this.loadTeamData();
     this.setUser('Manager User', 'Manager');
-    
-    // Auto-refresh data every 5 seconds for live updates
-    interval(5000).pipe(
-      switchMap(() => this.getTeamDataFromBackend())
-    ).subscribe(
-      (data: any) => {
-        if (data && data.logs) {
-          this.logsSubject.next(data.logs);
-        }
-      }
-    );
+
+    // DISABLED: Auto-refresh polling causes repeated 401 errors
+    // Use manual refresh buttons instead to load data when authenticated
+    // interval(5000).pipe(
+    //   switchMap(() => this.getTeamDataFromBackend())
+    // ).subscribe(
+    //   (data: any) => {
+    //     if (data && data.logs) {
+    //       this.logsSubject.next(data.logs);
+    //     }
+    //   }
+    // );
+
+    // Load from localStorage on initialization
+    this.loadFromLocalStorage();
   }
 
   /**
-   * Load all team data from backend APIs
+   * Load data from localStorage (no API calls)
+   */
+  private loadFromLocalStorage(): void {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const storedLogs = localStorage.getItem('team_time_logs');
+        const storedTasks = localStorage.getItem('manager_tasks');
+
+        if (storedLogs) {
+          const logs = JSON.parse(storedLogs);
+          this.logsSubject.next(logs);
+          console.log('✅ ManagerDataService - Loaded logs from localStorage:', logs.length);
+        }
+
+        if (storedTasks) {
+          const tasks = JSON.parse(storedTasks);
+          this.tasksSubject.next(tasks);
+          console.log('✅ ManagerDataService - Loaded tasks from localStorage:', tasks.length);
+        }
+      } catch (e) {
+        console.error('❌ ManagerDataService - Error loading from localStorage:', e);
+      }
+    }
+  }
+
+  /**
+   * Load all team data from backend APIs (manual call only)
    */
   private loadTeamData() {
     console.log('📊 ManagerDataService - Loading team data from backend');
-    
+
     this.getTeamDataFromBackend().subscribe(
       (data: any) => {
         console.log('✅ ManagerDataService - Data loaded successfully');
         if (data.logs) {
           this.logsSubject.next(data.logs);
+          // Save to localStorage
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('team_time_logs', JSON.stringify(data.logs));
+          }
         }
         if (data.tasks) {
           this.tasksSubject.next(data.tasks);
+          // Save to localStorage
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('manager_tasks', JSON.stringify(data.tasks));
+          }
         }
       },
       (err) => {
@@ -78,6 +117,14 @@ export class ManagerDataService {
   }
 
   /**
+   * Manually refresh team data from backend (call this from components when authenticated)
+   */
+  refreshTeamData(): void {
+    console.log('🔄 ManagerDataService - Manual refresh triggered');
+    this.loadTeamData();
+  }
+
+  /**
    * Get team analytics - combines logs and tasks
    */
   getTeamAnalytics(): Observable<any> {
@@ -98,7 +145,7 @@ export class ManagerDataService {
     const members = new Set(logs.map(l => l.employee || l.employeeName)).size;
     const completedTasks = tasks.filter(t => t.status === 'Completed').length;
     const inProgressTasks = tasks.filter(t => t.status === 'In Progress').length;
-    const completionRate = tasks.length > 0 
+    const completionRate = tasks.length > 0
       ? Math.round((completedTasks / tasks.length) * 100)
       : 0;
 
@@ -136,7 +183,7 @@ export class ManagerDataService {
       // Assume each log entry might be a different day
       emp.days = Math.max(1, Math.ceil(emp.hours / 8));
       emp.efficiency = Math.min(Math.round((emp.hours / (emp.days * 8)) * 100), 100);
-      
+
       if (emp.efficiency >= 90) {
         emp.status = 'Excellent';
       } else if (emp.efficiency >= 70) {

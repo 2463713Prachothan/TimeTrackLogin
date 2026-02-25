@@ -51,6 +51,20 @@ export class AuthService {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.setItem('user_session', JSON.stringify(user));
       localStorage.setItem('isLoggedIn', 'true');
+
+      // Store token separately for easy access by ApiService
+      if (user.token) {
+        localStorage.setItem('token', user.token);
+        console.log('✅ AuthService - Token saved to localStorage');
+      } else if (user.accessToken) {
+        localStorage.setItem('token', user.accessToken);
+        console.log('✅ AuthService - Access token saved to localStorage');
+      } else if (user.jwtToken) {
+        localStorage.setItem('token', user.jwtToken);
+        console.log('✅ AuthService - JWT token saved to localStorage');
+      } else {
+        console.warn('⚠️ AuthService - No token found in user object:', Object.keys(user));
+      }
     }
   }
 
@@ -75,6 +89,7 @@ export class AuthService {
       localStorage.removeItem('timerSession');
       localStorage.removeItem('user_session');
       localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('token'); // Also remove the token
     }
     this.currentUser.set(null);
     this.router.navigate(['/signin']);

@@ -113,7 +113,9 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
     });
 
     // Load tasks created by this manager from API
-    this.loadTasksFromApi();
+    // DISABLED: Causes 403 Forbidden on page load. Backend requires proper authentication.
+    // Tasks will be loaded from dataService.tasks$ subscription below or manually via refresh button.
+    // this.loadTasksFromApi();
 
     // Subscribe to tasks and dynamically update when they change
     this.dataService.tasks$.pipe(takeUntil(this.destroy$)).subscribe((data: any[]) => {
@@ -129,7 +131,7 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
       this.taskSubmissions = this.submissionService.getTeamSubmissions(teamMemberNames);
       console.log('✅ Manager - Filtered team submissions:', this.taskSubmissions);
     });
-    
+
     // Periodically refresh submissions to ensure we get latest updates
     setInterval(() => {
       console.log('🔄 Manager - Refreshing submissions...');
@@ -156,7 +158,7 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
         // Handle different status formats
         const taskStatus = task.status || '';
         const filterStatus = this.selectedStatusFilter;
-        
+
         // Normalize comparison
         if (filterStatus === 'InProgress') {
           return taskStatus === 'InProgress' || taskStatus === 'In Progress';
@@ -243,15 +245,37 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
 
   /**
    * Load tasks created by this manager from API
+   * NOTE: Only call this manually (e.g., via refresh button) to avoid 403 errors on page load
    */
   private loadTasksFromApi(): void {
+    console.log('📡 Manager - Manually loading tasks from API...');
     this.apiService.getTasksCreatedByMe().pipe(takeUntil(this.destroy$)).subscribe({
       next: (tasks: any[]) => {
-        console.log('Tasks loaded from API:', tasks);
+        console.log('✅ Manager - Tasks loaded from API:', tasks);
         this.tasks = tasks;
+        // Update dataService so other components get the data
+        if (tasks && tasks.length > 0) {
+          // Store in localStorage for future use
+          if (typeof window !== 'undefined' && window.localStorage) {
+            localStorage.setItem('manager_tasks', JSON.stringify(tasks));
+          }
+        }
       },
       error: (err) => {
-        console.error('Error loading tasks:', err);
+        console.error('❌ Manager - Error loading tasks from API:', err);
+        console.log('💡 Falling back to localStorage...');
+        // Try to load from localStorage as fallback
+        if (typeof window !== 'undefined' && window.localStorage) {
+          const stored = localStorage.getItem('manager_tasks');
+          if (stored) {
+            try {
+              this.tasks = JSON.parse(stored);
+              console.log('✅ Loaded tasks from localStorage:', this.tasks.length);
+            } catch (e) {
+              console.error('Error parsing tasks from localStorage:', e);
+            }
+          }
+        }
       }
     });
   }
@@ -314,21 +338,21 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
       next: (response: any) => {
         console.log('Task created successfully:', response);
         this.isSubmitting = false;
-        
+
         // Show success notification
         this.notificationService.success('Task created successfully');
-        
+
         // Close modal and reset form
         this.showModal = false;
         this.resetForm();
-        
+
         // Refresh task list from API
         this.loadTasksFromApi();
       },
       error: (err: any) => {
         console.error('Error creating task:', err);
         this.isSubmitting = false;
-        
+
         // Extract error message
         const errorMessage = err?.error?.message || err?.error?.title || err?.error?.detail || 'Failed to create task';
         this.notificationService.error(errorMessage);
@@ -422,12 +446,12 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           console.log('Task deleted successfully');
-          
+
           // Remove from all local arrays
           this.tasks = this.tasks.filter(t => (t.taskId || t.id) !== id);
           this.pendingApprovalTasks = this.pendingApprovalTasks.filter(t => (t.taskId || t.id) !== id);
           this.overdueTasks = this.overdueTasks.filter(t => (t.taskId || t.id) !== id);
-          
+
           this.notificationService.success('Task deleted successfully');
           this.loadTasksFromApi();
         },
@@ -445,11 +469,11 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
    */
   openEditModal(task: any) {
     console.log('Opening edit modal for task:', task);
-    
+
     this.selectedTask = task;
     // Use taskId (database ID) for editing
     this.editingTaskId = task.taskId || task.id;
-    
+
     // Map task properties to form, handling null values
     this.editTask = {
       title: task.title || '',
@@ -463,7 +487,7 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
       // Handle date formatting - ensure proper format for input[type=date]
       dueDate: this.formatDateForInput(task.dueDate)
     };
-    
+
     console.log('Edit form populated with:', this.editTask);
     this.showEditModal = true;
   }
@@ -474,7 +498,7 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
   openViewModal(task: any) {
     console.log('Opening view modal for task:', task);
     this.viewTask = task;
-    
+
     // Load time logs to display employee work descriptions
     this.apiService.getTaskTimeLogs(task.taskId).subscribe({
       next: (response) => {
@@ -505,7 +529,7 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
    */
   private formatDateForInput(date: any): string {
     if (!date) return '';
-    
+
     try {
       if (typeof date === 'string') {
         // If ISO string, extract date part
@@ -649,7 +673,7 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
         this.approveTaskCompletion(this.selectedSubmission);
         this.notificationService.success(`✅ Task "${taskTitle}" has been approved!`);
         break;
-        
+
       case 'Rejected':
         console.log('❌ Manager rejecting submission:', submissionId);
         this.submissionService.rejectSubmission(
@@ -659,7 +683,7 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
         );
         this.notificationService.success(`❌ Task "${taskTitle}" has been rejected.`);
         break;
-        
+
       case 'Need Changes':
         console.log('⚠️ Manager requesting changes on submission:', submissionId);
         this.submissionService.needsChanges(
@@ -696,17 +720,17 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response: any) => {
           console.log('✅ Manager.approveTaskCompletion - Task approved:', response);
-          
+
           // Approve submission in service
           this.submissionService.approveSubmission(
             submission.id!,
             this.currentManagerName,
             approvalComments
           );
-          
+
           // Reload tasks from API to ensure sync
           this.loadTasksFromApi();
-          
+
           this.notificationService.success('✅ Task completion approved!');
           this.isSubmitting = false;
         },
@@ -743,13 +767,13 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response: any) => {
           console.log('✅ Manager.rejectTaskCompletion - Task rejected:', response);
-          
+
           // Remove from pendingApprovalTasks immediately for instant UI update
           this.pendingApprovalTasks = this.pendingApprovalTasks.filter(t => (t.taskId || t.id) !== taskId);
-          
+
           // Reload tasks from API to ensure sync
           this.loadTasksFromApi();
-          
+
           this.notificationService.success('❌ Task rejected and sent back to In Progress');
           this.isSubmitting = false;
         },
@@ -788,13 +812,13 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response: any) => {
           console.log('✅ Manager.approveTask - Task approved:', response);
-          
+
           // Remove from pendingApprovalTasks immediately for instant UI update
           this.pendingApprovalTasks = this.pendingApprovalTasks.filter(t => (t.taskId || t.id) !== taskId);
-          
+
           // Reload tasks from API to ensure sync
           this.loadTasksFromApi();
-          
+
           this.notificationService.success('✅ Task approved!');
           this.isSubmitting = false;
         },
@@ -867,16 +891,16 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
    */
   loadPendingApprovalTasks() {
     console.log('📋 Manager - Loading pending approval tasks');
-    
+
     this.taskService.getPendingApprovalTasks()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (tasks: any[]) => {
           console.log('✅ Manager - Pending approval tasks loaded:', tasks);
-          
+
           // API now returns enriched tasks array directly
           this.pendingApprovalTasks = Array.isArray(tasks) ? tasks : [];
-          
+
           this.notificationService.success(`Found ${this.pendingApprovalTasks.length} tasks awaiting approval`);
         },
         error: (err: any) => {
@@ -893,16 +917,16 @@ export class TaskManagementComponent implements OnInit, OnDestroy {
    */
   loadOverdueTasks() {
     console.log('📋 Manager - Loading overdue tasks');
-    
+
     this.taskService.getOverdueTasks()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (tasks: any[]) => {
           console.log('✅ Manager - Overdue tasks loaded:', tasks);
-          
+
           // API now returns enriched tasks array directly
           this.overdueTasks = Array.isArray(tasks) ? tasks : [];
-          
+
           this.notificationService.success(`Found ${this.overdueTasks.length} overdue tasks`);
         },
         error: (err: any) => {

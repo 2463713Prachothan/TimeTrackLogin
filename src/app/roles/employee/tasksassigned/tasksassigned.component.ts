@@ -7,7 +7,7 @@ import { NotificationService } from '../../../core/services/notification.service
 import { AuthService } from '../../../core/services/auth.service';
 import { ApiService } from '../../../core/services/api.service';
 import { Subject, takeUntil } from 'rxjs';
- 
+
 interface TaskDisplay {
   id?: string;
   taskId?: string;
@@ -24,7 +24,7 @@ interface TaskDisplay {
   dueDate?: string;
   assignedDate?: Date;
 }
- 
+
 @Component({
   selector: 'app-tasksassigned',
   standalone: true,
@@ -40,7 +40,7 @@ export class TasksComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private apiService = inject(ApiService);
   private destroy$ = new Subject<void>();
- 
+
   activeTab: string = 'My Tasks';
   isLoadingTasks = false;
   assignedTasks: any[] = [];
@@ -49,10 +49,10 @@ export class TasksComponent implements OnInit, OnDestroy {
     { label: 'In Progress', value: '0 tasks', icon: 'fa-regular fa-clock', class: 'icon-blue' },
     { label: 'Completed', value: '0 tasks', icon: 'fa-regular fa-circle-check', class: 'icon-green' }
   ];
- 
+
   taskList: TaskDisplay[] = [];
   submissionHistory: TaskSubmission[] = [];
- 
+
   // Modal and form properties
   showSubmissionModal = false;
   showLogTimeModal = false;
@@ -70,9 +70,9 @@ export class TasksComponent implements OnInit, OnDestroy {
     date: new Date().toISOString().split('T')[0],
     workDescription: ''
   };
- 
+
   currentUser: string = '';
- 
+
   ngOnInit() {
     const user = this.authService.currentUser();
     if (user) {
@@ -80,17 +80,21 @@ export class TasksComponent implements OnInit, OnDestroy {
     }
     this.loadTasks();
     this.loadSubmissionHistory();
-    this.loadEmployeeStats();
-   
+
+    // DISABLED: Backend endpoint causes 400 Bad Request errors
+    // The /api/Task/employee-stats endpoint either doesn't exist or requires different parameters
+    // Stats are calculated from local tasks data via updateStats() method instead
+    // this.loadEmployeeStats();
+
     // Subscribe to task submission updates to get real-time approval/rejection status
     this.taskSubmissionService.getSubmissions().pipe(takeUntil(this.destroy$)).subscribe((submissions: TaskSubmission[]) => {
       console.log('📝 Employee.ngOnInit - Submission status updated:', submissions);
-     
+
       // Check if any task status has changed based on submission approval
       submissions.forEach(submission => {
         // Find the task in assignedTasks
         const taskIndex = this.assignedTasks.findIndex(t => (t.taskId === submission.taskId || t.id === submission.taskId));
-       
+
         if (taskIndex !== -1) {
           // Update task status based on submission approval status
           if (submission.approvalStatus === 'Approved') {
@@ -101,15 +105,15 @@ export class TasksComponent implements OnInit, OnDestroy {
               this.assignedTasks[taskIndex].approvalComments = submission.approvalComments;
               this.notificationService.success(`✅ Task "${submission.taskTitle}" has been approved by ${submission.approvedBy}`);
               this.updateStatsFromAssignedTasks();
-              // Reload stats from API to get accurate count
-              this.loadEmployeeStats();
+              // Stats updated from local task data, no API call needed
+              // this.loadEmployeeStats();
             }
           } else if (submission.approvalStatus === 'Rejected') {
             const currentStatus = this.assignedTasks[taskIndex].status;
             // Mark task as rejected for Approvals tab display
             this.assignedTasks[taskIndex].isRejected = true;
             this.assignedTasks[taskIndex].rejectionReason = submission.approvalComments || 'No reason provided';
-            
+
             // Change status back to InProgress so it appears in My Tasks tab
             if (currentStatus !== 'InProgress' && currentStatus !== 'In Progress') {
               console.log('❌ Task rejected by manager:', submission.taskId);
@@ -122,12 +126,12 @@ export class TasksComponent implements OnInit, OnDestroy {
       });
     });
   }
- 
+
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
   }
- 
+
   /**
    * Load tasks from API using /api/Task/my-tasks endpoint
    */
@@ -137,19 +141,19 @@ export class TasksComponent implements OnInit, OnDestroy {
       console.error('❌ Employee.loadTasks - No current user found');
       return;
     }
- 
+
     this.isLoadingTasks = true;
     console.log('✅ Employee.loadTasks - Fetching tasks from API for user:', currentUser.fullName);
- 
+
     // Use taskService.getMyTasks() which calls /api/Task/my-tasks
     this.taskService.getMyTasks().pipe(takeUntil(this.destroy$)).subscribe({
       next: (tasks: any[]) => {
         console.log(`✅ Employee.loadTasks - Received ${tasks.length} tasks from API`);
         console.log('📋 Task details:', tasks);
-       
+
         // Store raw tasks from API
         this.assignedTasks = tasks;
-       
+
         // Transform to display format
         this.taskList = tasks.map(task => ({
           id: task.id,
@@ -167,11 +171,11 @@ export class TasksComponent implements OnInit, OnDestroy {
           dueDate: task.dueDate,
           assignedDate: task.createdDate
         }));
- 
+
         // Update statistics
         this.updateStatsFromAssignedTasks();
-        // Also load stats from API for accurate counts including approved tasks
-        this.loadEmployeeStats();
+        // Stats calculated from local task data, no API call needed
+        // this.loadEmployeeStats();
         this.isLoadingTasks = false;
       },
       error: (err) => {
@@ -181,7 +185,7 @@ export class TasksComponent implements OnInit, OnDestroy {
       }
     });
   }
- 
+
   /**
    * Update statistics based on assigned tasks
    */
@@ -189,14 +193,14 @@ export class TasksComponent implements OnInit, OnDestroy {
     const pendingCount = this.assignedTasks.filter(t => t.status === 'Pending').length;
     const inProgressCount = this.assignedTasks.filter(t => t.status === 'InProgress' || t.status === 'In Progress').length;
     const completedCount = this.assignedTasks.filter(t => t.status === 'Completed' || t.status === 'Approved').length;
- 
+
     this.stats = [
       { label: 'Pending', value: `${pendingCount} tasks`, icon: 'fa-regular fa-circle', class: 'icon-gray' },
       { label: 'In Progress', value: `${inProgressCount} tasks`, icon: 'fa-regular fa-clock', class: 'icon-blue' },
       { label: 'Completed', value: `${completedCount} tasks`, icon: 'fa-regular fa-circle-check', class: 'icon-green' }
     ];
   }
- 
+
   /**
    * Load submission history for current employee
    */
@@ -212,7 +216,13 @@ export class TasksComponent implements OnInit, OnDestroy {
    * Load employee dashboard statistics from new API endpoint
    */
   private loadEmployeeStats(): void {
-    this.apiService.getEmployeeStats().subscribe({
+    const employeeId = this.getCurrentEmployeeId();
+    if (!employeeId) {
+      console.warn('⚠️ Cannot load employee stats - employeeId not found');
+      return;
+    }
+
+    this.apiService.getEmployeeStats(employeeId).subscribe({
       next: (response) => {
         if (response && response.success && response.data) {
           const stats = response.data;
@@ -244,8 +254,8 @@ export class TasksComponent implements OnInit, OnDestroy {
       // Show Pending and InProgress tasks
       // Don't show Completed, Approved tasks
       return (status === 'Pending' || status === 'InProgress' || status === 'In Progress') &&
-             status !== 'Completed' && 
-             status !== 'Approved';
+        status !== 'Completed' &&
+        status !== 'Approved';
     });
   }
 
@@ -261,13 +271,13 @@ export class TasksComponent implements OnInit, OnDestroy {
    * For Approvals tab - shows approval history and status
    */
   getApprovalTasks(): any[] {
-    return this.assignedTasks.filter(task => 
-      task.status === 'Completed' || 
+    return this.assignedTasks.filter(task =>
+      task.status === 'Completed' ||
       task.status === 'Approved' ||
       task.isRejected === true
     );
   }
- 
+
   /**
    * Open task submission modal
    */
@@ -281,7 +291,7 @@ export class TasksComponent implements OnInit, OnDestroy {
     };
     this.showSubmissionModal = true;
   }
- 
+
   /**
    * Open submission modal from raw task object (from API)
    */
@@ -304,7 +314,7 @@ export class TasksComponent implements OnInit, OnDestroy {
     };
     this.openSubmissionModal(taskDisplay);
   }
- 
+
   /**
    * Open completion modal from raw task object
    */
@@ -335,24 +345,24 @@ export class TasksComponent implements OnInit, OnDestroy {
     };
     this.showSubmissionModal = true;
   }
- 
+
   /**
    * Start a task (change status from Pending to In Progress)
    */
   onStartTask(task: any) {
     // Try to get ID from various possible fields
     const taskId = task.id || task.taskId || task.displayTaskId;
-   
+
     if (!taskId) {
       console.error('❌ Employee.onStartTask - Task ID not found in:', task);
       this.notificationService.error('Invalid task ID');
       return;
     }
- 
+
     this.isSubmitting = true;
-   
+
     console.log('🚀 Employee.onStartTask - Starting task:', taskId, 'Task:', task);
-   
+
     // Optimistically update local state
     const index = this.assignedTasks.findIndex(t => (t.id || t.taskId || t.displayTaskId) === taskId);
     if (index !== -1) {
@@ -361,11 +371,11 @@ export class TasksComponent implements OnInit, OnDestroy {
       this.assignedTasks[index].canStart = false;
       this.updateStatsFromAssignedTasks();
     }
-   
+
     this.taskService.startTask(taskId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (response: any) => {
         console.log('✅ Employee.onStartTask - Task started successfully:', response);
-        
+
         // Update task with response data if available
         if (index !== -1 && response?.data) {
           const updatedTask = response.data;
@@ -379,13 +389,13 @@ export class TasksComponent implements OnInit, OnDestroy {
           };
           this.updateStatsFromAssignedTasks();
         }
-        
+
         this.notificationService.success(`✨ Task started! Status changed to "In Progress"`);
         this.isSubmitting = false;
       },
       error: (err: any) => {
         console.error('❌ Employee.onStartTask - Error starting task:', err);
-       
+
         // Revert optimistic update on error
         if (index !== -1) {
           this.assignedTasks[index].status = 'Pending';
@@ -393,50 +403,50 @@ export class TasksComponent implements OnInit, OnDestroy {
           this.assignedTasks[index].canStart = true;
           this.updateStatsFromAssignedTasks();
         }
-       
+
         const message = err.error?.message || err.error || 'Failed to start task';
         this.notificationService.error(message);
         this.isSubmitting = false;
       }
     });
   }
- 
+
   /**
    * Complete a task (change status from In Progress to Completed)
    */
   onCompleteTask() {
     // Try to get ID from various possible fields
     const taskId = this.selectedRawTask?.id || this.selectedRawTask?.taskId || this.selectedRawTask?.displayTaskId;
-   
+
     if (!taskId) {
       console.error('❌ Employee.onCompleteTask - Task ID not found in:', this.selectedRawTask);
       this.notificationService.error('Invalid task');
       this.closeModal();
       return;
     }
- 
+
     if (this.submissionForm.hoursSpent <= 0) {
       this.notificationService.error('Hours spent must be greater than 0');
       return;
     }
- 
+
     this.isSubmitting = true;
     const hoursSpent = this.submissionForm.hoursSpent;
     const comments = this.submissionForm.comments;
- 
+
     console.log('✔️ Employee.onCompleteTask - Completing task:', taskId, 'Hours:', hoursSpent);
- 
+
     // Optimistically update local state
     const index = this.assignedTasks.findIndex(t => (t.id || t.taskId || t.displayTaskId) === taskId);
     if (index !== -1) {
       this.assignedTasks[index].status = 'Completed';
       this.updateStatsFromAssignedTasks();
     }
- 
+
     this.taskService.completeTask(taskId, hoursSpent, comments).pipe(takeUntil(this.destroy$)).subscribe({
       next: (response: any) => {
         console.log('✅ Employee.onCompleteTask - Task completed successfully:', response);
-       
+
         // Create a submission record for manager approval
         const taskTitle = this.selectedRawTask?.title || 'Task';
         const submission: TaskSubmission = {
@@ -450,32 +460,32 @@ export class TasksComponent implements OnInit, OnDestroy {
           approvalStatus: 'Pending',
           priority: this.selectedRawTask?.priority || 'Medium'
         };
- 
+
         // Submit the completion to task submission service
         this.taskSubmissionService.submitTaskCompletion(submission);
-       
+
         this.notificationService.success(`✅ Task completed! Awaiting manager approval.`);
-        // Reload stats from API to get accurate count
-        this.loadEmployeeStats();
+        // Stats will update automatically from task data
+        // this.loadEmployeeStats();
         this.closeModal();
         this.isSubmitting = false;
       },
       error: (err: any) => {
         console.error('❌ Employee.onCompleteTask - Error completing task:', err);
-       
+
         // Revert optimistic update on error
         if (index !== -1) {
           this.assignedTasks[index].status = 'In Progress';
           this.updateStatsFromAssignedTasks();
         }
-       
+
         const message = err.error?.message || err.error || 'Failed to complete task';
         this.notificationService.error(message);
         this.isSubmitting = false;
       }
     });
   }
- 
+
   /**
    * Close modal
    */
@@ -495,7 +505,7 @@ export class TasksComponent implements OnInit, OnDestroy {
    */
   openLogTimeModal(task: any) {
     const taskId = task.id || task.taskId || task.displayTaskId;
-    
+
     if (!taskId) {
       console.error('❌ Employee.openLogTimeModal - Task ID not found');
       this.notificationService.error('Invalid task ID');
@@ -530,7 +540,7 @@ export class TasksComponent implements OnInit, OnDestroy {
    */
   submitLogTime() {
     const taskId = this.selectedRawTask?.id || this.selectedRawTask?.taskId || this.selectedRawTask?.displayTaskId;
-    
+
     if (!taskId) {
       this.notificationService.error('Invalid task ID');
       return;
@@ -565,7 +575,7 @@ export class TasksComponent implements OnInit, OnDestroy {
           this.notificationService.success(`⏰ Logged ${this.logTimeForm.hoursSpent} hours on task`);
           this.closeLogTimeModal();
           this.isSubmitting = false;
-          
+
           // Reload tasks to get updated actualHours
           this.loadTasks();
         },
@@ -577,7 +587,7 @@ export class TasksComponent implements OnInit, OnDestroy {
         }
       });
   }
- 
+
   /**
    * Submit task completion
    */
@@ -586,12 +596,12 @@ export class TasksComponent implements OnInit, OnDestroy {
       this.notificationService.error('Invalid task or user');
       return;
     }
- 
+
     if (this.submissionForm.hoursSpent <= 0) {
       this.notificationService.error('Hours spent must be greater than 0');
       return;
     }
- 
+
     const submission: TaskSubmission = {
       taskId: this.selectedTask.taskId || this.selectedTask.id!,
       taskTitle: this.selectedTask.name,
@@ -603,13 +613,13 @@ export class TasksComponent implements OnInit, OnDestroy {
       approvalStatus: 'Pending',
       priority: this.submissionForm.priority
     };
- 
+
     this.taskSubmissionService.submitTaskCompletion(submission);
     this.notificationService.success('Task submission sent to manager for approval');
     this.closeModal();
     this.loadSubmissionHistory();
   }
- 
+
   /**
    * Get status badge color for submission
    */
@@ -627,7 +637,7 @@ export class TasksComponent implements OnInit, OnDestroy {
         return 'badge-secondary';
     }
   }
- 
+
   /**
    * Get completion status badge
    */
@@ -643,7 +653,7 @@ export class TasksComponent implements OnInit, OnDestroy {
         return 'badge-secondary';
     }
   }
- 
+
   /**
    * Calculate progress hours based on status
    */
@@ -652,7 +662,7 @@ export class TasksComponent implements OnInit, OnDestroy {
     if (status === 'In Progress') return totalHours * 0.8;
     return 0;
   }
- 
+
   /**
    * Get progress percentage based on status (public for template)
    */
@@ -661,7 +671,7 @@ export class TasksComponent implements OnInit, OnDestroy {
     if (status === 'In Progress') return 80;
     return 0;
   }
- 
+
   /**
    * Get appropriate icon for status
    */
@@ -675,7 +685,7 @@ export class TasksComponent implements OnInit, OnDestroy {
         return 'fa-solid fa-play';
     }
   }
- 
+
   /**
    * Get CSS class for status badge
    */
@@ -689,7 +699,7 @@ export class TasksComponent implements OnInit, OnDestroy {
         return 'badge-role employee';
     }
   }
- 
+
   /**
    * Get CSS class for status icon
    */
@@ -703,7 +713,7 @@ export class TasksComponent implements OnInit, OnDestroy {
         return 'icon-gray';
     }
   }
- 
+
   /**
    * Get priority badge class
    */
@@ -719,7 +729,7 @@ export class TasksComponent implements OnInit, OnDestroy {
         return 'badge-secondary';
     }
   }
- 
+
   /**
    * Update statistics based on tasks
    */
@@ -727,12 +737,29 @@ export class TasksComponent implements OnInit, OnDestroy {
     const pendingCount = tasks.filter(t => t.status === 'Pending').length;
     const inProgressCount = tasks.filter(t => t.status === 'In Progress').length;
     const completedCount = tasks.filter(t => t.status === 'Completed').length;
- 
+
     this.stats = [
       { label: 'Pending', value: `${pendingCount} tasks`, icon: 'fa-regular fa-circle', class: 'icon-gray' },
       { label: 'In Progress', value: `${inProgressCount} tasks`, icon: 'fa-regular fa-clock', class: 'icon-blue' },
       { label: 'Completed', value: `${completedCount} tasks`, icon: 'fa-regular fa-circle-check', class: 'icon-green' }
     ];
   }
+
+  /**
+   * Get current employee ID from user session
+   */
+  private getCurrentEmployeeId(): string | null {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    const saved = localStorage.getItem('user_session');
+    if (!saved) return null;
+
+    try {
+      const user = JSON.parse(saved);
+      const id = user.userId ?? user.id;
+      if (!id) return null;
+      return typeof id === 'string' ? id : String(id);
+    } catch {
+      return null;
+    }
+  }
 }
- 
