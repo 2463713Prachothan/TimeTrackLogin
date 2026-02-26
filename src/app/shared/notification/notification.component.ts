@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, HostListener, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NotificationApiService, Notification as NotificationItem } from '../../core/services/notification-api.service';
-import { WebSocketService, SocketEvent } from '../../core/services/websocket.service';
+// import { WebSocketService, SocketEvent } from '../../core/services/websocket.service';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
@@ -24,7 +24,7 @@ export class NotificationComponent implements OnInit, OnDestroy {
 
   constructor(
     private notificationApiService: NotificationApiService,
-    private webSocketService: WebSocketService
+    // private webSocketService: WebSocketService
   ) {}
 
   ngOnInit(): void {
@@ -46,39 +46,13 @@ export class NotificationComponent implements OnInit, OnDestroy {
     // Load initial notifications
     this.notificationApiService.loadNotifications();
 
-    // Subscribe to WebSocket real-time events
-    this.webSocketService.onEvent$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((event: SocketEvent) => {
-        this.handleSocketEvent(event);
-      });
-
-    // Join user-specific room for notifications
-    const userId = this.getUserId();
-    if (userId) {
-      this.webSocketService.joinRoom(`notifications-${userId}`);
-    }
+    // WebSocket logic removed
   }
 
   /**
    * Handle WebSocket events and add real-time notifications
    */
-  private handleSocketEvent(event: SocketEvent): void {
-    if (event.type === 'TASK_ASSIGNED' || event.type === 'TASK_COMPLETED') {
-      const newNotification: NotificationItem = {
-        id: event.data.id || `temp-${Date.now()}`,
-        userId: event.data.userId,
-        type: event.data.type || 'task-assigned',
-        message: event.data.message,
-        isRead: false,
-        isCleared: false,
-        createdAt: new Date(event.data.createdAt || new Date())
-      };
-
-      // Add to local state immediately
-      this.notificationApiService.addRealtimeNotification(newNotification);
-    }
-  }
+  // WebSocket event handler removed
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
