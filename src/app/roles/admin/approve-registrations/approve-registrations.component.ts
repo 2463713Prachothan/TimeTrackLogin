@@ -74,25 +74,25 @@ export class ApproveRegistrationsComponent implements OnInit {
     this.activeTab = tab;
   }
 
-  approveRegistration(registration: PendingRegistration) {
-    if (confirm(`Approve registration for ${registration.name}?`)) {
-      this.registrationService.approveRegistration(registration.registrationId).subscribe({
-        next: () => {
-          this.notificationService.success(`${registration.name} approved successfully!`);
-          this.loadAllRegistrations();
-          // Refresh users list so the new user appears in Manage Users
-          // Add a small delay to ensure backend has completed creating the user
-          setTimeout(() => {
-            console.log('🔄 Refreshing users after approval...');
-            this.userService.refreshUsers();
-          }, 500);
-        },
-        error: (err: any) => {
-          this.notificationService.error(err.error?.message || 'Failed to approve');
-        }
-      });
+ approveRegistration(registration: PendingRegistration) {
+  // Show a non-blocking info toast instead of window.confirm
+ 
+
+  this.registrationService.approveRegistration(registration.registrationId).subscribe({
+    next: () => {
+      this.notificationService.success(`${registration.name} approved successfully!`);
+      this.loadAllRegistrations();
+
+      // Let backend finish creating the user before refresh
+      setTimeout(() => {
+        this.userService.refreshUsers();
+      }, 500);
+    },
+    error: (err: any) => {
+      this.notificationService.error(err.error?.message || 'Failed to approve');
     }
-  }
+  });
+}
 
   openRejectModal(registration: PendingRegistration) {
     this.selectedRegistration = registration;
@@ -125,18 +125,19 @@ export class ApproveRegistrationsComponent implements OnInit {
   }
 
   deleteRegistration(registration: PendingRegistration) {
-    if (confirm(`Delete registration for ${registration.name}?`)) {
-      this.registrationService.deleteRegistration(registration.registrationId).subscribe({
-        next: () => {
-          this.notificationService.success('Deleted successfully');
-          this.loadAllRegistrations();
-        },
-        error: () => {
-          this.notificationService.error('Failed to delete');
-        }
-      });
+  // Optional: show a brief “in progress” toast
+ 
+
+  this.registrationService.deleteRegistration(registration.registrationId).subscribe({
+    next: () => {
+      this.notificationService.success('Deleted successfully');
+      this.loadAllRegistrations();
+    },
+    error: () => {
+      this.notificationService.error('Failed to delete');
     }
-  }
+  });
+}
 
   formatDate(dateString: string | undefined): string {
     if (!dateString) return '-';
