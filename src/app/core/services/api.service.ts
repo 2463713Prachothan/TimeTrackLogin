@@ -139,37 +139,26 @@ export class ApiService {
    * Get team members for the current manager
    * Backend endpoint: GET /api/User/my-team
    */
-  getMyTeam(): Observable<any[]> {
-    if (!isPlatformBrowser(this.platformId)) {
-      return of([]);
-    }
+ getMyTeam(): Observable<any[]> {
+  // For SSR safety
+  if (!isPlatformBrowser(this.platformId)) return of([]);
 
-    console.log('📡 ApiService - Fetching my team from:', `${this.apiUrl}/User/my-team`);
-
-    return this.http.get<any>(`${this.apiUrl}/User/my-team`, { headers: this.getHeaders() })
-      .pipe(
-        tap((response: any) => {
-          console.log('📥 ApiService - My team raw response:', response);
-        }),
-        map((response: any) => {
-          // Handle different response formats
-          let members: any[] = [];
-          if (Array.isArray(response)) {
-            members = response;
-          } else if (response && Array.isArray(response.$values)) {
-            members = response.$values;
-          } else if (response && Array.isArray(response.data)) {
-            members = response.data;
-          }
-          console.log('✅ ApiService - Parsed team members:', members);
-          return members;
-        }),
-        catchError(err => {
-          console.error('❌ ApiService - Error fetching my team:', err);
-          return of([]);
-        })
-      );
-  }
+  return this.http.get<any>(`${this.apiUrl}/User/my-team`, {
+    headers: this.getHeaders()
+  })
+  .pipe(
+    // Your backend wraps as { success, message, data, errors }
+    map((res: any) => {
+      const team = res?.data ?? res ?? [];
+      return Array.isArray(team) ? team : [];
+    }),
+    tap(team => console.log('✅ getMyTeam →', team)),
+    catchError(err => {
+      console.error('❌ getMyTeam error:', err);
+      return of([]); // return empty so UI doesn’t break
+    })
+  );
+}
 
   /**
    * Get users by department
