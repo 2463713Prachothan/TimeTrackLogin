@@ -7,11 +7,11 @@
     </div>
 
   <div class="nav-actions">
+      <app-notification></app-notification>
       <div class="user-info">
         <span class="admin-name">{{ user.name }}</span>
         <span class="role-badge manager-badge">{{ user.role }}</span>
       </div>
-      <app-notification></app-notification>
       <div class="profile-container">
         <button class="profile-circle admin-circle" (click)="toggleDropdown($event)">
           {{ user.initial }}

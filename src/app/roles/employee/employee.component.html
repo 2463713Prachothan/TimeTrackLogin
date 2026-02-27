@@ -5,11 +5,11 @@
     </div>
 
     <div class="nav-actions">
+        <app-notification></app-notification>
         <div class="user-info">
             <span class="employee-name">{{ employeeName }}</span>
             <span class="role-badge">{{ userRole }}</span>
         </div>
-        <app-notification></app-notification>
         <div class="profile-container">
             <button class="profile-circle" (click)="toggleDropdown()">
                 {{ profileInitial }}
