@@ -28,7 +28,7 @@ Chart.register(...registerables);
 })
 export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy {
   private destroy$ = new Subject<void>();
-  
+
   private trendChart: any;
   private memberChart: any;
   private completionChart: any;
@@ -54,7 +54,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
     private timeLogService: TimeLogService,
     private apiService: ApiService,
     private authService: AuthService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     console.log('📊 TeamAnalyticsComponent - Initializing with backend APIs');
@@ -90,7 +90,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
   loadAllAnalytics(): void {
     this.loading = true;
     this.error = null;
-    
+
     const managerId = this.getCurrentManagerId();
     if (!managerId) {
       console.error('❌ Manager ID not found');
@@ -102,31 +102,76 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
     console.log('📊 Loading analytics for manager:', managerId);
 
     // Use existing APIs: time logs and tasks created by manager
+    // Note: getTasksCreatedByMe may fail with 403 if not authenticated
     forkJoin({
       timeLogs: this.timeLogService.getTeamTimeLogsV2(managerId),
       tasks: this.apiService.getTasksCreatedByMe()
     })
-    .pipe(takeUntil(this.destroy$))
-    .subscribe({
-      next: (results) => {
-        console.log('✅ Raw data loaded:', results);
-        
-        const timeLogs = results.timeLogs.success ? results.timeLogs.data : [];
-        const tasks = results.tasks || [];
-        
-        // Calculate analytics from raw data
-        this.calculateAnalytics(timeLogs, tasks);
-        
-        this.loading = false;
-      },
-      error: (err) => {
-        console.error('❌ Error loading analytics:', err);
-        this.error = null;
-        this.notificationService.info('Unable to load real data - Using sample data');
-        this.loadMockData();
-        this.loading = false;
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (results) => {
+          console.log('✅ Raw data loaded:', results);
+
+          const timeLogs = results.timeLogs.success ? results.timeLogs.data : [];
+          const tasks = results.tasks || [];
+
+          // Calculate analytics from raw data
+          this.calculateAnalytics(timeLogs, tasks);
+
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('❌ Error loading analytics:', err);
+          this.error = null;
+          // Try loading from localStorage as fallback
+          console.log('💡 Attempting to load from localStorage...');
+          this.loadFromLocalStorage(managerId);
+          this.loading = false;
+        }
+      });
+  }
+
+  /**
+   * Load data from localStorage as fallback when API fails
+   */
+  private loadFromLocalStorage(managerId: string): void {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const storedTimeLogs = localStorage.getItem('team_time_logs');
+      const storedTasks = localStorage.getItem('manager_tasks');
+
+      let timeLogs: any[] = [];
+      let tasks: any[] = [];
+
+      if (storedTimeLogs) {
+        try {
+          timeLogs = JSON.parse(storedTimeLogs);
+          console.log('✅ Loaded time logs from localStorage:', timeLogs.length);
+        } catch (e) {
+          console.error('Error parsing time logs from localStorage:', e);
+        }
       }
-    });
+
+      if (storedTasks) {
+        try {
+          tasks = JSON.parse(storedTasks);
+          console.log('✅ Loaded tasks from localStorage:', tasks.length);
+        } catch (e) {
+          console.error('Error parsing tasks from localStorage:', e);
+        }
+      }
+
+      if (timeLogs.length > 0 || tasks.length > 0) {
+        this.calculateAnalytics(timeLogs, tasks);
+        this.notificationService.info('Loaded cached data from previous session');
+      } else {
+        console.log('📊 No cached data found, loading sample data');
+        this.notificationService.info('No data available - Using sample data');
+        this.loadMockData();
+      }
+    } else {
+      console.log('📊 localStorage not available, loading sample data');
+      this.loadMockData();
+    }
   }
 
   /**
@@ -142,16 +187,16 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
    */
   private calculateAnalytics(timeLogs: any[], tasks: any[]): void {
     console.log('📊 Calculating analytics from', timeLogs.length, 'time logs and', tasks.length, 'tasks');
-    
+
     // Calculate team summary
     const totalHours = timeLogs.reduce((sum, log) => sum + (log.hoursSpent || log.totalHours || 0), 0);
     const uniqueEmployees = new Set(timeLogs.map(log => log.employeeId || log.userId)).size;
     const avgHours = uniqueEmployees > 0 ? totalHours / uniqueEmployees : 0;
-    
+
     const completedTasks = tasks.filter(t => t.status === 'Completed' || t.status === 'Approved').length;
     const totalTasks = tasks.length;
     const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    
+
     this.teamSummary = {
       totalTeamHours: Math.round(totalHours * 10) / 10,
       averageHoursPerMember: Math.round(avgHours * 10) / 10,
@@ -162,19 +207,19 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
       calculatedFrom: this.startDate.toISOString(),
       calculatedTo: this.endDate.toISOString()
     };
-    
+
     // Calculate trend data (group by date)
-    const trendMap = new Map<string, {hours: number, tasks: number, members: Set<string>}>();
+    const trendMap = new Map<string, { hours: number, tasks: number, members: Set<string> }>();
     timeLogs.forEach(log => {
       const date = new Date(log.date || log.loggedDate).toISOString().split('T')[0];
       if (!trendMap.has(date)) {
-        trendMap.set(date, {hours: 0, tasks: 0, members: new Set()});
+        trendMap.set(date, { hours: 0, tasks: 0, members: new Set() });
       }
       const entry = trendMap.get(date)!;
       entry.hours += log.hoursSpent || log.totalHours || 0;
       entry.members.add(log.employeeId || log.userId);
     });
-    
+
     tasks.forEach(task => {
       if (task.completedDate) {
         const date = new Date(task.completedDate).toISOString().split('T')[0];
@@ -183,7 +228,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
         }
       }
     });
-    
+
     const sortedDates = Array.from(trendMap.keys()).sort();
     this.hoursTrend = {
       trendData: sortedDates.map(date => ({
@@ -193,7 +238,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
         activeMembers: trendMap.get(date)!.members.size
       }))
     };
-    
+
     // Calculate member performance
     const memberMap = new Map<string, any>();
     timeLogs.forEach(log => {
@@ -214,7 +259,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
       }
       memberMap.get(id)!.totalHours += log.hoursSpent || log.totalHours || 0;
     });
-    
+
     tasks.forEach(task => {
       const id = task.assignedToUserId;
       if (memberMap.has(id)) {
@@ -226,7 +271,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
         if (task.isOverdue) member.overdueTasksCount++;
       }
     });
-    
+
     this.memberPerformance = {
       members: Array.from(memberMap.values()).map(m => ({
         ...m,
@@ -238,14 +283,14 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
         averageTaskCompletionTime: m.tasksCompleted > 0 ? m.totalHours / m.tasksCompleted : 0
       }))
     };
-    
+
     // Calculate task breakdown
     const completed = tasks.filter(t => t.status === 'Completed' || t.status === 'Approved').length;
     const inProgress = tasks.filter(t => t.status === 'InProgress' || t.status === 'In Progress').length;
     const pending = tasks.filter(t => t.status === 'Pending').length;
     const overdue = tasks.filter(t => t.isOverdue).length;
     const rejected = tasks.filter(t => t.isRejected).length;
-    
+
     this.taskBreakdown = {
       completedCount: completed,
       inProgressCount: inProgress,
@@ -255,14 +300,14 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
       totalCount: tasks.length,
       completionPercentage: tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0
     };
-    
+
     // Update charts
     setTimeout(() => {
       this.updateTrendChart();
       this.updateMemberChart();
       this.updateCompletionChart();
     }, 100);
-    
+
     console.log('✅ Analytics calculated:', {
       summary: this.teamSummary,
       trend: this.hoursTrend.trendData.length,
@@ -287,7 +332,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
    */
   private initCharts(): void {
     console.log('📊 Attempting to initialize charts...');
-    
+
     try {
       const trendCanvas = document.getElementById('trendChart');
       const memberCanvas = document.getElementById('memberChart');
@@ -343,7 +388,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
               title: { display: true, text: 'Hours' },
               ticks: {
                 stepSize: 1,
-                callback: function(value: any) {
+                callback: function (value: any) {
                   return Number.isInteger(value) ? value : '';
                 }
               }
@@ -387,7 +432,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
               title: { display: true, text: 'Hours' },
               ticks: {
                 stepSize: 1,
-                callback: function(value: any) {
+                callback: function (value: any) {
                   return Number.isInteger(value) ? value : '';
                 }
               }
@@ -440,7 +485,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
         return;
       }
 
-      const labels = this.hoursTrend.trendData.map(d => 
+      const labels = this.hoursTrend.trendData.map(d =>
         new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       );
       const data = this.hoursTrend.trendData.map(d => d.totalHours);
@@ -512,11 +557,11 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
    */
   loadMockData(): void {
     console.log('📊 Loading mock data for development...');
-    
+
     // Clear loading and error states
     this.loading = false;
     this.error = null;
-    
+
     // Mock team summary
     this.teamSummary = {
       totalTeamHours: 856.5,
@@ -609,7 +654,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
    * Get performance badge class
    */
   getPerformanceClass(status: string): string {
-    switch(status) {
+    switch (status) {
       case 'Excellent': return 'badge-success';
       case 'Good': return 'badge-info';
       case 'Needs Attention': return 'badge-warning';
@@ -628,7 +673,7 @@ export class TeamAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    
+
     // Clean up charts
     if (this.trendChart) {
       this.trendChart.destroy();

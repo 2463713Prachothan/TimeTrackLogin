@@ -5,7 +5,7 @@ import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ManagerDataService } from '../../core/services/manager-data.service';
- 
+
 @Component({
   selector: 'app-signin',
   standalone: true,
@@ -19,7 +19,7 @@ export class SigninComponent {
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
   private managerDataService = inject(ManagerDataService);
- 
+
   signinForm: FormGroup;
 
   constructor() {
@@ -29,7 +29,7 @@ export class SigninComponent {
     });
   }  // Helper for HTML access
   get f() { return this.signinForm.controls; }
- 
+
   onLogin() {
     if (this.signinForm.valid) {
       const email = this.signinForm.value.email.toLowerCase();
@@ -38,7 +38,7 @@ export class SigninComponent {
       // Call backend API for all users (including Admin)
       this.authService.loginAsync(email, enteredPassword).subscribe({
         next: (response: any) => {
-          console.log('Login response:', response);
+          console.log('🔐 Login response:', response);
           // API returns { success, message, data: { userId, name, email, role, department, token, tokenExpiration } }
           let user = response.data || response;
 
@@ -47,7 +47,20 @@ export class SigninComponent {
             user.fullName = user.name;
           }
 
-          // Set the user in the auth service
+          // Normalize user ID - backend returns 'userId', but code expects 'id'
+          if (user.userId && !user.id) {
+            user.id = user.userId;
+            console.log('✅ Normalized user.id from userId:', user.id);
+          }
+
+          // Log token for debugging
+          if (user.token) {
+            console.log('✅ Token received from backend:', user.token.substring(0, 20) + '...');
+          } else {
+            console.warn('⚠️ No token in user object. Keys:', Object.keys(user));
+          }
+
+          // Set the user in the auth service (this will save token to localStorage)
           this.authService.setCurrentUser(user);
 
           // Get the actual user name
@@ -70,6 +83,5 @@ export class SigninComponent {
       });
     }
   }
- 
+
 }
- 

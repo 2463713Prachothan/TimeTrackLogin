@@ -4,11 +4,12 @@ import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/rou
 import { AuthService } from '../../core/services/auth.service';
 import { TimeLogService } from '../../core/services/time-log.service';
 import { ProfileModalComponent } from '../../shared/profile-modal/profile-modal.component';
+import { NotificationComponent } from '../../shared/notification/notification.component';
 
 @Component({
   selector: 'app-employee',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ProfileModalComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ProfileModalComponent, NotificationComponent],
   templateUrl: './employee.component.html',
   styleUrl: './employee.component.css'
 })

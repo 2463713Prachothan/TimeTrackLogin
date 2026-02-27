@@ -7,12 +7,13 @@ import { UserService } from '../../core/services/user.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
 import { ProfileModalComponent } from '../../shared/profile-modal/profile-modal.component';
+import { NotificationComponent } from '../../shared/notification/notification.component';
 import { TeamMember } from '../../core/models/time-log.model';
 
 @Component({
   selector: 'app-manager',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterModule, ProfileModalComponent],
+  imports: [CommonModule, RouterOutlet, RouterModule, ProfileModalComponent, NotificationComponent],
   templateUrl: './manager.component.html',
   styleUrls: ['./manager.component.css']
 })
@@ -37,11 +38,11 @@ export class ManagerComponent implements OnInit {
     private timeLogService: TimeLogService,
     private userService: UserService,
     private apiService: ApiService
-  ) {}
+  ) { }
 
   ngOnInit() {
     console.log('🔄 ManagerComponent initialized - Loading all data');
-    
+
     // Navbar user info
     this.dataService.currentUser$.subscribe(userData => {
       const fullName = userData.fullName || userData.name || 'Manager';
@@ -58,13 +59,13 @@ export class ManagerComponent implements OnInit {
       const activeTasks = tasks.filter(t => t.status === 'InProgress' || t.status === 'In Progress').length;
       const completedTasks = tasks.filter(t => t.status === 'Completed' || t.status === 'Approved').length;
       const totalTasks = tasks.length;
-      
+
       // Completion rate = (completed / total) * 100
       this.completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-      
+
       // Always update activeTasks count
       this.activeTasks = activeTasks;
-      
+
       console.log('📊 Dashboard metrics updated:', {
         total: totalTasks,
         completed: completedTasks,
@@ -75,16 +76,18 @@ export class ManagerComponent implements OnInit {
 
     // Force refresh data to ensure it loads
     this.dataService.refreshData();
-    
+
     // === MAIN: Use new manager-stats API endpoint ===
-    this.loadManagerStats();
-    
+    // DISABLED: Causes 400 Bad Request errors (backend endpoint not available or not matching)
+    // Stats are calculated from dataService.tasks$ subscription instead
+    // this.loadManagerStats();
+
     const managerId = this.getCurrentManagerId();
     if (managerId) {
       // Team members list (+ compute hours from team logs)
       this.loadTeamMembers(managerId);
     }
-    
+
     // Force check after delay if data is still 0
     setTimeout(() => {
       if (this.activeTasks === 0 && this.completionRate === 0) {
@@ -98,7 +101,13 @@ export class ManagerComponent implements OnInit {
    * Load manager dashboard statistics from new API endpoint
    */
   private loadManagerStats(): void {
-    this.apiService.getManagerStats().subscribe({
+    const managerId = this.getCurrentManagerId();
+    if (!managerId) {
+      console.warn('⚠️ Cannot load manager stats - managerId not found');
+      return;
+    }
+
+    this.apiService.getManagerStats(managerId).subscribe({
       next: (response) => {
         if (response && response.success && response.data) {
           const stats = response.data;
