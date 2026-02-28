@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet, RouterModule } from '@angular/router';
 import { UserService } from '../../core/services/user.service';
 import { ProfileModalComponent } from '../../shared/profile-modal/profile-modal.component';
+import { NotificationComponent } from '../../shared/notification/notification.component';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterModule, ProfileModalComponent],
+  imports: [CommonModule, RouterOutlet, RouterModule, ProfileModalComponent, NotificationComponent],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.css'
 })

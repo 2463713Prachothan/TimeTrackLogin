@@ -26,7 +26,6 @@
         </div>
         <div class="notification-content">
           <p class="notification-message">{{ notif.message }}</p>
-          <small class="notification-time">{{ getTimeAgo(notif.createdAt) }}</small>
         </div>
         <div class="notification-arrow">
           <i class="bi bi-chevron-right"></i>
@@ -72,24 +71,6 @@
             <span class="meta-value type-badge" [ngClass]="'badge-' + getNotificationBadgeClass(selectedNotification.type)">
               {{ formatType(selectedNotification.type) }}
             </span>
-          </div>
-
-          <div class="meta-item">
-            <span class="meta-label">Status:</span>
-            <span class="meta-value status-badge" [ngClass]="selectedNotification.isRead ? 'badge-success' : 'badge-warning'">
-              <i class="bi" [ngClass]="selectedNotification.isRead ? 'bi-check-circle-fill' : 'bi-info-circle'"></i>
-              {{ selectedNotification.isRead ? 'Read' : 'Unread' }}
-            </span>
-          </div>
-
-          <div class="meta-item">
-            <span class="meta-label">Received:</span>
-            <span class="meta-value">{{ formatDate(selectedNotification.createdAt) }}</span>
-          </div>
-
-          <div class="meta-item">
-            <span class="meta-label">Time Ago:</span>
-            <span class="meta-value">{{ getTimeAgo(selectedNotification.createdAt) }}</span>
           </div>
         </div>
       </div>
